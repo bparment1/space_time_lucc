@@ -7,7 +7,7 @@
 #Much of the inspiration and code originates from Steve Mosher:
 #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
 #AUTHOR: Benoit Parmentier                                                                       
-#DATE: 08/29/2013                                                                                
+#DATE: 09/11/2013                                                                                
 #PROJECT: Space Time project and NCEAS                                 
 ###################################################################################################
 
@@ -30,6 +30,10 @@ infile_LC<-"MCD12Q1A2001001.h10v09.051.2012157220925.hdf"
 infile_LST <- list.files(path=in_dir,pattern=".*.hdf$")
 infile_IDRISI <- list.files(path=in_dir,pattern=".*.rst$")  
 
+function_analyses_paper <-"MODIS_and_raster_processing_functions_09112013.R"
+script_path<-in_dir #path to script functions
+source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
+
 ### BEGIN ###
 
 rg <-GDAL.open(infile_LST[1])
@@ -44,6 +48,7 @@ str(GDALinfo_hdf)
 #GDALinfo_hdf["rows"]
 
 modis_subdataset <- attributes(GDALinfo_hdf)$subdsmdata
+print(modis_subdataset)
 
 ###### PART I: Reading LST and Land cover layers (subset) ######
 
@@ -159,193 +164,11 @@ qc_lst_valid$Integer_Value
 
 qc_valid<-qc_lst_valid$Integer_Value
 
+qc_valid_modis_fun(qc_valid,rast_qc,rast_var){
+  
 ## function to download modis product??
 
-
-
-## Function to mosaic modis
-
-mosaic_m_raster_list<-function(j,list_param){
-  #This functions returns a subset of tiles from the modis grid.
-  #Arguments: modies grid tile,list of tiles
-  #Output: spatial grid data frame of the subset of tiles
-  #Note that rasters are assumed to be in the same projection system!!
-  
-  #rast_list<-vector("list",length(mosaic_list))
-  #for (i in 1:length(mosaic_list)){  
-  # read the individual rasters into a list of RasterLayer objects
-  # this may be changed so that it is not read in the memory!!!
-  
-  #parse output...
-  
-  #j<-list_param$j
-  mosaic_list<-list_param$mosaic_list
-  out_path<-list_param$out_path
-  out_names<-list_param$out_rastnames
-  ## Start
-  
-  input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
-  mosaiced_rast<-input.rasters[[1]]
-  
-  for (k in 2:length(input.rasters)){
-    mosaiced_rast<-mosaic(mosaiced_rast,input.rasters[[k]], fun=mean)
-    #mosaiced_rast<-mosaic(mosaiced_rast,raster(input.rasters[[k]]), fun=mean)
-  }
-  
-  data_name<-paste("mosaiced_",sep="") #can add more later...
-  raster_name<-paste(data_name,out_names[j],".tif", sep="")
-  writeRaster(mosaiced_rast, filename=file.path(out_path,raster_name),overwrite=TRUE)  
-  #Writing the data in a raster file format...  
-  rast_list<-file.path(out_path,raster_name)
-  
-  return(rast_list)
-}
-
-## Function to reproject and crop modis tile
-
-create__m_raster_region <-function(j,list_param){
-  #This functions returns a subset of tiles from the modis grdid.
-  #Arguments: raster name of the file,reference file with
-  #Output: spatial grid data frame of the subset of tiles
-  
-  ## Parse input arguments
-  raster_name <- list_param$raster_name[[j]] #list of raster ot project and crop, this is a list!!
-  reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
-  out_rast_name <- list_param$out_rast_name[j]
-  
-  ## Start #
-  layer_rast<-raster(raster_name)
-  new_proj<-proj4string(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
-  region_temp_projected<-projectExtent(reg_ref_rast,CRS(new_proj))     #Project from ref to current region coord. system
-  layer_crop_rast<-crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
-  #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
-  layer_projected_rast<-projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb")
-  
-  writeRaster(layer_projected_rast, filename=out_rast_name,overwrite=TRUE)  
-  
-  return(out_rast_name)
-}
-
-## function to import modis in tif or other format...
-
-import_modis_layer_fun <-function(hdf_file,subdataset,file_format,memory=TRUE){
-  #modis_subset_layer_LST_Day <- paste("HDF4_EOS:EOS_GRID:",hdf_file,":MODIS_Grid_Daily_1km_LST:LST_Day_1km",sep="")
-  modis_subset_layer_LST_Day <- paste("HDF4_EOS:EOS_GRID:",hdf_file,subdataset,sep="")
-  r <-readGDAL(modis_subset_layer_LST_Day)
-  r  <-raster(r)
-  
-  #Finish this part...write out
-  #raster_name<- paste("raster","_",row, "r_", col,"c_","r_spat_s","_",out_suffix,file_format, sep="")
-  #writeRaster(r_spat, NAflag=NA_flag_val,filename=raster_name,bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)   
-  #writeRaster(r_spat, NAflag=NA_flag_val,filename=raster_name,bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)     
-  
-  if(memory==TRUE}{
-    return(r)
-  }else{
-    return(raster_name)
-  }  
-}
-
-
-## Function to  reclass value in 
-
-qc_valid_modis_fun <-function(qc_valid,rast_qc,rast_var){
-  f_values <- as.data.frame(freq(rast_qc)) # frequency values in the raster...
-  if(f_values$value %in% qc_valid){ #not working...change here...
-    f_values$qc_mask <- 1
-  }else{
-    f_values$qc_mask <- NA
-  }
-  
-  r_qc_m <- subs(x=rast_qc,y=f_values,by=1,which=3)
-  rast_lst <-mask(rast_var,r_qc_m)
-  return(rast_var)
-}
-
-### FUNCTIONS
-
-create_MODIS_QC_table <-function(LST=TRUE){
-  #Function to generate MODIS QC  flag table
-  #created by Benoit Parmentier with most of the lines from S. Mosher!!
-  
-  list_QC_Data <- vector("list", length=2)
-  names(list_QC_Data) <- c("LST","NDVI")
-    
-  ## Generate generic product table
-  QC_Data <- data.frame(Integer_Value = 0:255,
-                        Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-                        QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA)
-
-  for(i in QC_Data$Integer_Value){
-    AsInt <- as.integer(intToBits(i)[1:8])
-    QC_Data[i+1,2:9]<- AsInt[8:1]
-  } 
-  QC_table <- QC_Data
-  
-  ## PRODUCT 1: LST
-  #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
-  
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "LST Good Quality"    #(0-0)
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "LST Produced,Check QA"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,clouds"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "No Produced, check Other QA"
-  
-  QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Good Data"
-  QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Other Quality"
-  QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "TBD"
-  QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "TBD"
-  
-  QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
-  QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
-  QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
-  QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
-  
-  QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
-  QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
-  QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
-  QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
-  
-  list_QC_Data[[1]] <- QC_Data
-  
-  ## PRODUCT 2: NDVI
-  #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
-  
-#   QC_Data <- data.frame(Integer_Value = 0:255,
-#                         Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-#                         Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
-#                         QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
-#                         QA_word8 = NA,QA_word7 = NA,QA_word6 = NA,QA_word5 = NA
-#                         QA_word9 = NA)
-#   
-#   QC_Data <- QC_table
-#   
-#   QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "VI Good Quality"    #(0-0)
-#   QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "VI Produced,check QA"
-#   QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,because of clouds"
-#   QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "Not Produced, other reasons"
-#   
-#   QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Good Data"
-#   QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Other Quality"
-#   QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "TBD"
-#   QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "TBD"
-#   
-#   QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
-#   
-#   QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
-  
-#  list_QC_Data[[2]]<- QC_Data
-  
-  return(list_QC_Data)
-}
-
-#Screen data: use only : # level 1: LST Produced good quality, LST Produced other Quality Check QA, 
-                         # level 2: good data , Other quality 
+#add here...
 
 
 
