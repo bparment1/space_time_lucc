@@ -20,21 +20,12 @@
 library(sp)
 library(raster)
 library(rgdal)
+require(rgeos)
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
-
-create_modis_tiles_region<-function(modis_grid,tiles){
-  #This functions returns a subset of tiles from the modis grdi.
-  #Arguments: modies grid tile,list of tiles
-  #Output: spatial grid data frame of the subset of tiles
-  
-  h_list<-lapply(tiles,substr,start=2,stop=3) #passing multiple arguments
-  v_list<-lapply(tiles,substr,start=5,stop=6) #passing multiple arguments
-  
-  selected_tiles<-subset(subset(modis_grid,subset = h %in% as.numeric (h_list) ),
-                         subset = v %in% as.numeric(v_list)) 
-  return(selected_tiles)
-}
+require(RCurl)
+require(stringr)
+require(XML)
 
 ## Function to mosaic modis or other raster images
 
@@ -98,7 +89,6 @@ create__m_raster_region <-function(j,list_param){
   
   return(out_rast_name)
 }
-
 
 #####
 
@@ -235,38 +225,81 @@ assign_projection_crs <-function(i,list_param){
 
 ## Function to  reclass value in 
 
-#qc_valid_modis_fun <-function(qc_valid,rast_qc,rast_var){
+#qc_valid_modis_fun <-function(qc_valid,rast_qc,rast_var,rast_mask=FALSE,NA_flag_val,out_dir=".",out_rast_name){
 #  f_values <- as.data.frame(freq(rast_qc)) # frequency values in the raster...
-#  if(f_values$value %in% qc_valid){ #not working...change here...
-#    f_values$qc_mask <- 1
-#  }else{
-#    f_values$qc_mask <- NA
-#  }
+#  f_values$qc_mask <- as.integer(f_values$value %in% qc_valid)
+#  f_values$qc_mask[f_values$qc_mask==0] <- NA
 #  
 #  r_qc_m <- subs(x=rast_qc,y=f_values,by=1,which=3)
-#  rast_lst <-mask(rast_var,r_qc_m)
-#  return(rast_var)
+#  rast_var_m <-mask(rast_var,r_qc_m)
+#  
+#  if(rast_mask==FALSE){
+#    raster_name<- out_rast_name
+#   writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
+#                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+#    return(rast_var_m)
+#  }else{
+#    r_stack <-stack(rast_var_m,r_qc_m)
+#    raster_name<- out_rast_name
+#    writeRaster(r_stack, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
+#                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+#    return(r_stack)
+#  }
 #}
 
-qc_valid_modis_fun <-function(qc_valid,rast_qc,rast_var,rast_mask=FALSE,NA_flag_val,out_dir=".",out_rast_name){
-  f_values <- as.data.frame(freq(rast_qc)) # frequency values in the raster...
-  f_values$qc_mask <- as.integer(f_values$value %in% qc_valid)
-  f_values$qc_mask[f_values$qc_mask==0] <- NA
+screen_for_qc_valid_fun <-function(i,list_param){
+  ##Function to assign NA given qc flag values from MODIS or other raster
+  #Author: Benoit Parmentier
+  #Created On: 09/20/2013
+  #Modified On: 09/20/2013
   
-  r_qc_m <- subs(x=rast_qc,y=f_values,by=1,which=3)
+  #Parse arguments:
+  
+  qc_valid <- list_param$qc_valid # valid pixel values as dataframe
+  rast_qc <- list_param$rast_qc[i] #raster with integer values reflecting quality flag layer e.g. day qc
+  rast_var <- list_param$rast_var[i] #raster with measured/derived variable e.g. day LST
+  rast_mask <- list_param$rast_mask #return raster mask as separate layer, if TRUE then raster is written and returned?
+  NA_flag_val <- list_param$NA_flag_val #value for NA
+  out_dir <- list_param$out_dir #output dir
+  out_suffix <- out_suffix # suffix used for raster files written as outputs
+  
+  #### Start script:
+  
+  if(is.character(rast_qc)==TRUE){
+    rast_name_qc <- rast_qc
+    rast_qc <-raster(rast_qc)
+  }
+  if(is.character(rast_var)==TRUE){
+    rast_name_var <- rast_var
+    rast_var<-raster(rast_var)
+  }
+  
+  f_values <- as.data.frame(freq(rast_qc)) # frequency values in the raster...as a dataframe
+  f_values$qc_mask <- as.integer(f_values$value %in% qc_valid) # values that should be masked out
+  f_values$qc_mask[f_values$qc_mask==0] <- NA #NA for masked out values
+  
+  #Use "subs" function to assign NA to values that are masked, column 1 contains the identifiers i.e. values in raster
+  r_qc_m <- subs(x=rast_qc,y=f_values,by=1,which=3) #Use column labeled as qc_mask (number 3) to assign value
   rast_var_m <-mask(rast_var,r_qc_m)
   
-  if(rast_mask==FALSE){
-    raster_name<- out_rast_name
+  if(rast_mask==FALSE){  #then only write out variable that is masked out
+    raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
                 ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
-    return(rast_var_m)
+    return(raster_name)
   }else{
-    r_stack <-stack(rast_var_m,r_qc_m)
-    raster_name<- out_rast_name
-    writeRaster(r_stack, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
+    raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
+    writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
                 ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
-    return(r_stack)
+    raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
+    raster_name_qc <- paste(raster_name_qc,"_",out_suffix,extension(rast_name_qc),sep="")
+    writeRaster(r_qc_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name_qc)
+                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+    r_stack_name <- list(raster_name,raster_name_qc)
+    names(r_stack_name) <- c("var","mask")
+    return(r_stack_name)
   }
 }
 
@@ -290,65 +323,133 @@ create_modis_tiles_region<-function(modis_grid,tiles){
 ## For some time the ftp access does not work for MOLT!! now use curl and list from http.
 
 #This function does not work yet i.e. under construction...
-function(MOD_product,version,date1,date2,tiles_list,out_dir){
+modis_product_download <- function(MODIS_product,version,start_date,end_date,list_tiles,file_format,out_dir){
+  
+  ##Functions used in the script
+  
+  extractFolders=function(urlString) {
+    htmlString=getURL(urlString)
+    ret=gsub("]", "", str_replace_all(str_extract_all(htmlString, paste('DIR',".([^]]+).", '/\">',sep=""))[[1]], "[a-zA-Z\"= <>/]", ""))
+    return(ret[which(nchar(ret)>0)])
+  }
+  
+  extractFiles=function(urlString, selHV) {
+    #Slight modifications by Benoit
+    #selHV: tiles as character vectors
+    #urlString: character vector with url folder to specific dates for product
+    
+    # get filename strings
+    htmlString=getURL(urlString)
+    #htmlString=getURL(urlString[2])
+    allVec=gsub('\">', '', gsub('<a href=\"', "", str_extract_all(htmlString, paste('<a href=\"',"([^]]+)", '\">',sep=""))[[1]]))
+    #allVec=gsub('\">', '', gsub('<a href=\"', "", str_extract_all(htmlString, paste('<a href=\"',"([^]]+)", '\">',sep=""))))
+    
+    ret=c()
+    for (currSel in selHV) {
+      ret=c(ret, grep(currSel, allVec, value=TRUE))
+    }
+    # select specific files
+    ret <- paste(urlString,ret,sep="") #append the url of folder
+    
+    jpg=sapply(ret, FUN=endswith, char=".jpg")
+    xml=sapply(ret, FUN=endswith, char=".xml")
+    hdf=sapply(ret, FUN=endswith, char=".hdf")
+    
+    retList=list(jpg=ret[which(jpg)], xml=ret[which(xml)], hdf=ret[which(hdf)])
+    return(retList)
+  }
+  
+  endswith=function(x, char) {
+    currSub = substr(x, as.numeric(nchar(x)-nchar(char))+1,nchar(x))
+    if (currSub==char) {return(TRUE)}
+    return(FALSE)
+  }
+  
   #Generate dates and names for files...?
   
+  #step 1: parse input elements
   
-  #step 1: #MOD_product <- 
+  #MODIS_product <- list_param$MODIS_product 
+  #start_date <- list_param$start_date 
+  #end_date <- list_param$end_date
+  #list_tiles<- list_param$list_tiles
+  #out_dir<- list_param$out_dir
   
-  #list content of day folder/directly given a specific product!!!
-  url_content <- getURLContent("http://e4ftl01.cr.usgs.gov/MOLT/MOD11A1.005/") #This works to list content!!!
-  attr(url_content, "Content-Type")
-  items <- strsplit(url_content, "\n")[[1]]
-  items[[100]]  #parse to get specific "DIR"
+  #MODIS_product <- "MOD11A1.005"
+  #start_date <- "2001.01.01"
+  #end_date <- "2001.01.05"
+  #list_tiles<- c("h08v04","h09v04")
+  #out_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing"
   
-  #step 2: list content of specific day folder to obtain specific file...
-  #parse by tile name!!!
-  url_str <- "http://e4ftl01.cr.usgs.gov/MOLT/MOD11A1.005/2000.07.11/"
-  list_content <- getURLContent(url_str) #This works to list content!!!
-  items <- strsplit(getURL(list_content), "\n")[[1]]
+  #if daily...,if monthly...,if yearly...
+  ## find all 7th of the month between two dates, the last being a 7th.
+  st <- as.Date(start_date,format="%Y.%m.%d")
+  en <- as.Date(end_date,format="%Y.%m.%d")
+  ll <- seq.Date(st, en, by="1 day")
+  dates_queried <- format(ll,"%Y.%m.%d")
   
-  items[14:20]
-  items[1000:1025] #parse file...get hdf
+  url_product <-paste("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product,"/",sep="") #URL is a constant...
+  #url_product <- file.path("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product)
   
+  dates_available <- extractFolders(url_product)  #Get the list of available dates for the product
+  
+  list_folder_dates <- intersect(as.character(dates_queried), as.character(dates_available)) #list of remote folders to access
+  #list_folder_dates <-setdiff(as.character(dates_available), as.character(dates_queried))
+  
+  #step 2: list content of specific day folder to obtain specific file...  #parse by tile name!!!
+
+  url_folders_str <-paste(url_product,list_folder_dates,"/",sep="") #url for the folders matching dates to download
+  
+  ## loop over
+  #debug(extractFiles)
+  #generate outdir for each tile!!!
+  
+  list_folders_files <- vector("list",length(url_folders_str))
+  d_files <- vector("list",length(list_folders_files))
+  file_format<-c("hdf","xml")
+  for (i in 1:length(url_folders_str)){
+    list_folders_files[[i]] <- extractFiles(url_folders_str[i], list_tiles)[file_format] 
+    #d_files[[i]] <- list_folders_files[[i]][[file_format]]                      
+  }
+  
+  d_files <- as.character(unlist(list_folders_files)) #all hte files to download...
+    
   #Step 3: download file to the directory 
   
-  out_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing"
-  #ok this works for now...
-  download.file("http://e4ftl01.cr.usgs.gov/MOLT/MOD11A1.005/2000.07.11/MOD11A1.A2000193.h12v04.005.2007200005030.hdf",
-                destfile="./test.hdf")
-  #destfile must be a filename!!!
-
-#   download_files_with_pattern_ftp<-function(url_dir,out_path,file_pattern){
-#     url<-url_dir
-#     filenames = getURL(url, ftp.use.epsv = FALSE, dirlistonly = TRUE) 
-#     file_pattern_rx<-glob2rx(file_pattern)
-#     # Deal with newlines as \n or \r\n. (BDR) 
-#     # Or alternatively, instruct libcurl to change \n's to \r\n's for us with crlf = TRUE 
-#     # filenames = getURL(url, ftp.use.epsv = FALSE, ftplistonly = TRUE, crlf = TRUE) 
-#     filenames = paste(url, strsplit(filenames, "\r*\n")[[1]], sep = "") 
-#     filenames_all<-filenames
-#     #Now subset filenames to match wanted files...
-#     i_file<-grep(file_pattern_rx,filenames_all,value=TRUE) # using grep with "value" extracts the matching names
-#     pos<-match(i_file,filenames_all)
-#     filenames<-filenames_all[pos]
-#     )})) 
-# for(i in 1:length(filenames)){
-#   out_file<-basename(filenames[i])
-#   out_file_path<-file.path(out_path,out_file)
-#   download.file(filenames[i],destfile=out_file_path)
-#   #creating the file names
-# }
-#}
+  #prepare files and directories for download
+  out_dir_tiles <- file.path(out_dir,list_tiles)
+  list_files_tiles <- vector("list",length(list_tiles))
+  for(j in 1:length(out_dir_tiles)){
+    if (!file.exists(out_dir_tiles[j])){
+      dir.create(out_dir_tiles[j])
+    }
+    list_files_tiles[[j]] <- grep(pattern=list_tiles[j],x=d_files,value=TRUE) 
+  }
+    
+  #Now download per tiles
+  for (j in 1:length(list_files_tiles)){ #loop around tils
+    file_items <- list_files_tiles[[j]]
+    for (i in 1:length(file_items)){
+      file_item <- file_items[i]
+      download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))      
+    }
+  }
+  
+  #Prepare return object: list of files downloaded with http and list downloaded of files in tiles directories
+  
+  list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,pattern="*.hdf$",path=out_dir_tiles,full.names=T) #Use mapply to pass multiple arguments
+  colnames(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
+  download_modis_obj <- list(list_files_tiles,list_files_by_tiles)
+  names(download_modis_obj) <- c("downloaded_files","list_files_by_tiles")
+  return(download_modis_obj)
 }
 
-#
-
-####
+#######
 ## function to import modis in tif or other format...
 import_modis_layer_fun <-function(hdf_file,subdataset,NA_flag,out_rast_name="test.tif",memory=TRUE){
   
-  #modis_subset_layer_LST_Day <- paste("HDF4_EOS:EOS_GRID:",hdf_file,":MODIS_Grid_Daily_1km_LST:LST_Day_1km",sep="")
+  #PARSE input arguments/parameters
+  
   modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf_file,subdataset,sep="")
   r <-readGDAL(modis_subset_layer_Day)
   r  <-raster(r)
@@ -363,101 +464,174 @@ import_modis_layer_fun <-function(hdf_file,subdataset,NA_flag,out_rast_name="tes
   }  
 }
 
-create_MODIS_QC_table <-function(LST=TRUE){
+## function to import modis in tif or other format...
+import_list_modis_layers_fun <-function(i,list_param){
+  
+  #PARSE input arguments/parameters
+  
+  hdf_file <- list_param$hdf_file
+  subdataset <- list_param$subdataset
+  NA_flag_val <- list_param$NA_flag_val
+  out_dir <- list_param$out_dir
+  out_suffix <- list_param$out_suffix
+  file_format <- list_param$file_format
+  
+  #Now get file to import
+  hdf <-hdf_file[i] # must include input path!!
+  modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf,subdataset,sep="")
+  
+  r <-readGDAL(modis_subset_layer_Day) 
+  r  <-raster(r)
+  
+  #Finish this part...write out
+  names_hdf<-as.character(unlist(strsplit(x=basename(hdf), split="[.]")))
+  
+  char_nb<-length(names_hdf)-2
+  names_hdf <- names_hdf[1:char_nb]
+  raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
+  
+  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)       
+  return(file.path(out_dir,raster_name)) 
+}
+
+create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
   #Function to generate MODIS QC  flag table
-  #created by Benoit Parmentier with most of the lines from S. Mosher!!
+  #Author: Benoit Parmentier (with some lines from S.Mosher)
+  #Date: 09/16/2013
+  #Some of the inspiration and code originates from Steve Mosher' s blog:
+  #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
   
   list_QC_Data <- vector("list", length=2)
   names(list_QC_Data) <- c("LST","NDVI")
-    
-  ## Generate generic product table
-  QC_Data <- data.frame(Integer_Value = 0:255,
-                        Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-                        QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA)
-
-  for(i in QC_Data$Integer_Value){
-    AsInt <- as.integer(intToBits(i)[1:8])
-    QC_Data[i+1,2:9]<- AsInt[8:1]
-  } 
-  QC_table <- QC_Data
   
   ## PRODUCT 1: LST
   #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
   #LST MOD11A2 has 4 levels/indicators of QA:
   
-  #Level 1: Overal MODIS Quality which is common to all MODIS product
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "LST Good Quality"    #(0-0)
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "LST Produced,Check QA"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,clouds"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "No Produced, check Other QA"
-  
-  #Level 2: Information on quality of product (i.e. LST produced, Check QA) for LST
-  QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Good Data"
-  QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Other Quality"
-  QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "TBD"
-  QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "TBD"
-  
-  #Level 3: Information on quality of of emissitivity 
-  QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
-  QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
-  QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
-  QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
-  
-  #Level 4: Uncertaing for LST error
-  QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
-  QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
-  QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
-  QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
-  
-  list_QC_Data[[1]] <- QC_Data
-  
+  ## Generate product table
+  if (LST==TRUE){
+    QC_Data <- data.frame(Integer_Value = 0:255,
+                          Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
+                          QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA)
+    #Populate table/data frame
+    for(i in QC_Data$Integer_Value){
+      AsInt <- as.integer(intToBits(i)[1:8])
+      QC_Data[i+1,2:9]<- AsInt[8:1]
+    } 
+    #Level 1: Overal MODIS Quality which is common to all MODIS product
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "LST Good Quality"    #(0-0)
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "LST Produced,Check QA"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,clouds"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "No Produced, check Other QA"
+    
+    #Level 2: Information on quality of product (i.e. LST produced, Check QA) for LST
+    QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Good Data"
+    QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Other Quality"
+    QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "TBD"
+    QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "TBD"
+    
+    #Level 3: Information on quality of of emissitivity 
+    QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
+    QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
+    QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
+    QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
+    
+    #Level 4: Uncertaing for LST error
+    QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
+    QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
+    QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
+    QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
+    
+    list_QC_Data[[1]] <- QC_Data
+  }
+
   ## PRODUCT 2: NDVI
   #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
   
-#   QC_Data <- data.frame(Integer_Value = 0:255,
-#                         Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-#                         Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
-#                         QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
-#                         QA_word8 = NA,QA_word7 = NA,QA_word6 = NA,QA_word5 = NA
-#                         QA_word9 = NA)
-#   
-#   QC_Data <- QC_table
-#   
-#   #Level 1: Overal MODIS Quality which is common to all MODIS product
-#   QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "VI Good Quality"    #(0-0)
-#   QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "VI Produced,check QA"
-#   QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,because of clouds"
-#   QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "Not Produced, other reasons"
-#   
-#   #Level 2: VI usefulness (read from right to left)
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Highest quality, 1"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Lower quality, 2"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 3 "
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 4"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 5"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 6"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 7"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 8"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 9"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 10"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 11"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 12"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Lowest quality, 13"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Quality so low that not useful, 14"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "L1B data faulty, 15"
-#   QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Not useful/not processed, 16"
+  if(NDVI==TRUE){
+    QC_Data <- data.frame(Integer_Value = 0:65535,
+                          Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
+                          Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
+                          QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
+                          QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
+                          QA_word9 = NA)
+    #Populate table...this is extremely slow...change???
+    for(i in QC_Data$Integer_Value){
+      AsInt <- as.integer(intToBits(i)[1:16]) #16bit unsigned integer
+      QC_Data[i+1,2:17]<- AsInt[16:1]
+    } 
+    
+    #Level 1: Overal MODIS Quality which is common to all MODIS product
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "VI Good Quality"    #(0-0)
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "VI Produced,check QA"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,because of clouds"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "Not Produced, other reasons"
+    
+    #Level 2: VI usefulness (read from right to left)
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Highest quality, 1"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Lower quality, 2"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 3 "
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 4"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 5"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 6"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 7"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 8"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 9"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 10"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 11"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 12"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Lowest quality, 13"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Quality so low that not useful, 14"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "L1B data faulty, 15"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Not useful/not processed, 16"
+    
+    # Level 3: Aerosol quantity 
+    QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "Climatology"
+    QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "Low"
+    QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "Average"
+    QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "High"
+    
+    # Level 4: Adjacent cloud detected
+    QC_Data$QA_word4[QC_Data$Bit8==0] <- "No"
+    QC_Data$QA_word4[QC_Data$Bit8==1] <- "Yes"
+    
+    # Level 5: Atmosphere BRDF correction performed
+    QC_Data$QA_word5[QC_Data$Bit9 == 0] <- "No"
+    QC_Data$QA_word5[QC_Data$Bit9 == 1] <- "Yes"
+    
+    # Level 6: Mixed Clouds
+    QC_Data$QA_word6[QC_Data$Bit10 == 0] <- "No"
+    QC_Data$QA_word6[QC_Data$Bit10 == 1] <- "Yes"
+    
+    #Level 7: Land/Water Flag (read from right to left)
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Shallow Ocean"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Land"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Ocean coastlines and lake shorelines"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Shallow inland water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Ephemeral water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Deep inland water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Moderate or continental water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Deep ocean"
+    
+    # Level 8: Possible snow/ice
+    QC_Data$QA_word8[QC_Data$Bit14 == 0] <- "No"
+    QC_Data$QA_word8[QC_Data$Bit14 == 1] <- "Yes"
+    
+    # Level 9: Possible shadow
+    QC_Data$QA_word9[QC_Data$Bit15 == 0] <- "No"
+    QC_Data$QA_word9[QC_Data$Bit15 == 1] <- "Yes"
+    
+    list_QC_Data[[2]]<- QC_Data
+  }
   
-#   QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
-#   QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
-#   
-#   QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
-#   QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
+  ## PRODUCT 3: Albedo
+  #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
+  #To be added...
   
-#  list_QC_Data[[2]]<- QC_Data
+  ###Now return and save object:
+  #Prepare object to return
+  
+  save(list_QC_Data,file= file.path(".",paste("list_QC_Data",".RData",sep="")))
   
   return(list_QC_Data)
 }
