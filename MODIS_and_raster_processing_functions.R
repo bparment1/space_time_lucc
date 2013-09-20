@@ -11,7 +11,7 @@
 #
 #[1] "assign_projection_crs"      "change_names_file_list"     "create__m_raster_region"   
 #[4] "create_MODIS_QC_table"      "create_modis_tiles_region"  "define_crs_from_extent_fun"
-#[7] "import_modis_layer_fun"     "mosaic_m_raster_list"       "qc_valid_modis_fun"        
+#[7] "import_modis_layer_fun"     "__raster_list"       "qc_valid_modis_fun"        
 #[10] "screening_val_r_stack_fun" 
 
 ###Loading R library and packages                                                      
@@ -46,6 +46,8 @@ mosaic_m_raster_list<-function(j,list_param){
   mosaic_list<-list_param$mosaic_list
   out_path<-list_param$out_path
   out_names<-list_param$out_rastnames
+  file_format <- list_param$file_format
+  NA_flag_val <- list_param$NA_flag_val
   ## Start
   
   input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
@@ -57,8 +59,10 @@ mosaic_m_raster_list<-function(j,list_param){
   }
   
   data_name<-paste("mosaiced_",sep="") #can add more later...
-  raster_name<-paste(data_name,out_names[j],".tif", sep="")
-  writeRaster(mosaiced_rast, filename=file.path(out_path,raster_name),overwrite=TRUE)  
+  #raster_name<-paste(data_name,out_names[j],".tif", sep="")
+  raster_name<-paste(data_name,out_names[j],file_format, sep="")
+  
+  writeRaster(mosaiced_rast, NAflag=NA_flag_val,filename=file.path(out_path,raster_name),overwrite=TRUE)  
   #Writing the data in a raster file format...  
   rast_list<-file.path(out_path,raster_name)
   
@@ -76,16 +80,17 @@ create__m_raster_region <-function(j,list_param){
   raster_name <- list_param$raster_name[[j]] #list of raster ot project and crop, this is a list!!
   reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
   out_rast_name <- list_param$out_rast_name[j]
+  NA_flag_val <- list_param$NA_flag_val
   
   ## Start #
   layer_rast<-raster(raster_name)
-  new_proj<-proj4string(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
+  new_proj<-projection(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
   region_temp_projected<-projectExtent(reg_ref_rast,CRS(new_proj))     #Project from ref to current region coord. system
   layer_crop_rast<-crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
   #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
   layer_projected_rast<-projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb")
   
-  writeRaster(layer_projected_rast, filename=out_rast_name,overwrite=TRUE)  
+  writeRaster(layer_projected_rast,NAflag=NA_flag_val,filename=out_rast_name,overwrite=TRUE)  
   
   return(out_rast_name)
 }
@@ -247,6 +252,22 @@ assign_projection_crs <-function(i,list_param){
 #  }
 #}
 
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
+
+extract_list_from_list_obj<-function(obj_list,list_name){
+  #Create a list of an object from a given list of object using a name prodived as input
+  list_tmp<-vector("list",length(obj_list))
+  for (i in 1:length(obj_list)){
+    tmp<-obj_list[[i]][[list_name]] #double bracket to return data.frame
+    list_tmp[[i]]<-tmp
+  }
+  return(list_tmp) #this is  a data.frame
+}
+
 screen_for_qc_valid_fun <-function(i,list_param){
   ##Function to assign NA given qc flag values from MODIS or other raster
   #Author: Benoit Parmentier
@@ -303,6 +324,19 @@ screen_for_qc_valid_fun <-function(i,list_param){
   }
 }
 
+create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",file_format=".rst"){
+  #create a list of raster files to creater R raster stacks
+  if(file_pat==""){
+    list_raster_name <- list.files(path=in_dir,pattern=paste(out_suffix_s,".*",file_format,"$",sep=""),full.names=T)
+  }else{
+    list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=T)
+  }
+  dat_list<-c(mixedsort(unlist(list_raster_name)))
+  #dat_list <- sub("[.][^.]*$", "", dat_list, perl=TRUE) 
+  #writeLines(dat_list,con=paste(out_prefix,out_suffix_s,".rgf",sep=""))
+  return(dat_list)
+}
+
 ### MODIS SPECIFIC FUNCTIONS
 
 create_modis_tiles_region<-function(modis_grid,tiles){
@@ -323,7 +357,7 @@ create_modis_tiles_region<-function(modis_grid,tiles){
 ## For some time the ftp access does not work for MOLT!! now use curl and list from http.
 
 #This function does not work yet i.e. under construction...
-modis_product_download <- function(MODIS_product,version,start_date,end_date,list_tiles,file_format,out_dir){
+modis_product_download <- function(MODIS_product,version,start_date,end_date,list_tiles,file_format,out_dir,temporal_granularity){
   
   ##Functions used in the script
   
@@ -383,6 +417,10 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   
   #if daily...,if monthly...,if yearly...
   ## find all 7th of the month between two dates, the last being a 7th.
+  #if(temporal_granularity=="Daily"){
+  #  d
+  #}
+
   st <- as.Date(start_date,format="%Y.%m.%d")
   en <- as.Date(end_date,format="%Y.%m.%d")
   ll <- seq.Date(st, en, by="1 day")
@@ -475,14 +513,16 @@ import_list_modis_layers_fun <-function(i,list_param){
   out_dir <- list_param$out_dir
   out_suffix <- list_param$out_suffix
   file_format <- list_param$file_format
-  
+  scaling_factors <- list_param$scaling_factors
   #Now get file to import
   hdf <-hdf_file[i] # must include input path!!
   modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf,subdataset,sep="")
   
   r <-readGDAL(modis_subset_layer_Day) 
   r  <-raster(r)
-  
+  if(!is.null(scaling_factors)){
+    r <- scaling_factors[1]*r + scaling_factors[2]
+  }
   #Finish this part...write out
   names_hdf<-as.character(unlist(strsplit(x=basename(hdf), split="[.]")))
   
