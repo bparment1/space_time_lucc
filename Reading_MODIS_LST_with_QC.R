@@ -17,14 +17,12 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 09/22/2013
+#MODIFIED ON : 09/24/2013
 #PROJECT: NCEAS and general MODIS processing
 #TODO: 
 #1)Add modification to handle scaling.
-#2)Test additional Quality Flag levels for LST (level 3)
-#3)Modify for NDVI (QCflag)
-#4)Check downloading function for any product (e.g. NDVI) in particular dates for monthly and 16 day product
-#5)Add function to report statistics???
+#2)Test additional Quality Flag levels for LST (level 3 or NDVI
+#3)Add function to report statistics???
 ###################################################################################################
 
 ###Loading R library and packages                                                      
@@ -41,34 +39,39 @@ library(rasterVis)
 
 ### Parameters and arguments
 
-in_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing"
-out_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing"
+in_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
+out_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
 setwd(out_dir)
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_09202013.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_09242013.R"
 script_path<-in_dir #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #infile_reg_outline=""  #input region outline defined by polygon: none for Venezuela
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
-infile_reg_outline <- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
-#ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
-ref_rast_name<-"/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing/mean_month7_rescaled.rst"  #local raster name defining resolution, exent: oregon
-infile_modis_grid<-"/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+#infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_tri-state_latlong.shp"  #input region outline defined by polygon: Oregon
+infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
 
-out_suffix <-"09202013" #output suffix for the files that are masked for quality and for 
+#ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
+ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
+#/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_trisate_sin_windowed.rst
+#ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_sin_mask_1km.rst"  #local raster name defining resolution, exent: oregon
+
+infile_modis_grid<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+
+out_suffix <-"09242013" #output suffix for the files that are masked for quality and for 
 
 ## Other specific parameters
 
-MODIS_product <- "MOD13A1.005"
+MODIS_product <- "MOD13A2.005"
 #MODIS_product <- "MOD11A1.005"
 #start_date <- "2001.01.01"
-#end_date <- "2001.01.05"
+#end_date <- "2001.03.05"
 start_date <- "2001.01.01"
-end_date <- "2001.03.01"
+end_date <- "2012.12.31"
 
-list_tiles_modis<- c("h08v04,h09v04")
-list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
+list_tiles_modis<- c("h09v06,h09v07") 
+#list_tiles_modis<- NULL
 
 file_format_download <- "hdf"
 file_format <- ".rst" #output format
@@ -77,16 +80,18 @@ product_version <- 5
 temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly)
 
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done 
-scaling_factors <- c(0.0001) #set up as slope (a) and intercept (b), if NULL, no scaling done 
-
+scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done 
+#scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done 
 NA_flag_val <- -9999
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get qc LST layer
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
-CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
+#CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
+#CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+CRS_interp <- proj_modis_str
 
-steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+steps_to_run <- list(download=FALSE,import=FALSE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -96,14 +101,11 @@ steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,
 
 #Note that files are downloaded in the ouput directory in subdirectory with tile_name (e.g. h08v04)
 
-#MODIS_product <- "MOD11A1.005"
-#start_date <- "2001.01.01"
-#end_date <- "2001.01.05"
-#list_tiles_modis<- c("h08v04","h09v04")
-#out_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing" #this is the directory where mosaiced files are stored
-#product_version <-5
-#file_format_download <- "hdf"
-#file_format <- ".rst" #output format
+#if(list_tiles_modis==NULL){
+#  d
+#}
+
+list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
 
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
@@ -157,6 +159,8 @@ if(steps_to_run$import==TRUE){
     #debug(import_list_modis_layers_fun)
     #import_list_modis_layers_fun(1,list_param_import_modis)
     r_var_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)
+    #r_var_s <-mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 1) #This is the end bracket from mclapply(...) statement
+    
     out_suffix_s <- qc_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
@@ -169,13 +173,13 @@ r_qc_s <- unlist(r_qc_s) #list of files as character vector
 plot(raster(r_qc_s[1]))
 plot(raster(r_var_s[2]))
 print(r_var_s)
-r_qc_s
+print(r_qc_s)
 
 #################################
 ##### STEP 3: APPLY/DEAL WITH QC FLAG  ###
 
 ## Get QC information for lST and mask values
-QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
+QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 names(QC_obj)
 QC_data_lst <- QC_obj$LST
 QC_data_ndvi <- QC_obj$NDVI
@@ -209,20 +213,28 @@ r_stack <- vector("list",length(list_tiles_modis))
   
 for(j in 1:length(list_tiles_modis)){
   out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-  out_suffix_s <- paste(var_modis_name,sep="")
+  #out_suffix_s <- paste(var_modis_name,sep="")
   file_format_s <-file_format
   #debug(create_raster_list_from_file_pat)
-  list_r_lst[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+  #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
+  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,file_format_s,sep="")
   
-  out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-  out_suffix_s <- paste(qc_modis_name,sep="") 
-  list_r_qc[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+  list_r_lst[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE)
+  
+  #list_r_lst[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+  
+  #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+  #out_suffix_s <- paste(qc_modis_name,sep="") 
+  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",qc_modis_name,file_format_s,sep="")
+  list_r_qc[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE)
+  
+  #list_r_qc[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
   
   ###
   
   list_param_screen_qc <- list(qc_valid,list_r_qc[[j]], list_r_lst[[j]],rast_mask=TRUE,NA_flag_val,out_dir_s,out_suffix) 
   names(list_param_screen_qc) <- c("qc_valid","rast_qc", "rast_var","rast_mask","NA_flag_val","out_dir","out_suffix") 
-  #debug(screen_for_qc_valid_fun)
+  #undebug(screen_for_qc_valid_fun)
   #r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
   r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
 }
@@ -245,17 +257,18 @@ list_m_qc <- vector("list",length(list_tiles_modis))
 names(list_m_qc)<- list_tiles_modis
 
 for (j in 1:length(list_tiles_modis)){
-  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
+  #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
   file_format_s <-file_format
+  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
   out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-  
-  list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+  list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE)
+  #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
 }
 
 #Prepare list of modis tiles to mosaic
 #mosaic_list_var <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
 x <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
-mosaic_list_var<-lapply(seq_len(nrow(x)), function(i) x[i,]) #list of tiles
+mosaic_list_var<-lapply(seq_len(nrow(x)), function(i) x[i,]) #list of tiles by batch to mosaic
 #Prepare list of output names without extension
 out_rastnames_var <- (basename(gsub(list_tiles_modis[1],"",list_m_var[[1]])))
 out_rastnames_var <- gsub(extension(out_rastnames_var),"",out_rastnames_var)
@@ -266,7 +279,6 @@ names(list_param_mosaic)<-c("j","mosaic_list","out_rastnames","out_path","file_f
 #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
 #Parallelization,this works on MAC laptop too
 #list_var_mosaiced <-mclapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list,mc.preschedule=FALSE,mc.cores = 2) #This is the end bracket from mclapply(...) statement
-
 list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list) #This is the end bracket from mclapply(...) statement
 
 #test_rast <- stack(list_var_mosaiced)
@@ -329,5 +341,6 @@ reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_
 
 test<-stack(reg_var_list[1:4])
 plot(test)
-
+plot(subset(test,1))
+plot(reg_outline,add=T,border="red")
 ########### END OF SCRIPT ##############
