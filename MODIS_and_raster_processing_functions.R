@@ -307,19 +307,34 @@ screen_for_qc_valid_fun <-function(i,list_param){
     raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
-                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+                ,overwrite=TRUE)
+    
+    rm(rast_var)
+    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+    files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+    if(length(files_to_remove)>0){
+      file.remove(files_to_remove)
+    }
     return(raster_name)
   }else{
     raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
-                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+                ,overwrite=TRUE)
     raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
     raster_name_qc <- paste(raster_name_qc,"_",out_suffix,extension(rast_name_qc),sep="")
     writeRaster(r_qc_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name_qc)
-                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+                ,overwrite=TRUE)
     r_stack_name <- list(raster_name,raster_name_qc)
     names(r_stack_name) <- c("var","mask")
+    
+    rm(rast_var)
+    rm(r_qc_m)
+    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+    files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+    if(length(files_to_remove)>0){
+      file.remove(files_to_remove)
+    }
     return(r_stack_name)
   }
 }
@@ -352,6 +367,20 @@ create_modis_tiles_region<-function(modis_grid,tiles){
   return(selected_tiles)
 }
 
+get_modis_tiles_list <-function(modis_grid,infile_reg_outline,CRS_interp){
+  filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
+  modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
+  filename<-sub(extension(basename(infile_reg_outline)),"",basename(infile_reg_outline))       #Removing path and the extension from file name.
+  reg_outline <- readOGR(dsn=dirname(infile_reg_outline), filename)
+  proj4string(reg_outline) <- CRS_interp
+  
+  #modis_WGS84 <- spTransform(modis_grid,CRS_locs_WGS84) #get cooddinates of center of region in lat, lon
+  reg_outline_sin <- spTransform(reg_outline,CRS(proj4string(modis_grid))) #get cooddinates of center of region in lat, lon
+  reg_outline_dissolved <- gUnionCascaded(reg_outline_sin)  #dissolve polygons
+  tiles<-gIntersection(reg_outline_dissolved, modis_grid, byid=FALSE, id=NULL)
+  ##...continue here
+  return(tiles_modis)
+}
 ## function to download modis product??
 
 ## For some time the ftp access does not work for MOLT!! now use curl and list from http.
@@ -519,18 +548,26 @@ import_list_modis_layers_fun <-function(i,list_param){
   modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf,subdataset,sep="")
   
   r <-readGDAL(modis_subset_layer_Day) 
+  #r2 <-GDAL.open(modis_subset_layer_Day)
   r  <-raster(r)
-  if(!is.null(scaling_factors)){
+  if(!is.null(scaling_factors)){ #if scaling factor exists, scale values...(not applied for QC flags!!!)
     r <- scaling_factors[1]*r + scaling_factors[2]
   }
   #Finish this part...write out
   names_hdf<-as.character(unlist(strsplit(x=basename(hdf), split="[.]")))
-  
+  product<-names_hdf[1]
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
   raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
   
-  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)       
+  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),overwrite=TRUE)     
+  rm(r)
+  tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  files_to_remove<-grep(product,tempfiles,value=T) #list files to remove
+  if(length(files_to_remove)>0){
+    file.remove(files_to_remove)
+  }
+
   return(file.path(out_dir,raster_name)) 
 }
 
