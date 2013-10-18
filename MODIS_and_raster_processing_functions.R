@@ -1,19 +1,42 @@
 ########################################  MODIS AND RASTER PROCESSING #######################################
 ########################################### Read, project, crop and process rasters #####################################
-#This script contains functions to processs raster images.
+#This script contains general functions to processs raster images, raster time series as well MODIS specific functions.
+#This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
-#DATE: 09/11/2013                                                                                
-#PROJECT: None, general utility functions                                 
+#CREATED ON: 09/16/2013
+#MODIFIED ON: 10/20/2013
+#PROJECT: None, general utility functions for raster (GIS) processing.     
+#TODO:
+#1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
+#2)Add plotting function for raster stack
+#3)Add procedures to fill in missing values using temporal and spatial interpolation for raster time series.
+#4)Add proper documentation for general use.
+#5)get_modis_tiles_list is not working yet...need to solve issues related to rgeos library
+#6)Test additional Quality Flag levels for LST,ALBEDO and other product
+#7)Add function to report statistics: missing files in modis time series downloaded (make it general)
+#
 ###################################################################################################
 
-### List of functions available:
+### List of functions currently available:
+# Add documentation later
 #
-#
-#[1] "assign_projection_crs"      "change_names_file_list"     "create__m_raster_region"   
-#[4] "create_MODIS_QC_table"      "create_modis_tiles_region"  "define_crs_from_extent_fun"
-#[7] "import_modis_layer_fun"     "__raster_list"       "qc_valid_modis_fun"        
-#[10] "screening_val_r_stack_fun" 
-
+#[1] assign_projection_crs      
+#[2] change_names_file_list  
+#[3] create_raster_list_from_file_pat
+#[4] create_idrisi_rgf
+#[5] create__m_raster_region"   
+#[6] create_MODIS_QC_table"
+#[7] create_modis_tiles_region"
+#[8] define_crs_from_extent_fun"
+#[9] extract_list_from_list_obj
+#[10] import_modis_layer_fun  
+#[11] import_list_modis_layers_fun" 
+#[12] load_obj  
+#[13] qc_valid_modis_fun        
+#[14]"screen_for_qc_valid_fun"
+#[15] screening_val_r_stack_fun 
+#[16] modis_product_download
+   
 ###Loading R library and packages                                                      
 #library(gtools)    # loading some useful tools 
 
@@ -272,7 +295,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
   ##Function to assign NA given qc flag values from MODIS or other raster
   #Author: Benoit Parmentier
   #Created On: 09/20/2013
-  #Modified On: 09/20/2013
+  #Modified On: 10/18/2013
   
   #Parse arguments:
   
@@ -307,27 +330,36 @@ screen_for_qc_valid_fun <-function(i,list_param){
     raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
-                ,overwrite=TRUE)
+                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
     
+    ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+    ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+    ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+    ## Start remove
     rm(rast_var)
-    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed, only RASTER, tempdir() from R basic
     files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
     if(length(files_to_remove)>0){
       file.remove(files_to_remove)
     }
+    ## end of remove section
     return(raster_name)
   }else{
     raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
-                ,overwrite=TRUE)
+                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
     raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
     raster_name_qc <- paste(raster_name_qc,"_",out_suffix,extension(rast_name_qc),sep="")
     writeRaster(r_qc_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name_qc)
-                ,overwrite=TRUE)
-    r_stack_name <- list(raster_name,raster_name_qc)
+                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+    r_stack_name <- list(file.path(out_dir,raster_name),file.path(out_dir,raster_name_qc))
     names(r_stack_name) <- c("var","mask")
     
+    ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+    ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+    ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+    ## Start remove
     rm(rast_var)
     rm(r_qc_m)
     tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
@@ -335,6 +367,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
     if(length(files_to_remove)>0){
       file.remove(files_to_remove)
     }
+    ## end of remove section
     return(r_stack_name)
   }
 }
@@ -350,6 +383,25 @@ create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir="."
   #dat_list <- sub("[.][^.]*$", "", dat_list, perl=TRUE) 
   #writeLines(dat_list,con=paste(out_prefix,out_suffix_s,".rgf",sep=""))
   return(dat_list)
+}
+
+create_idrisi_rgf <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",ending=FALSE){
+  #create a list of raster idrisi  files...
+  #out_suffix_s: ending pattern to wich .rst is attached
+  #file_pat: string found in the list of files in what ever place
+  if(file_pat==""){
+    list_raster_name <- list.files(path=in_dir,pattern=paste(out_suffix_s,".*.rst$",sep=""),full.names=F)
+  }else{
+    list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=F)
+  }
+  if(ending==TRUE){
+    list_raster_name <- grep(paste(out_suffix_s,".rst$",sep=""),list_raster_name,value=TRUE)
+  }
+  dat_list<-c(as.integer(length(list_raster_name)),mixedsort(unlist(list_raster_name)))
+  dat_list <- sub("[.][^.]*$", "", dat_list, perl=TRUE) #remove extension using regular expression
+  writeLines(dat_list,con=file.path(in_dir,paste(out_prefix,out_suffix_s,".rgf",sep="")))
+  
+  return(file.path(in_dir,list_raster_name))
 }
 
 ### MODIS SPECIFIC FUNCTIONS
@@ -385,7 +437,6 @@ get_modis_tiles_list <-function(modis_grid,infile_reg_outline,CRS_interp){
 
 ## For some time the ftp access does not work for MOLT!! now use curl and list from http.
 
-#This function does not work yet i.e. under construction...
 modis_product_download <- function(MODIS_product,version,start_date,end_date,list_tiles,file_format,out_dir,temporal_granularity){
   
   ##Functions used in the script
@@ -548,26 +599,31 @@ import_list_modis_layers_fun <-function(i,list_param){
   modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf,subdataset,sep="")
   
   r <-readGDAL(modis_subset_layer_Day) 
-  #r2 <-GDAL.open(modis_subset_layer_Day)
   r  <-raster(r)
   if(!is.null(scaling_factors)){ #if scaling factor exists, scale values...(not applied for QC flags!!!)
     r <- scaling_factors[1]*r + scaling_factors[2]
   }
   #Finish this part...write out
   names_hdf<-as.character(unlist(strsplit(x=basename(hdf), split="[.]")))
-  product<-names_hdf[1]
+  
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
   raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
   
-  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),overwrite=TRUE)     
+  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)   
+  
+  ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+  ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+  ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+  ## Start remove
   rm(r)
   tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   files_to_remove<-grep(product,tempfiles,value=T) #list files to remove
   if(length(files_to_remove)>0){
     file.remove(files_to_remove)
   }
-
+  ## end of remove section
+  
   return(file.path(out_dir,raster_name)) 
 }
 
