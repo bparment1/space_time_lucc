@@ -17,12 +17,12 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 09/24/2013
-#PROJECT: NCEAS and general MODIS processing
+#MODIFIED ON : 10/18/2013
+#PROJECT: NCEAS and general MODIS processing of all projects
 #TODO: 
 #1)Add modification to handle scaling.
-#2)Test additional Quality Flag levels for LST (level 3 or NDVI
-#3)Add function to report statistics???
+#2)Test additional Quality Flag levels for LST,ALBEDO and other product
+#3)Add function to report statistics: missing files
 ###################################################################################################
 
 ###Loading R library and packages                                                      
@@ -30,67 +30,79 @@
 
 library(sp)
 library(raster)
-library(rgdal)
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 library(gtools)
 library(parallel)
 library(rasterVis)
+library(spdep)                               # Spatial pacakge with methods and spatial stat. by Bivand et al.
+library(rgdal)                               # GDAL wrapper for R, spatial utilities
+library(gstat)                               # Kriging and co-kriging by Pebesma et al.
+library(fields)                              # NCAR Spatial Interpolation methods such as kriging, splines
+library(raster)                              # Hijmans et al. package for raster processing
+library(rasterVis)
+library(spgwr)
 
+#############################
 ### Parameters and arguments
 
-in_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
-out_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
+#in_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
+#out_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
+in_dir<- "/home/parmentier/Data/IPLANT_project/MODIS_processing_09222013" #path to parent directory where output are/will be based
+out_dir<- "/home/parmentier/Data/IPLANT_project/MODIS_processing_09222013"
 setwd(out_dir)
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_09242013.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10182013.R"
 script_path<-in_dir #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #infile_reg_outline=""  #input region outline defined by polygon: none for Venezuela
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 #infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_tri-state_latlong.shp"  #input region outline defined by polygon: Oregon
-infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
+infile_reg_outline <- "/home/parmentier/Data/IPLANT_project/MODIS_processing_09222013/region_outlines_ref_files/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
 
 #ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
-ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
-#/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_trisate_sin_windowed.rst
-#ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_sin_mask_1km.rst"  #local raster name defining resolution, exent: oregon
+#ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_latlong_mask_1km.rst"  #local raster name defining resolution, exent: oregon
+ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_09222013/region_outlines_ref_files/mean_day244_rescaled.rst"  #local raster name defining resolution, exent: oregon
 
-infile_modis_grid<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+#infile_modis_grid<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+infile_modis_grid<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_09222013/region_outlines_ref_files/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
 
-out_suffix <-"09242013" #output suffix for the files that are masked for quality and for 
+out_suffix <-"10182013" #output suffix for the files that are masked for quality and for 
 
 ## Other specific parameters
 
-MODIS_product <- "MOD13A2.005"
+MODIS_product <- "MOD11A1.005"
 #MODIS_product <- "MOD11A1.005"
 #start_date <- "2001.01.01"
 #end_date <- "2001.03.05"
 start_date <- "2001.01.01"
-end_date <- "2012.12.31"
+end_date <- "2010.12.31"
 
-list_tiles_modis<- c("h09v06,h09v07") 
+list_tiles_modis<- c("h08v04,h09v04") 
 #list_tiles_modis<- NULL
 
 file_format_download <- "hdf"
 file_format <- ".rst" #output format
 product_version <- 5
 #temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly)
-temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly)
+temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done 
+scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+#scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done 
-NA_flag_val <- -9999
+NA_flag_val <- -9999 #Flag use for missing values or value out of range
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get qc LST layer
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
-#CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
+CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
-CRS_interp <- proj_modis_str
+#CRS_interp <- proj_modis_str
 
+#run all processing steps
+#steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+#run specific processing steps
 steps_to_run <- list(download=FALSE,import=FALSE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 
 ######################################################
@@ -125,13 +137,17 @@ if(steps_to_run$download==TRUE){
 #infile_LST <- list_files_tiles #use only hdf!!!
 #names(download_modis_obj)
 infile_var <- list_files_by_tiles[,1]
-GDALinfo_hdf<-GDALinfo(infile_var[1])
+GDALinfo_hdf<-GDALinfo(infile_var[1],returnScaleOffset=FALSE)
 str(GDALinfo_hdf)
 modis_subdataset <- attributes(GDALinfo_hdf)$subdsmdata
 print(modis_subdataset)
+#modis_subdataset_str1<-"SUBDATASET_1_NAME=HDF4_EOS:EOS_GRID:\"MOD11A1.A2010365.h09v04.005.2011034203707.hdf\":MODIS_Grid_Daily_1km_LST:LST_Day_1km"
+#modis_subdataset_str2<-"SUBDATASET_2_NAME=HDF4_EOS:EOS_GRID:\"MOD11A1.A2010365.h09v04.005.2011034203707.hdf\":MODIS_Grid_Daily_1km_LST:QC_Day"
+#modis_layer_str1 <- unlist(strsplit(modis_subdataset_str1,"\""))[3] #Get day LST layer
+#modis_layer_str2 <- unlist(strsplit(modis_subdataset_str2,"\""))[3] #Get day QC layer
 
 modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
-modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day QC layer
+modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
 
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
@@ -157,14 +173,20 @@ if(steps_to_run$import==TRUE){
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
     #debug(import_list_modis_layers_fun)
-    #import_list_modis_layers_fun(1,list_param_import_modis)
-    r_var_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)
-    #r_var_s <-mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 1) #This is the end bracket from mclapply(...) statement
+    #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+    #r_var_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)
+    #r_var_s <- mclapply(1:11,FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    
+    r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
     out_suffix_s <- qc_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
-    r_qc_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)  
+    #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+    #r_qc_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)  
+    #r_qc_s <-mclapply(1:11,FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement    
+    r_qc_s <-mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    
   }
 }
 
@@ -182,7 +204,7 @@ print(r_qc_s)
 QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 names(QC_obj)
 QC_data_lst <- QC_obj$LST
-QC_data_ndvi <- QC_obj$NDVI
+#QC_data_ndvi <- QC_obj$NDVI
 
 #For LST
 #Select level 1:
@@ -192,11 +214,11 @@ qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 == "Good Data" | QA_word2 =="Othe
 #Select level 3:
 #...
 
-#For NDVI
+#For NDVI: use this section to process
 #Select level 1:
-qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
+#qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
 #Select level 2:
-qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
+#qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
 #Select level 3:
 #...
 names(qc_lst_valid)
@@ -210,34 +232,34 @@ r_stack <- vector("list",length(list_tiles_modis))
 
 #var_modis_name <- unlist(strsplit(modis_layer_str1,":"))[3]
 #qc_modis_name <- unlist(strsplit(modis_layer_str2,":"))[3]
-  
-for(j in 1:length(list_tiles_modis)){
-  out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-  #out_suffix_s <- paste(var_modis_name,sep="")
-  file_format_s <-file_format
-  #debug(create_raster_list_from_file_pat)
-  #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
-  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,file_format_s,sep="")
-  
-  list_r_lst[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE)
-  
-  #list_r_lst[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
-  
-  #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-  #out_suffix_s <- paste(qc_modis_name,sep="") 
-  out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",qc_modis_name,file_format_s,sep="")
-  list_r_qc[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE)
-  
-  #list_r_qc[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
-  
-  ###
-  
-  list_param_screen_qc <- list(qc_valid,list_r_qc[[j]], list_r_lst[[j]],rast_mask=TRUE,NA_flag_val,out_dir_s,out_suffix) 
-  names(list_param_screen_qc) <- c("qc_valid","rast_qc", "rast_var","rast_mask","NA_flag_val","out_dir","out_suffix") 
-  #undebug(screen_for_qc_valid_fun)
-  #r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
-  r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
+
+#apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+if(steps_to_run$apply_QC_flag==TRUE){
+  for(j in 1:length(list_tiles_modis)){
+    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    out_suffix_s <- paste(var_modis_name,sep="")
+    file_format_s <-file_format
+    #debug(create_raster_list_from_file_pat)
+    list_r_lst[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    
+    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    out_suffix_s <- paste(qc_modis_name,sep="") 
+    list_r_qc[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    
+    ###
+    
+    list_param_screen_qc <- list(qc_valid,list_r_qc[[j]], list_r_lst[[j]],rast_mask=TRUE,NA_flag_val,out_dir_s,out_suffix) 
+    names(list_param_screen_qc) <- c("qc_valid","rast_qc", "rast_var","rast_mask","NA_flag_val","out_dir","out_suffix") 
+    #debug(screen_for_qc_valid_fun)
+    #r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+    #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
+    #r_stack[[j]] <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    
+    r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    
+  }
 }
+
 
 #r_lst_by_tiles <-mapply(1:length(list_tiles_modis),FUN=list.files,pattern=paste".*.day_LST.*.rst$",path=out_dir_s,full.names=T) #Use mapply to pass multiple arguments
 #r_lst <- mapply(1:length(out_suffix_s),FUN=create_raster_list_from_file_pat,
@@ -279,6 +301,7 @@ names(list_param_mosaic)<-c("j","mosaic_list","out_rastnames","out_path","file_f
 #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
 #Parallelization,this works on MAC laptop too
 #list_var_mosaiced <-mclapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list,mc.preschedule=FALSE,mc.cores = 2) #This is the end bracket from mclapply(...) statement
+
 list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list) #This is the end bracket from mclapply(...) statement
 
 #test_rast <- stack(list_var_mosaiced)
@@ -341,6 +364,5 @@ reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_
 
 test<-stack(reg_var_list[1:4])
 plot(test)
-plot(subset(test,1))
-plot(reg_outline,add=T,border="red")
+
 ########### END OF SCRIPT ##############
