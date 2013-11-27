@@ -32,7 +32,8 @@ infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYR
 ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
 #/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_trisate_sin_windowed.rst
 #ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_sin_mask_1km.rst"  #local raster name defining resolution, exent: oregon
-
+ref_samp4_name <-"/Users/Parmentier/Google Drive/GA_group/Sample4.rst"
+ref_EDGY_name <-"/Users/Parmentier/Google Drive/GA_group/EDGY_mask_sin_1km.rst"
 infile_modis_grid<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
@@ -66,11 +67,13 @@ ll <- seq.Date(st, en, by="16 day")
 generate_dates_modis <-function(start_date,end_date,step_date){
   library(xts)
   library(zoo)
-  library(lubridate)
+  #library(lubridate)
   
-  st <- as.Date(start_date,format="%Y-%m-%d")
-  en <- as.Date(end_date,format="%Y-%m-%d")
-  year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
+  st <- as.Date(start_date,format="%Y.%m.%d")
+  en <- as.Date(end_date,format="%Y.%m.%d")
+  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
+  year_list <- seq(strftime(st,"%Y"),strftime(en,"%Y")) #extract year
+  
   ll_list <- vector("list",length=length(year_list))
   for (i in 1:length(year_list)){
     if(i==1){
@@ -180,11 +183,11 @@ tx<-raster_ts_arima(pixel,na.rm=T,arima_order=arima_order)
 ### GET A SMALLER IMAGE FOR TESTING...
 r1<-subset(r_stack,1)
 plot(r1)
-click(r1,id=TRUE,xy=TRUE,cell=TRUE)
+tt<-click(r1,id=TRUE,xy=TRUE,cell=TRUE)
 cell_id1 <-127559
 plot(r1)
 e<-drawExtent()
-
+writeRaster()
 r_crop<-crop(r1,e)
 
 r_e<-crop(r_stack,e)
