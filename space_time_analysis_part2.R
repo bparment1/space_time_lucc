@@ -86,10 +86,64 @@ outfile1<-file.path(out_dir,paste("EDGY_dat_spdf","_",out_suffix,".txt",sep=""))
 write.table(as.data.frame(EDGY_dat_spdf),file=outfile1,sep=",")
 
 #Hurricane August 17, 2007
-
+day_event<-strftime(as.Date("2007.08.17",format="%Y.%m.%d"),"%j")
+#153,154
+layerNames(r_stack)
+grep(paste("2007",day_event,sep=""),layerNames(r_stack))
 ### NOW ANALYSES WITH TIME AND SPACE...
 
 #filename<-sub(".shp","",infile_reg_outline)             #Removing the extension from file.
 #interp_area <- readOGR(dsn=dirname(filename),basename(filename))
 #CRS_interp<-proj4string(interp_area)         #Storing the coordinate information: geographic coordinates longlat WGS84
 
+#test <- EDGY_spdf[170:180,]
+#plot(test,add=T)
+# now extract these pixels and fit and arim for before period of hurrincane
+r_w<-raster("cropped_area.rst")
+r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
+
+pix_val <- extract(r_stack,r_w_spdf,df=TRUE)
+
+plot(pix_val[1,],type="b")
+abline(v=153,col="red")
+plot(pix_val[1,139:161],type="b")
+abline(v=(154-139),col="red")
+
+levelplot(r_stack,layer=152:155)
+plot(subset(r_stack,154))
+plot(egg_rings_gyr_r,add=T)
+
+
+arima_mod <- auto.arima(pix_val[1,1:153])
+p_arima<-predict(arima_mod,n.ahead=2)
+
+plot(pix_val[1,152:155],type="b")
+lines(c(pix_val[1,152:153],p_arima$pred),type="b",col="red")
+
+raster_ts_arima(pix_val[1,1:153],na.rm=T,c(1,0,0))                        
+raster_ts_arima(pix_val[1,1:153],na.rm=T,arima_order=c(0,0,2),n_ahead=2)                        
+acf(pix[1:153],na.action=na.pass)
+
+tt<-raster_ts_arima_predict(pix[,1],na.rm=T,arima_order=NULL,n_ahead=2)
+pix <- as.data.frame(t(pix_val[,1:153]))
+ttx<-lapply(pix,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+
+tt_dat<-do.call(rbind,ttx)
+
+raster_ts_arima<-function(pixel,na.rm=T,arima_order){
+  arima_obj<-arima(pixel,order=arima_order)
+  a<-as.numeric(coef(arima_obj)[1]) 
+  return(a)
+}
+
+raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
+  if(is.null(arima_order)){
+    arima_mod <- auto.arima(pixel)
+    p_arima<-predict(arima_mod,n.ahead=2)
+  }else{
+    arima_mod<-arima(pixel,order=arima_order)
+    p_arima<-predict(arima_mod,n.ahead=2)
+  }
+  y<- t(as.data.frame(p_arima$pred))
+  return(y)
+}
