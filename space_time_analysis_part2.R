@@ -85,50 +85,125 @@ writeOGR(EDGY_dat_spdf,dsn= dirname(outfile1),layer= sub(".shp","",basename(outf
 outfile1<-file.path(out_dir,paste("EDGY_dat_spdf","_",out_suffix,".txt",sep=""))
 write.table(as.data.frame(EDGY_dat_spdf),file=outfile1,sep=",")
 
+
+################# PART 2: TEMPORAL PREDICTIONS ###################
+
 #Hurricane August 17, 2007
 day_event<-strftime(as.Date("2007.08.17",format="%Y.%m.%d"),"%j")
 #153,154
 layerNames(r_stack)
 grep(paste("2007",day_event,sep=""),layerNames(r_stack))
+
 ### NOW ANALYSES WITH TIME AND SPACE...
 
-#filename<-sub(".shp","",infile_reg_outline)             #Removing the extension from file.
-#interp_area <- readOGR(dsn=dirname(filename),basename(filename))
-#CRS_interp<-proj4string(interp_area)         #Storing the coordinate information: geographic coordinates longlat WGS84
+## get small subset 1
 
-#test <- EDGY_spdf[170:180,]
-#plot(test,add=T)
-# now extract these pixels and fit and arim for before period of hurrincane
+# now extract these pixels and fit and arim for before period of hurricane
 r_w<-raster("cropped_area.rst")
 r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
-
 pix_val <- extract(r_stack,r_w_spdf,df=TRUE)
 
 plot(pix_val[1,],type="b")
-abline(v=153,col="red")
+abline(v=153,col="red") # Find out fire event in the area...there are some very low
+#values that are not related to the hurricane...
 plot(pix_val[1,139:161],type="b")
 abline(v=(154-139),col="red")
 
 levelplot(r_stack,layer=152:155)
 plot(subset(r_stack,154))
 plot(egg_rings_gyr_r,add=T)
+plot(ref_samp4_r,add=T,col=c("blue","red","black","yellow"))
+plot(r_w,add=T,col="cyan")
+r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
 
+### Testing ARIMA model fitting with and without seasonality
+#arima(USAccDeaths, order = c(0,1,1), seasonal = list(order=c(0,1,1)),
+#plot(USAccDeaths)     
+ts_x <- ts(data=pix_val[1,1:153],frequency=23) #frequency determines period...
+frequency(ts_x) #frequency parameters is used in arima model fitting and spectrum
+acf(ts_x,na.action=na.pass)
+pacf(ts_x,na.action=na.pass)
+acf(pix_val[1,1:153],na.action=na.pass) #wihtout a ts object
+pacf(pix_val[1,1:153],na.action=na.pass)
 
-arima_mod <- auto.arima(pix_val[1,1:153])
+arima_mod <- auto.arima(ts_x)
+#arima_mod <- auto.arima(pix_val[1,1:153])
+arima_mod1 <- auto.arima(pix_val[1,1:153])
+
 p_arima<-predict(arima_mod,n.ahead=2)
+p_arima1<-predict(arima_mod1,n.ahead=2)
 
+#arima_mod <- arima(pix_val[1,1:153], order = c(1,1,1), 
+#                   seasonal = list(order=c(0,1,1)),
+            
 plot(pix_val[1,152:155],type="b")
-lines(c(pix_val[1,152:153],p_arima$pred),type="b",col="red")
+lines(c(pix_val[1,152:153],p_arima$pred),type="b",col="red") #prediction with seasonality
+lines(c(pix_val[1,152:153],p_arima1$pred),type="b",col="blue")
 
 raster_ts_arima(pix_val[1,1:153],na.rm=T,c(1,0,0))                        
 raster_ts_arima(pix_val[1,1:153],na.rm=T,arima_order=c(0,0,2),n_ahead=2)                        
-acf(pix[1:153],na.action=na.pass)
+
+pix <- as.data.frame(t(pix_val[,1:153]))
+
+#acf(pix[1:153],na.action=na.pass)
 
 tt<-raster_ts_arima_predict(pix[,1],na.rm=T,arima_order=NULL,n_ahead=2)
-pix <- as.data.frame(t(pix_val[,1:153]))
 ttx<-lapply(pix,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
 tt_dat<-do.call(rbind,ttx)
+class(tt_dat)
+
+## Convert predicted values to raster...
+r_pred_t1 <- r_w
+r_pred_t2 <- r_w
+values(r_pred_t1) <- tt_dat[,1]
+values(r_pred_t2) <- tt_dat[,2]
+
+r_huric_w <- subset(r_stack,153:155)
+r_huric_w <- crop(r_huric_w,r_w)
+
+r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
+layerNames(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+dif_pred  <- r_t0_pred - r_huric_w 
+
+#mfrow(c(2,3))
+temp.colors <- colorRampPalette(c('blue', 'white', 'red'))
+plot(stack(r_huric_w,r_t0_pred)) #compare visually predicted and actual NDVI
+plot(dif_pred,col=temp.colors(25),colNA="black") #compare visually predicted and actual NDVI
+
+sd_vals <- cellStats(dif_pred,"sd")
+mean_vals <- cellStats(dif_pred,"mean")
+#mode_vals <- cellStats(dif_pred,"mode")
+
+hist(dif_pred)
+dif_pred1 <-subset(dif_pred,2)
+high_res<- dif_pred1>2*sd_vals[2] # select high residuals...
+freq(high_res)
+
+#There is large number of NA values after the hurricane
+r_NA<-stack(raster_NA_image(r_huric_w))
+freq(subset(r_NA,1)) # 10 NA cells
+freq(subset(r_NA,2)) # 85 NA cells, after hurricane event...
+freq(subset(r_NA,3)) # 26 NA cells
+
+### apply to Ejido 2....
+
+ref_samp4_spdf<- as(ref_samp4_r,"SpatialPointsDataFrame")
+pix_val <- extract(r_stack,ref_samp4_spdf,df=TRUE)
+
+pix_samp4 <- as.data.frame(t(pix_val[,1:153]))
+ejido2 <- as.data.frame(ref_samp4_spdf)
+ejido2 <- ejido2[ejido2$reg_Sample4==2]
+
+#acf(pix[1:153],na.action=na.pass)
+
+ttx<-lapply(pix_samp4,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+
+tt_dat<-do.call(rbind,ttx)
+class(tt_dat)
+  
+  
+### Functions
 
 raster_ts_arima<-function(pixel,na.rm=T,arima_order){
   arima_obj<-arima(pixel,order=arima_order)
@@ -139,11 +214,26 @@ raster_ts_arima<-function(pixel,na.rm=T,arima_order){
 raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
   if(is.null(arima_order)){
     arima_mod <- auto.arima(pixel)
-    p_arima<-predict(arima_mod,n.ahead=2)
+    p_arima<-predict(arima_mod,n.ahead=n_ahead)
   }else{
     arima_mod<-arima(pixel,order=arima_order)
-    p_arima<-predict(arima_mod,n.ahead=2)
+    p_arima<-predict(arima_mod,n.ahead=n_ahead)
   }
   y<- t(as.data.frame(p_arima$pred))
   return(y)
+}
+
+
+raster_NA_image <- function(r_stack){
+  list_r_NA <- vector("list",length=nlayers(r_stack))
+  for (i in 1:nlayers(r_stack)){
+    r <- subset(r_stack,i)
+    r_NA <- is.na(r)
+    list_r_NA[[i]] <- r_NA
+  }
+  return(list_r_NA)
+}
+
+freq_r_stack(r_stack){
+  
 }
