@@ -32,6 +32,7 @@ raster_ts_arima<-function(pixel,na.rm=T,arima_order){
   return(a)
 }
 
+#This takes a pixel time series ... extracted from a stack
 raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
   if(is.null(arima_order)){
     arima_mod <- auto.arima(pixel)
@@ -145,8 +146,8 @@ grep(paste("2007",day_event,sep=""),layerNames(r_stack))
 ## get small subset 1
 
 # now extract these pixels and fit and arim for before period of hurricane
-r_w<-raster("cropped_area.rst")
-r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
+r_w <-raster("cropped_area.rst")
+r_w_spdf <-as(r_w,"SpatialPointsDataFrame")
 pix_val <- extract(r_stack,r_w_spdf,df=TRUE)
 
 plot(pix_val[1,],type="b")
@@ -189,6 +190,7 @@ lines(c(pix_val[1,152:153],p_arima1$pred),type="b",col="blue")
 raster_ts_arima(pix_val[1,1:153],na.rm=T,c(1,0,0))                        
 raster_ts_arima(pix_val[1,1:153],na.rm=T,arima_order=c(0,0,2),n_ahead=2)                        
 
+#Transform data to only include 1 to 153!!
 pix <- as.data.frame(t(pix_val[,1:153]))
 
 #acf(pix[1:153],na.action=na.pass)
@@ -236,17 +238,34 @@ freq(subset(r_NA,3)) # 26 NA cells
 
 ref_samp4_spdf<- as(ref_samp4_r,"SpatialPointsDataFrame")
 pix_val <- extract(r_stack,ref_samp4_spdf,df=TRUE)
-
+#pix_val <- t(pix_val[,1:153])
 pix_samp4 <- as.data.frame(t(pix_val[,1:153]))
-ejido2 <- as.data.frame(ref_samp4_spdf)
-ejido2 <- ejido2[ejido2$reg_Sample4==2]
+
 
 #acf(pix[1:153],na.action=na.pass)
-
+tt <- raster_ts_arima_predict(pix_samp4[,4],na.rm=T,arima_order=NULL,n_ahead=2)
 ttx<-lapply(pix_samp4,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+
+## Now of ejido
+
+#ejido2 <- as.data.frame(ref_samp4_spdf)
+#ejido2 <- ejido2[ejido2$reg_Sample4==2,]
+ejido <- ref_samp4_spdf[ref_samp4_spdf$reg_Sample4==4,]
+
+pix_val <- extract(r_stack,ejido,df=TRUE)
+#pix_val <- t(pix_val[,1:153])
+pix_ejido <- as.data.frame(t(pix_val[,1:153]))
+
+ttx<-lapply(pix_ejido,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+#ttx<-lapply(pix,   FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+
+
+
+tt<-raster_ts_arima_predict(pix[,1],na.rm=T,arima_order=NULL,n_ahead=2)
+ttx<-lapply(pix,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
 tt_dat<-do.call(rbind,ttx)
 class(tt_dat)
   
-  
+## Apply by EDGY region?  
 
