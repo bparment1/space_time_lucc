@@ -1,3 +1,14 @@
+####################################    Space Time Analyses PAPER   #######################################
+############################  Yucatan case study: ARIMA          #######################################
+#This script produces a prediction for the dates following the Hurricane event.       
+#                        
+#AUTHORS: Benoit Parmentier                                             
+#DATE CREATED: 11/27/2013 
+#DATE MODIFIED: 01/25/2014
+#Version: 2
+#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
+#################################################################################################
+
 ###Loading R library and packages                                                      
 
 library(sp)
@@ -13,8 +24,43 @@ library(xts)
 library(zoo)
 library(lubridate)
 
-### Parameters and arguments
+###### Functions used in this script
 
+raster_ts_arima<-function(pixel,na.rm=T,arima_order){
+  arima_obj<-arima(pixel,order=arima_order)
+  a<-as.numeric(coef(arima_obj)[1]) 
+  return(a)
+}
+
+raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
+  if(is.null(arima_order)){
+    arima_mod <- auto.arima(pixel)
+    p_arima<-predict(arima_mod,n.ahead=n_ahead)
+  }else{
+    arima_mod<-arima(pixel,order=arima_order)
+    p_arima<-predict(arima_mod,n.ahead=n_ahead)
+  }
+  y<- t(as.data.frame(p_arima$pred))
+  return(y)
+}
+
+raster_NA_image <- function(r_stack){
+  list_r_NA <- vector("list",length=nlayers(r_stack))
+  for (i in 1:nlayers(r_stack)){
+    r <- subset(r_stack,i)
+    r_NA <- is.na(r)
+    list_r_NA[[i]] <- r_NA
+  }
+  return(list_r_NA)
+}
+
+#freq_r_stack(r_stack){
+#  
+#}
+
+####### Parameters and arguments
+
+## Location on Benoit's laptop (Dropbox)
 in_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
 out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
 setwd(out_dir)
@@ -36,7 +82,7 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_interp <- proj_modis_str
 
-out_suffix <-"11272013" #output suffix for the files that are masked for quality and for 
+out_suffix <-"01252014" #output suffix for the files that are masked for quality and for 
     
 ## Other specific parameters
 NA_flag_val<- -9999
@@ -203,37 +249,4 @@ tt_dat<-do.call(rbind,ttx)
 class(tt_dat)
   
   
-### Functions
 
-raster_ts_arima<-function(pixel,na.rm=T,arima_order){
-  arima_obj<-arima(pixel,order=arima_order)
-  a<-as.numeric(coef(arima_obj)[1]) 
-  return(a)
-}
-
-raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
-  if(is.null(arima_order)){
-    arima_mod <- auto.arima(pixel)
-    p_arima<-predict(arima_mod,n.ahead=n_ahead)
-  }else{
-    arima_mod<-arima(pixel,order=arima_order)
-    p_arima<-predict(arima_mod,n.ahead=n_ahead)
-  }
-  y<- t(as.data.frame(p_arima$pred))
-  return(y)
-}
-
-
-raster_NA_image <- function(r_stack){
-  list_r_NA <- vector("list",length=nlayers(r_stack))
-  for (i in 1:nlayers(r_stack)){
-    r <- subset(r_stack,i)
-    r_NA <- is.na(r)
-    list_r_NA[[i]] <- r_NA
-  }
-  return(list_r_NA)
-}
-
-freq_r_stack(r_stack){
-  
-}
