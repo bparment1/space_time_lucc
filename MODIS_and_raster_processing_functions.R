@@ -379,7 +379,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
 create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",file_format=".rst"){
   #create a list of raster files to creater R raster stacks
   if(file_pat==""){
-    list_raster_name <- list.files(path=in_dir,pattern=paste(out_suffix_s,".*",file_format,"$",sep=""),full.names=T)
+    list_raster_name <- list.files(path=in_dir,pattern=paste(".*",out_suffix_s,file_format,"$",sep=""),full.names=T)
   }else{
     list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=T)
   }
