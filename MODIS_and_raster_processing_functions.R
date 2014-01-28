@@ -89,6 +89,19 @@ mosaic_m_raster_list<-function(j,list_param){
   #Writing the data in a raster file format...  
   rast_list<-file.path(out_path,raster_name)
   
+  ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+  ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+  ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+  ## Start remove
+  #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  #files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+  #if(length(files_to_remove)>0){
+  #  file.remove(files_to_remove)
+  #}
+  #now remove temp files from raster package located in rasterTmpDir
+  removeTmpFiles(h=0) #did not work if h is not set to 0
+  ## end of remove section
+  
   return(rast_list)
 }
 
@@ -362,8 +375,6 @@ screen_for_qc_valid_fun <-function(i,list_param){
     ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
     ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
     ## Start remove
-    rm(rast_var_m)
-    rm(r_qc_m)
     tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
     files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
     if(length(files_to_remove)>0){
