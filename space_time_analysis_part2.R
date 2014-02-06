@@ -16,6 +16,7 @@ library(rgdal)
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 library(gtools)
+library(maptools)
 library(parallel)
 library(rasterVis)
 library(raster)
@@ -36,13 +37,23 @@ raster_ts_arima<-function(pixel,na.rm=T,arima_order){
 raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
   if(is.null(arima_order)){
     arima_mod <- auto.arima(pixel)
-    p_arima<-predict(arima_mod,n.ahead=n_ahead)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
   }else{
     arima_mod<-arima(pixel,order=arima_order)
-    p_arima<-predict(arima_mod,n.ahead=n_ahead)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
   }
-  y<- t(as.data.frame(p_arima$pred))
-  return(y)
+  if (!inherits(p_arima,"try-error")){
+    y<- t(as.data.frame(p_arima$pred))
+    y_error <- rep(0,n_ahead)
+  }
+  if (inherits(p_arima,"try-error")){
+    y<- rep(NA,n_ahead)
+    y_error <- rep(1,n_ahead)
+  }
+  pred_obj <- list(y,y_error)
+  names(pred_obj)<-c("pred","error")
+                                  
+  return(pred_obj)
 }
 
 raster_NA_image <- function(r_stack){
@@ -53,6 +64,31 @@ raster_NA_image <- function(r_stack){
     list_r_NA[[i]] <- r_NA
   }
   return(list_r_NA)
+}
+
+convert_arima_pred_to_raster <- function(i,list_param){
+  #This function produces a raster image from ariam pred obj
+  #Read in the parameters...
+  r_ref <-list_param$r_ref
+  ttx <- list_param$ttx
+  file_format <- list_param$file_format
+  out_dir <-list_param$out_dir
+  out_rastname <-list_param$out_rastnames[i]
+  file_format <- list_param$file_format
+  NA_flag_val <- list_param$NA_flag_val
+  
+  #start script
+  pred_t <- lapply(ttx,FUN=function(x){x$pred[i]})
+  tt_dat <- do.call(rbind,pred_t)
+  tt_dat <- as.data.frame(tt_dat)
+  pred_t <-as(r_ref,"SpatialPointsDataFrame")
+  pred_t <- as.data.frame(pred_t)
+  pred_t <- cbind(pred_t,tt_dat)
+  coordinates(pred_t) <- cbind(pred_t$x,pred_t$y)
+  raster_pred <- rasterize(pred_t,r_ref,"V1",fun=mean)
+  writeRaster(raster_pred,NAflag=NA_flag_val,filename=file.path(out_dir,out_rastname),
+              overwrite=TRUE)  
+  return(out_rastname)
 }
 
 #freq_r_stack(r_stack){
@@ -66,8 +102,8 @@ in_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
 out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
 setwd(out_dir)
 
-function_analyses_paper <- "MODIS_and_raster_processing_functions_10182013.R"
-script_path <- in_dir #path to script functions
+function_analyses_paper <- "MODIS_and_raster_processing_functions_01252014.R"
+script_path <- "/Users/Parmentier/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
@@ -113,25 +149,6 @@ layerNames(s_dat_var) <- c("pix_id_r","r_x","r_y","egg_rings_gyr_r",
 projection(s_dat_var) <- proj_modis_str
 plot(s_dat_var)
 
-## Now extract data for only the EDGY region of Yucatan
-EDGY_spdf <- as(mask_EDGY_r,"SpatialPointsDataFrame") #create a SpatialPointsDataFrame
-data_EDGY<- extract(r_stack,EDGY_spdf) #extract pixels with NDVI in EDGY area in a matrix
-s_dat_var_EDGY <- extract(s_dat_var,EDGY_spdf) #extract pixels with attributes in EDGY area in a matrix
-EDGY_dat_spdf<- cbind(data_EDGY,s_dat_var_EDGY) #Add columns from matrix to EDGY 
-
-#EDGY_dat_spdf<- EDGY_spdf
-
-#Save spdf as .RData object
-save(EDGY_dat_spdf,file= file.path(out_dir,paste("EDGY_dat_spdf_",out_suffix,".RData",sep="")))
-
-#Save spdf as shapefile, note that column names can be truncated
-outfile1<-file.path(out_dir,paste("EDGY_dat_spdf","_",out_suffix,".shp",sep=""))
-writeOGR(EDGY_dat_spdf,dsn= dirname(outfile1),layer= sub(".shp","",basename(outfile1)), driver="ESRI Shapefile",overwrite_layer=TRUE)
-
-#Save spdf as delimited csv text file.
-outfile1<-file.path(out_dir,paste("EDGY_dat_spdf","_",out_suffix,".txt",sep=""))
-write.table(as.data.frame(EDGY_dat_spdf),file=outfile1,sep=",")
-
 
 ################# PART 2: TEMPORAL PREDICTIONS ###################
 
@@ -157,10 +174,10 @@ plot(pix_val[1,139:161],type="b")
 abline(v=(154-139),col="red")
 
 levelplot(r_stack,layer=152:155)
-plot(subset(r_stack,154))
-plot(egg_rings_gyr_r,add=T)
+plot(subset(r_stack,154),legend=F)
+plot(egg_rings_gyr_r,add=T,legend=F)
 plot(ref_samp4_r,add=T,col=c("blue","red","black","yellow"))
-plot(r_w,add=T,col="cyan")
+plot(r_w,add=T,col="cyan",legend=F)
 r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
 
 ### Testing ARIMA model fitting with and without seasonality
@@ -259,13 +276,41 @@ pix_ejido <- as.data.frame(t(pix_val[,1:153]))
 ttx<-lapply(pix_ejido,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 #ttx<-lapply(pix,   FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
+pred_error <-lapply(ttx,FUN=function(x){x$error[1]})
+tt_dat_error<-do.call(rbind,pred_error)
+sum(tt_dat_error)
+
+pred_t1 <-lapply(ttx,FUN=function(x){x$pred[1]})
+tt_dat1<-do.call(rbind,pred_t1)
+
+pred_t2 <-lapply(ttx,FUN=function(x){x$pred[2]})
+tt_dat2<-do.call(rbind,pred_t2)
+
+i<-1
+sref_samp4_spdf
+r_ref <- ref_samp4_r
+raster_name <- "test.raster"
+file_format <- ".rst"
+NA_flag_val <- -9999
+
+out_rastnames <- c("test1.rst","test2.rst")
+list_param_arima_convert <- list(r_ref,ttx,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
+
+debug(convert_arima_pred_to_raster)
+convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
 
 
-tt<-raster_ts_arima_predict(pix[,1],na.rm=T,arima_order=NULL,n_ahead=2)
-ttx<-lapply(pix,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
-tt_dat<-do.call(rbind,ttx)
-class(tt_dat)
-  
-## Apply by EDGY region?  
+## Convert predicted values to raster...
+r_pred_t1 <- ref_samp4_r #timestep 1
+r_pred_t2 <- ref_samp4_r #timestep 2
+values(r_pred_t1) <- tt_dat1
+values(r_pred_t2) <- tt_dat2
 
+r_huric_w <- subset(r_stack,153:155)
+r_huric_w <- crop(r_huric_w,r_w)
+
+r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
+layerNames(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+dif_pred  <- r_t0_pred - r_huric_w 
