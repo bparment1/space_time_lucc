@@ -4,7 +4,7 @@
 #                        
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/27/2013 
-#DATE MODIFIED: 01/25/2014
+#DATE MODIFIED: 02/06/2014
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -98,9 +98,13 @@ convert_arima_pred_to_raster <- function(i,list_param){
 ####### Parameters and arguments
 
 ## Location on Benoit's laptop (Dropbox)
-in_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
-out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
+#in_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
+in_dir<- "~/Dropbox/Data/Space_Time/"
+#out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
+out_dir<- "~/Dropbox/Data/Space_Time"
+
 setwd(out_dir)
+out_dir <- getwd() #to allow raster package to work...
 
 function_analyses_paper <- "MODIS_and_raster_processing_functions_01252014.R"
 script_path <- "/Users/Parmentier/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
@@ -110,15 +114,15 @@ source(file.path(script_path,function_analyses_paper)) #source all functions use
 infile_reg_outline <- "/Users/benoitparmentier/Dropbox/Data/Space_Time/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
 
 #ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
-ref_rast_name<-"/Users/benoitparmentier/Dropbox/Data/Space_Time/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
-ref_samp4_name <-"/Users/benoitparmentier/Dropbox/Data/Space_Time/reg_Sample4.rst"
-ref_EDGY_name <-"/Users/benoitparmentier/Dropbox/Data/Space_Time/reg_EDGY_mask_sin_1km.rst"
-ref_egg_rings_gyr_name <-"/Users/benoitparmentier/Dropbox/Data/Space_Time/reg_egg_rings_gyr.rst"
-infile_modis_grid<-"/Users/benoitparmentier/Dropbox/Data/Space_Time/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+ref_rast_name<-"~/Dropbox/Data/Space_Time/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
+ref_samp4_name <-"~/Dropbox/Data/Space_Time/reg_Sample4.rst"
+ref_EDGY_name <-"~/Dropbox/Data/Space_Time/reg_EDGY_mask_sin_1km.rst"
+ref_egg_rings_gyr_name <-"~/Dropbox/Data/Space_Time/reg_egg_rings_gyr.rst"
+infile_modis_grid<-"~/Dropbox/Data/Space_Time/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_interp <- proj_modis_str
-
+Moore_extent_name <- "~/Dropbox/Data/Space_Time/00_moore_clipped_sin_reduced.rst"
 out_suffix <-"01252014" #output suffix for the files that are masked for quality and for 
     
 ## Other specific parameters
@@ -131,6 +135,7 @@ ref_rast_r  <- raster(ref_rast_name)
 ref_samp4_r <- raster(ref_samp4_name)
 mask_EDGY_r <- raster(ref_EDGY_name) #create raster image
 egg_rings_gyr_r <- raster(ref_egg_rings_gyr_name)
+moore_r <- raster(Moore_extent_name)
 
 projection(mask_EDGY_r) <- proj_modis_str #assign projection coord defined earlier
 projection(ref_samp4_r) <- proj_modis_str
@@ -148,7 +153,6 @@ layerNames(s_dat_var) <- c("pix_id_r","r_x","r_y","egg_rings_gyr_r",
                            "mask_EDGY_r","ref_samp4_r")
 projection(s_dat_var) <- proj_modis_str
 plot(s_dat_var)
-
 
 ################# PART 2: TEMPORAL PREDICTIONS ###################
 
@@ -251,66 +255,74 @@ freq(subset(r_NA,1)) # 10 NA cells
 freq(subset(r_NA,2)) # 85 NA cells, after hurricane event...
 freq(subset(r_NA,3)) # 26 NA cells
 
-### apply to Ejido 2....
+### NOW apply to all ejido from the sample....
 
 ref_samp4_spdf<- as(ref_samp4_r,"SpatialPointsDataFrame")
 pix_val <- extract(r_stack,ref_samp4_spdf,df=TRUE)
 #pix_val <- t(pix_val[,1:153])
 pix_samp4 <- as.data.frame(t(pix_val[,1:153]))
 
-
-#acf(pix[1:153],na.action=na.pass)
-tt <- raster_ts_arima_predict(pix_samp4[,4],na.rm=T,arima_order=NULL,n_ahead=2)
+#tt <- raster_ts_arima_predict(pix_samp4[,4],na.rm=T,arima_order=NULL,n_ahead=2)
 ttx<-lapply(pix_samp4,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
-## Now of ejido
-
-#ejido2 <- as.data.frame(ref_samp4_spdf)
-#ejido2 <- ejido2[ejido2$reg_Sample4==2,]
-ejido <- ref_samp4_spdf[ref_samp4_spdf$reg_Sample4==4,]
-
-pix_val <- extract(r_stack,ejido,df=TRUE)
-#pix_val <- t(pix_val[,1:153])
-pix_ejido <- as.data.frame(t(pix_val[,1:153]))
-
-ttx<-lapply(pix_ejido,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
-#ttx<-lapply(pix,   FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
-
-pred_error <-lapply(ttx,FUN=function(x){x$error[1]})
-tt_dat_error<-do.call(rbind,pred_error)
-sum(tt_dat_error)
-
-pred_t1 <-lapply(ttx,FUN=function(x){x$pred[1]})
-tt_dat1<-do.call(rbind,pred_t1)
-
-pred_t2 <-lapply(ttx,FUN=function(x){x$pred[2]})
-tt_dat2<-do.call(rbind,pred_t2)
-
-i<-1
-sref_samp4_spdf
+#Setting up the conversion
 r_ref <- ref_samp4_r
-raster_name <- "test.raster"
 file_format <- ".rst"
 NA_flag_val <- -9999
-
 out_rastnames <- c("test1.rst","test2.rst")
+
 list_param_arima_convert <- list(r_ref,ttx,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
 names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
 
-debug(convert_arima_pred_to_raster)
-convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
+#undebug(convert_arima_pred_to_raster)
+pred_t1<- convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
+pred_t2<- convert_arima_pred_to_raster(2,list_param=list_param_arima_convert)
 
+#### NOW do Moore area!! about 31,091 pixels
 
+moore_r[moore_r==0]<- NA
+moore_dat <- as(moore_r,"SpatialPointsDataFrame")
+pix_val <- extract(r_stack,moore_dat,df=TRUE)
+#pix_val <- t(pix_val[,1:153])
+pix_val <- as.data.frame(t(pix_val[,1:153]))
+ttx2 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 
+r_ref <- moore_r
+file_format <- ".rst"
+NA_flag_val <- -9999
+
+out_rastnames <- c("test_mooore1.rst","testmoore2.rst")
+list_param_arima_convert <- list(r_ref,ttx2,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
+
+#debug(convert_arima_pred_to_raster)
 ## Convert predicted values to raster...
-r_pred_t1 <- ref_samp4_r #timestep 1
-r_pred_t2 <- ref_samp4_r #timestep 2
-values(r_pred_t1) <- tt_dat1
-values(r_pred_t2) <- tt_dat2
+
+pred_t1 <- convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
+pred_t2 <- convert_arima_pred_to_raster(2,list_param=list_param_arima_convert)
+r_pred_t1 <- raster(pred_t1) #timestep 1
+r_pred_t2 <- raster(pred_t2) #timestep 2
 
 r_huric_w <- subset(r_stack,153:155)
-r_huric_w <- crop(r_huric_w,r_w)
+#r_huric_w <- crop(r_huric_w,r_w)
 
 r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
 layerNames(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
 dif_pred  <- r_t0_pred - r_huric_w 
+
+#mfrow(c(2,3))
+temp.colors <- colorRampPalette(c('blue', 'white', 'red'))
+plot(stack(r_huric_w,r_t0_pred)) #compare visually predicted and actual NDVI
+plot(dif_pred,col=temp.colors(25),colNA="black") #compare visually predicted and actual NDVI
+sd_vals <- cellStats(dif_pred,"sd")
+mean_vals <- cellStats(dif_pred,"mean")
+rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
+rmse_val <- cellStats(subset(dif_pred,2),"rmse_fun")
+
+#mode_vals <- cellStats(dif_pred,"mode")
+
+hist(dif_pred)
+dif_pred1 <-subset(dif_pred,2)
+high_res<- dif_pred1>2*sd_vals[2] # select high residuals...
+freq(high_res)
+
