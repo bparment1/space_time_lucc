@@ -4,7 +4,7 @@
 #                        
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/27/2013 
-#DATE MODIFIED: 02/06/2014
+#DATE MODIFIED: 02/20/2014
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -24,6 +24,7 @@ library(forecast)
 library(xts)
 library(zoo)
 library(lubridate)
+library(colorRamps) #contains matlab.like color palette
 
 ###### Functions used in this script
 
@@ -107,15 +108,17 @@ setwd(out_dir)
 out_dir <- getwd() #to allow raster package to work...
 
 function_analyses_paper <- "MODIS_and_raster_processing_functions_01252014.R"
-script_path <- "/Users/Parmentier/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
+script_path <- "~/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
-infile_reg_outline <- "/Users/benoitparmentier/Dropbox/Data/Space_Time/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
+infile_reg_outline <- "~/Dropbox/Data/Space_Time/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
 
 #ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
 ref_rast_name<-"~/Dropbox/Data/Space_Time/gyrs_sin_mask_1km_windowed.rst"  #local raster name defining resolution, exent: oregon
 ref_samp4_name <-"~/Dropbox/Data/Space_Time/reg_Sample4.rst"
+ref_sejidos_name <- "~/Dropbox/Data/Space_Time/00_sejidos_group_sel5_ids.rst"
+ref_winds_name <- "~/Dropbox/Data/Space_Time/"
 ref_EDGY_name <-"~/Dropbox/Data/Space_Time/reg_EDGY_mask_sin_1km.rst"
 ref_egg_rings_gyr_name <-"~/Dropbox/Data/Space_Time/reg_egg_rings_gyr.rst"
 infile_modis_grid<-"~/Dropbox/Data/Space_Time/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
@@ -255,28 +258,6 @@ freq(subset(r_NA,1)) # 10 NA cells
 freq(subset(r_NA,2)) # 85 NA cells, after hurricane event...
 freq(subset(r_NA,3)) # 26 NA cells
 
-### NOW apply to all ejido from the sample....
-
-ref_samp4_spdf<- as(ref_samp4_r,"SpatialPointsDataFrame")
-pix_val <- extract(r_stack,ref_samp4_spdf,df=TRUE)
-#pix_val <- t(pix_val[,1:153])
-pix_samp4 <- as.data.frame(t(pix_val[,1:153]))
-
-#tt <- raster_ts_arima_predict(pix_samp4[,4],na.rm=T,arima_order=NULL,n_ahead=2)
-ttx<-lapply(pix_samp4,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
-
-#Setting up the conversion
-r_ref <- ref_samp4_r
-file_format <- ".rst"
-NA_flag_val <- -9999
-out_rastnames <- c("test1.rst","test2.rst")
-
-list_param_arima_convert <- list(r_ref,ttx,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
-names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
-
-#undebug(convert_arima_pred_to_raster)
-pred_t1<- convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
-pred_t2<- convert_arima_pred_to_raster(2,list_param=list_param_arima_convert)
 
 #### NOW do Moore area!! about 31,091 pixels
 
@@ -286,6 +267,7 @@ pix_val <- extract(r_stack,moore_dat,df=TRUE)
 #pix_val <- t(pix_val[,1:153])
 pix_val <- as.data.frame(t(pix_val[,1:153]))
 ttx2 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+ttx3 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=c(1,0,1),n_ahead=2)
 
 r_ref <- moore_r
 file_format <- ".rst"
@@ -295,34 +277,104 @@ out_rastnames <- c("test_mooore1.rst","testmoore2.rst")
 list_param_arima_convert <- list(r_ref,ttx2,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
 names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
 
+out_rastnames <- c("test_moore1_arima_1_0_1.rst","testmoore2_arima_1_0_1.rst")
+list_param_arima_convert2 <- list(r_ref,ttx3,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+names(list_param_arima_convert2) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
+
 #debug(convert_arima_pred_to_raster)
 ## Convert predicted values to raster...
 
 pred_t1 <- convert_arima_pred_to_raster(1,list_param=list_param_arima_convert)
 pred_t2 <- convert_arima_pred_to_raster(2,list_param=list_param_arima_convert)
+
+#Prediciton for arima 1,0,1
+pred_t1_arima_101 <- convert_arima_pred_to_raster(1,list_param=list_param_arima_convert2)
+pred_t2_arima_101 <- convert_arima_pred_to_raster(2,list_param=list_param_arima_convert2) #time step 2 after hurrincane
+
 r_pred_t1 <- raster(pred_t1) #timestep 1
 r_pred_t2 <- raster(pred_t2) #timestep 2
+
+r_pred_t1_arima_101 <- raster(pred_t1_arima_101) #timestep 1
+r_pred_t2_arima_101 <- raster(pred_t2_arima_101) #timestep 2
 
 r_huric_w <- subset(r_stack,153:155)
 #r_huric_w <- crop(r_huric_w,r_w)
 
 r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
 layerNames(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
-dif_pred  <- r_t0_pred - r_huric_w 
+dif_pred  <- r_t0_pred - r_huric_w #overprediction are positve and under prediction in negative
 
+dif_pred_m <- mask(dif_pred,moore_r)
+dif_pred_m <- trim(dif_pred_m)
+plot(dif_pred_m)
 #mfrow(c(2,3))
-temp.colors <- colorRampPalette(c('blue', 'white', 'red'))
+
+
 plot(stack(r_huric_w,r_t0_pred)) #compare visually predicted and actual NDVI
-plot(dif_pred,col=temp.colors(25),colNA="black") #compare visually predicted and actual NDVI
+plot(dif_pred_m,col=matlab.like(25),colNA="black") #compare visually predicted and actual NDVI
+
+dif_pred_pos <- dif_pred_m >0
+dif_pred_neg <- dif_pred_m <0
+
+freq(subset(dif_pred_pos,2)) #most of the pixels are over predicted!!!
+
+
+plot(stack(dif_pred_pos,dif_pred_neg),col=matlab.like(25))
+
 sd_vals <- cellStats(dif_pred,"sd")
-mean_vals <- cellStats(dif_pred,"mean")
+mean_vals <- cellStats(dif_pred_m,"mean")
 rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
 rmse_val <- cellStats(subset(dif_pred,2),"rmse_fun")
 
 #mode_vals <- cellStats(dif_pred,"mode")
 
-hist(dif_pred)
-dif_pred1 <-subset(dif_pred,2)
+hist(dif_pred_m) #mostly positive
+dif_pred1 <-subset(dif_pred_m,2)
 high_res<- dif_pred1>2*sd_vals[2] # select high residuals...
 freq(high_res)
+plot(high_res) #high residuals...
 
+## Calculate mean,MAE,RMSE residuals by zone of impact and ejidos
+## plot average curve by zone of impact?
+
+
+### Results for ARIMA 1,0,1
+r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1_arima_101,r_pred_t2_arima_101)
+layerNames(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+dif_pred  <- r_t0_pred - r_huric_w #overprediction are positve and under prediction in negative
+
+dif_pred_m <- mask(dif_pred,moore_r)
+dif_pred_m <- trim(dif_pred_m)
+plot(dif_pred_m)
+
+plot(stack(r_huric_w,r_t0_pred)) #compare visually predicted and actual NDVI
+plot(dif_pred_m,col=matlab.like(25),colNA="black") #compare visually predicted and actual NDVI
+
+dif_pred_pos <- dif_pred_m >0
+dif_pred_neg <- dif_pred_m <0
+
+freq(subset(dif_pred_pos,2)) #most of the pixels are over predicted!!!
+
+
+plot(stack(dif_pred_pos,dif_pred_neg),col=matlab.like(25))
+
+sd_vals <- cellStats(dif_pred,"sd")
+mean_vals <- cellStats(dif_pred_m,"mean")
+rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
+mae_fun <-function(x){mean(abs(x),na.rm=TRUE)}
+
+plot(r_w,add=T,col="cyan",legend=F)
+r_w_spdf<-as(r_w,"SpatialPointsDataFrame")
+
+#dif_pred_spdf <- as(dif_pred_m,"SpatialPointsDataFrame")
+dif_df <- as.data.frame(dif_pred_m)
+
+dif_df[,2]
+
+rmse_fun(dif_df[,2])
+rmse_fun(dif_df[,3])
+
+mae_fun(dif_df[,2])
+mae_fun(dif_df[,3])
+
+rmse_val <- cellStats(subset(dif_pred,2),"rmse_fun")
