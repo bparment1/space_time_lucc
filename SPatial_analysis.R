@@ -1,5 +1,5 @@
 #remove all the present objects
-rm(list = ls()) 
+#rm(list = ls()) 
 
 #set up the working directory
 setwd("C:/Users/mmmillones/Dropbox/000_GLP/MM_BP")
