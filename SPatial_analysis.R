@@ -1,36 +1,80 @@
-#remove all the present objects
-#rm(list = ls()) 
+####################################    Space Time Analyses PAPER   #######################################
+############################  Yucatan case study: SAR, SARMA etc          #######################################
+#This script produces a prediction for the dates following the Hurricane event.       
+#The script uses spatial neighbour to predict.                        
+#AUTHORS: Marco Millones and Benoit Parmentier                                             
+#DATE CREATED: 02/07/2014 
+#DATE MODIFIED: 03/02/2014
+#Version: 2
+#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
+#################################################################################################
 
-#set up the working directory
-setwd("C:/Users/mmmillones/Dropbox/000_GLP/MM_BP")
-library(spdep)
-library(rgdal)
-library(raster)
-library(rasterVis)
+###Loading R library and packages                                                      
+
 library(sp)
+library(rgdal)
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
+library(gtools)
+library(maptools)
+library(parallel)
+library(rasterVis)
+library(raster)
+library(forecast)
+library(xts)
+library(zoo)
+library(lubridate)
+library(colorRamps) #contains matlab.like color palette
+library(rgeos)
 
-#### Parameters
+###### Functions used in this script
 
-in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
+#####  Parameters
+
+#in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
+in_dir <-"home/parmentier/Data/Space_Time"
+
 #set up the working directory
 setwd(in_dir)
 
+Moore_extent_name <- "~/Data/Space_Time/00_moore_clipped_sin_reduced.rst"    
+moore_window <- "~/Data/Space_Time/moore_window.rst"
+
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+
 CRS_interp <- proj_modis_str
 
-#loads shapefile data (from shapefile)
-sample1<-readOGR(dsn=in_dir,layer="sample1") #didnt work
 
+########### START SCRIPT #################
+
+## Read in data
+moore_r <- raster(Moore_extent_name)
+moore_w <- raster(moore_window)
+projection(moore_w) <- CRS_interp
+moore_wgs84_w <- projectRaster(moore_w,crs=CRS(CRS_WGS84),
+                               method="ngb")
+#loads shapefile data (from shapefile)
+
+moore_w_poly <- rasterToPolygons(moore_wgs84_w, fun=NULL, n=4, na.rm=TRUE, 
+                        digits=12, dissolve=FALSE)
+
+moore_w_poly$UNIQID <- 1:nrow(moore_w_poly)
+
+#moore_wgs84_w <- as(moore_wgs84_w,"SpatialGridDataFrame")
+#list_nb_moore <- cell2nb(moore_wgs84_w,"queen")
+sample1 <- readOGR(dsn=in_dir,layer="sample1") #didn't work
+#sample1 <- moore_w_poly
 #creates a aditional random variable
-sample1$var<-rnorm(n=250,mean=100000,sd=25000) #creates new variables
+sample1$var<-rnorm(n=nrow(sample1),mean=100000,sd=25000) #creates new variables
 
 #reads input NDVI time series images
 reg_var_list <- list.files(path=in_dir,pattern="reg_mosaiced_MOD13A2_A.*.__005_1_km_16_days_NDVI_09242013_09242013.rst$")
 r_stack <- stack(reg_var_list)
-levelplot(r_stack,layers=1:12) #show first 12 images (half a year more or less)
+levelplot(r_stack,layers=1:2) #show first 12 images (half a year more or less)
 
-ref_EDGY_name <-"D:/DR_MARCO/Yuca2013/Benoit/Space_Time/reg_EDGY_mask_sin_1km.rst"
+ref_EDGY_name <- file.path(in_dir,"reg_EDGY_mask_sin_1km.rst")
 mask_EDGY_r <- raster(ref_EDGY_name) #create raster image
 projection(mask_EDGY_r) <- proj_modis_str #assign projection coord defined earlier
 
@@ -38,14 +82,15 @@ projection(mask_EDGY_r) <- proj_modis_str #assign projection coord defined earli
 EDGY_spdf <- as(mask_EDGY_r,"SpatialPointsDataFrame") #create a SpatialPointsDataFrame
 data_EDGY<- extract(r_stack,EDGY_spdf) #extract pixels with NDVI in EDGY area in a matrix
 
-centroids_sp <- as.data.frame(centroids)
-coordinates(centroids_sp) <- cbind(centroids[,1],centroids[,2])
-proj4string(centroids_sp) <- proj4string(sample1)
-mask_sample1 <- spTransform(centroids_sp,CRS(CRS_interp))
+#centroids_sp <- as.data.frame(centroids)
+#coordinates(centroids_sp) <- cbind(centroids[,1],centroids[,2])
+#proj4string(centroids_sp) <- proj4string(sample1)
+#mask_sample1 <- spTransform(centroids_sp,CRS(CRS_interp))
 
 #extract for the subset of EDGY
 #ED_spdf <- as(mask_EDGY_r,"SpatialPointsDataFrame") #create a SpatialPointsDataFrame
 #
+
 data_sample1 <- extract(r_stack,mask_sample1,df=T,sp=T) #extract pixels with NDVI in EDGY area in a matrix
 #Join data to spatial polygon data polygon
 sample1$NDVId225 <- data_sample1[,153]
