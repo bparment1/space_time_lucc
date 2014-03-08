@@ -4,7 +4,7 @@
 #Predictions are done with ARIMA model leveraging temporal correlation.                        
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/27/2013 
-#DATE MODIFIED: 03/01/2014
+#DATE MODIFIED: 03/07/2014
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -162,9 +162,11 @@ setwd(out_dir)
 out_dir <- getwd() #to allow raster package to work...
 
 function_analyses_paper <- "MODIS_and_raster_processing_functions_01252014.R"
-script_path <- "~/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
+#script_path <- "~/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
+script_path <- file.path(in_dir,"R") #path to script functions
+
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
-out_suffix <-"03042014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"03072014" #output suffix for the files that are masked for quality and for 
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 infile_reg_outline <- "~/Data/Space_Time/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
 
@@ -181,6 +183,8 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 CRS_interp <- proj_modis_str
 Moore_extent_name <- "~/Data/Space_Time/00_moore_clipped_sin_reduced.rst"    
 moore_window <- "~/Data/Space_Time/moore_window.rst"
+chunek_fname <- "~/Data/Space_Time/FIRE_STA/FOR_STA/ChunekFire_20110419_pol.shp" #Fire 2
+chanchen_fname <- "~/Data/Space_Time/FIRE_STA/FOR_STA/ChanchenFire_20110405_pol.shp" 
 
 ## Other specific parameters
 NA_flag_val<- -9999
@@ -197,6 +201,10 @@ moore_r <- raster(Moore_extent_name)
 r_sejidos <- raster(ref_sejidos_name) 
 r_winds <- raster(ref_winds_name) 
 moore_w <- raster(moore_window)
+chunek_sp <- readOGR(dsn=dirname(chunek_fname),
+                     layer=gsub(extension(basename(chunek_fname)),"",basename(chunek_fname))) 
+chanchen_sp <- readOGR(dsn=dirname(chanchen_fname),
+                     layer=gsub(extension(basename(chanchen_fname)),"",basename(chanchen_fname))) 
 
 projection(mask_EDGY_r) <- proj_modis_str #assign projection coord defined earlier
 projection(ref_samp4_r) <- proj_modis_str
@@ -233,7 +241,7 @@ day_event<-strftime(as.Date("2007.08.17",format="%Y.%m.%d"),"%j")
 names(r_stack)
 grep(paste("2007",day_event,sep=""),names(r_stack))
 
-r_huric_w <- subset(r_stack,152:155) #date before hurricane and  after
+r_huric_w <- subset(r_stack,152:156) #date before hurricane and  after
 
 #### NOW do Moore area!! about 31,091 pixels
 
@@ -508,3 +516,110 @@ r_t0_pred
 
 ########### Compare RMSE and MAE for the predictions space and time...
 
+### Fire predictions
+
+#Chunchek Fire on April 19, 2011
+day_event1<-strftime(as.Date("2011.04.19",format="%Y.%m.%d"),"%j")
+day_event2<-strftime(as.Date("2011.04.05",format="%Y.%m.%d"),"%j")
+
+#[237] "reg_mosaiced_MOD13A2_A2011097__005_1_km_16_days_NDVI_09242013_09242013"
+#[238] "reg_mosaiced_MOD13A2_A2011113__005_1_km_16_days_NDVI_09242013_09242013"
+
+#237,238
+names(r_stack)
+grep(paste("2011",day_event,sep=""),names(r_stack))
+
+r_huric_w <- subset(r_stack,235:239) #dates before and after fire
+
+#### NOW do Moore area!! about 31,091 pixels
+
+moore_r[moore_r==0]<- NA
+moore_dat <- as(moore_r,"SpatialPointsDataFrame")
+pix_val2 <- extract(r_stack,moore_dat,df=TRUE)
+#pix_val <- t(pix_val[,1:153])
+pix_val2 <- as.data.frame(t(pix_val2[,1:235]))
+
+#
+#ttx2 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+# <- mclapply(pix_val,,)
+
+n_pred_ahead<-4 #number of temporal ARIMA predictions ahead..
+
+## Now prepare predictions: should this a be a function?
+
+list_param_predict_arima_4 <- list(pix_val=pix_val2,na.rm=T,arima_order=NULL,n_ahead=n_pred_ahead)
+#undebug(raster_ts_arima_predict)
+#tmp_val <- raster_ts_arima_predict(1,list_param_predict_arima_2)
+#ttx2 <- mclapply(1:6, FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 6) #This is the end bracket from mclapply(...) statement
+
+#ttx2 <- mclapply(1:length(pix_val), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 12) #This is the end bracket from mclapply(...) statement
+ttx4 <- lapply(1:length(pix_val2), FUN=raster_ts_arima_predict,
+               list_param=list_param_predict_arima_4) #This is the end bracket from mclapply(...) statement
+
+
+r_ref <- moore_r
+file_format <- ".tif"
+NA_flag_val <- -9999
+
+out_rastnames <- paste(paste("test_mooore_fire_auto",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
+list_param_arima_convert <- list(r_ref,ttx4,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
+
+
+#debug(convert_arima_pred_to_raster)
+## Convert predicted values to raster...
+
+pred_t_l<-lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert)
+
+pred_t_l <-unlist(pred_t_l)
+r_pred  <- stack(pred_t_l[-c(grep(pattern="error",pred_t_l))])
+r_error <- stack(pred_t_l[c(grep(pattern="error",pred_t_l))])
+
+############ Averages by fire...
+
+#...insert here
+r_huric_w <- subset(r_stack,236:239)
+#r_huric_w <- crop(r_huric_w,moore_w)
+
+r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
+names(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+
+### Get this as a function...
+dif_pred  <- r_pred - r_huric_w #overprediction are positve and under prediction in negative
+
+plot(dif_pred_m)
+
+#r_t0_pred <- mask(r_t0_pred,moore_r)
+#r_t0_pred_m <- crop(r_t0_pred,moore_w)
+
+#mfrow(c(2,3))
+r_huric_m <- crop(r_huric_w,moore_w)
+r_huric_m <- mask(r_huric_m,moore_w)
+
+plot(stack(r_huric_m,r_t0_pred_m),col=matlab.like(25),colNA="black") #compare visually predicted and actual NDVI
+plot(dif_pred_m,col=matlab.like(25),colNA="black") #compare visually predicted and actual NDVI
+plot(stack(r_t0_pred_m,dif_pred_m),col=matlab.like(25),colNA="black") #compare visually predicted and actual NDVI
+
+dif_pred_pos <- dif_pred_m >0
+dif_pred_neg <- dif_pred_m <0
+
+histogram(dif_pred_pos)
+
+chunek_sp <- readOGR(dsn=dirname(chunek_fname),
+                     layer=gsub(extension(basename(chunek_fname)),"",basename(chunek_fname))) 
+chanchen_sp <- readOGR(dsn=dirname(chanchen_fname),
+                     layer=gsub(extension(basename(chanchen_fname)),"",basename(chanchen_fname))) 
+
+r_chunek <- rasterize(chunek_sp,dif_pred,"OID_")
+avg_winds <- zonal(dif_pred,subset(s_dat_var_m,8))
+mse_winds <- zonal(dif_pred_m,r_winds_m^2,fun="mean")
+mae_winds <- zonal(dif_pred_m,abs(r_winds_m),fun="mean")
+sqrt(mse_winds)
+mae_winds
+r_t0_pred
+
+avg_winds_pred <- zonal(r_t0_pred_m,subset(s_dat_var_m,8))
+mse_winds <- zonal(dif_pred_m,r_winds_m^2,fun="mean")
+mae_winds <- zonal(dif_pred_m,abs(r_winds_m),fun="mean")
+
+NA_val <- zonal(dif_pred_m,r_winds_m,fun="is.na")
