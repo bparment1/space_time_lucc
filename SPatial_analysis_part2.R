@@ -1,11 +1,11 @@
 ####################################    Space Time Analyses PAPER   #######################################
-############################  Yucatan case study: SAR, SARMA etc          #######################################
+############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
 #This script produces a prediction for the dates following the Hurricane event.       
-#The script uses spatial neighbour to predict.                        
+#The script uses spatial neighbour to predict NDVI values in the MOORE EDGY region.                        
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/09/2014
-#Version: 1
+#DATE MODIFIED: 03/10/2014
+#Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
 
@@ -34,13 +34,13 @@ library(rgeos)
 
 #in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
 #in_dir <-"home/parmentier/Data/Space_Time"
-in_dir <- "C:/Users/mmmillones/Dropbox/Space_Time/"
+in_dir <- "/Users/benoitparmentier/Dropbox/Data/Space_Time/"
 
 #set up the working directory
 setwd(in_dir)
 
 moore_window <- file.path(in_dir,"moore_window.rst")
-test_shp_fname <-"C:/Users/mmmillones/Dropbox/Space_Time/GEODA_Analysis/TEST_SPATIAL_ONE.shp"
+test_shp_fname <-"/Users/benoitparmentier/Dropbox/Data/Space_Time/GEODA_Analysis/TEST_SPATIAL_ONE.shp"
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -71,6 +71,7 @@ r_clip <- moore_w
 
 test_df <- as.data.frame(test_shp)
 lm_mod<-lm(v2~W_V1+v1,data=test_df) #tested model
+
 test_shp$pred_R <- lm_mod$fitted.values
 test_shp$pred_R_residuals <- lm_mod$residuals
 proj4string(test_shp) <-CRS_WGS84
@@ -89,15 +90,17 @@ r1 <- mask(r1,r_NA) #use r_NA to mask both alyer
 r2 <- mask(r2,r_NA)
   
 r_s <- stack(r1,r2) #will contain the values for teh spatial model
-#names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
 names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+#layerNames(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
   
 if(!is.null(proj_str)){
     r_s <- projectRaster(r_s,crs=CRS_WGS84) #project to latlong
 }
   
 r_spat_pred <- rasterize(test_shp,r_s,field="pred_R") #this is the prediction from lm model
-
+#file_format <- ".rst"
+#raster_name <- file.path(out_dir,"r_spat_pred",file_format)
+writeRaster(r_r_spat_pred,filename=raster_name)
 plot(r_spat_pred,subset(r_s,2)) #quick visualization...
 
 #Now write out gal and shp files
@@ -106,10 +109,6 @@ out_fname <-file.path(out_dir,paste("test_shp_in_R2","_",out_suffix,".shp",sep="
 writeOGR(test_shp,dsn= dirname(out_fname),layer= sub(".shp","",basename(out_fname)), 
          driver="ESRI Shapefile",overwrite_layer=TRUE)
 
-names(test_shp)
-writeRaster(r_spat_pred,filename="test_pred_R.tif") #writeRaster(r_spat_pred,filename="test_pred_R.rst" it is not working in this versionof R yet worked for previous ones
-# to use GDAL
-writeRaster(r_spat_pred,filename="test_pred_R.rst")
-system("gdal_tranlate_test_R.tif test_pred_R.rst")
-            # to translante a stack of raster files to rst from tiff
-            # system("gdal_translate *.tif *.rst")
+#names(test_shp)
+
+r_spat_pred
