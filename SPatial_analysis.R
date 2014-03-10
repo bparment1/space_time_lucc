@@ -107,6 +107,68 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   
 }
 
+create_sp_poly_one_date_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffix,out_dir="."){
+  #Function to remove NA accross two raster layers and create no empty neighbour list
+  #inputs: 
+  #1)r_var: stack of two raster layer
+  #2)r_clip: layer used to clip, if null there is no clipping
+  #3)proj_str: to reproject if needed, if null no reprojection
+  #4)out_dir: output directory path
+  #5)out_suffix: suffix added to output file name
+  #outputs: list of four elements 
+  #r_listw: list of weights (Queen)
+  #r_poly_name: shapefile name screeened for NA and no neighbours features
+  #r_nb_name: neighbour object
+  #zero_nb: feature polygon with no neighbours that were removed
+
+  ## START function
+  if(!is.null(r_clip)){
+      r_var_w <- crop(r_var,r_clip) #clip (or "window") raster image to Moore subset area
+      r_var_w <- mask(r_var_w,r_clip) #mask areas
+  }else{
+    r_var_w <- r_var
+  }
+  #plot(r_var_dates)
+
+  #convert to polygon...for input in model
+  r_poly <- rasterToPolygons(r_var_w, fun=NULL, n=4, na.rm=TRUE, 
+                             digits=12, dissolve=FALSE)
+  
+  #Now find polygons wiht no neighbours..
+  r_poly$UNIQID <- 1:nrow(r_poly) #assign unique ID
+  r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
+  
+  ID_selected <- which(card(r_nb)==0)  #Find entities with zero neighbour i.e. cardinality==0
+  
+  if(length(ID_selected>0)){
+      r_nb_sub <- subset(r_nb, subset=card(r_nb) > 0)
+      r_poly_sub <- r_poly[-ID_selected,] #these three poly that have no neighbours, remove them
+      #note that this will change depending on input images
+      r_poly_sub$UNIQID <- 1:nrow(r_poly_sub) #assign unique ID
+      r_poly <- r_poly_sub
+      r_nb <- r_nb_sub
+  }
+    
+  r_listw<-nb2listw(r_nb, style="W") #get the list of weights
+  
+  #Now write out gal and shp files
+  out_fname <-file.path(out_dir,paste("r_poly","_",out_suffix,".shp",sep=""))  
+  writeOGR(r_poly,dsn= dirname(out_fname),layer= sub(".shp","",basename(out_fname)), 
+           driver="ESRI Shapefile",overwrite_layer=TRUE)
+  #writeOGR(r_poly_sub,layer="r_poly",dsn=out_dir,driver="ESRI Shapefile")
+
+  #save gal write.gal
+  out_gal_fname <-file.path(out_dir,paste("r_poly","_",out_suffix,".gal",sep=""))  
+  write.nb.gal(nb=r_nb, file=out_gal_fname, oldstyle=FALSE, shpfile=out_fname)
+
+  nb_obj<- list(r_listw,out_fname,out_gal_fname,ID_selected)
+  names(nb_obj) <- c("r_listw","r_poly_name","r_nb_name","zero_nb")
+  
+  return(nb_obj)
+  
+}
+
+
 #####  Parameters
 
 #in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
@@ -215,4 +277,57 @@ mod_spat_param_list <- list(nb_obj_for_pred_t_minus1,nb_obj_for_pred_t1,nb_obj_f
 
 #}
 
+#### PART 3: CREATE DATA FOR SAME DATE SPATIAL AUTO REG
 
+
+
+### Prepare dataset 4 for function: date t+2 (pt2) and t+3 (pt3) before and after hurricane (t0)
+#this is 152
+r_var <- subset(r_stack,152)
+r_clip <- raster_w
+proj_str<- CRS_WGS84 
+#out_dir and out_suffix set earlier
+out_suffix_s <- paste("one_date_152",out_suffix,sep="_")
+#undebug(create_sp_poly_spatial_reg)
+
+nb_obj_for_pred_152 <-create_sp_poly_one_date_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+
+#this is 153
+r_var <- subset(r_stack,153)
+r_clip <- raster_w
+proj_str<- CRS_WGS84 
+#out_dir and out_suffix set earlier
+out_suffix_s <- paste("one_date_153",out_suffix,sep="_")
+#undebug(create_sp_poly_spatial_reg)
+
+nb_obj_for_pred_153 <-create_sp_poly_one_date_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+
+#this is 154
+r_var <- subset(r_stack,154)
+r_clip <- raster_w
+proj_str<- CRS_WGS84 
+#out_dir and out_suffix set earlier
+out_suffix_s <- paste("one_date_154",out_suffix,sep="_")
+#undebug(create_sp_poly_spatial_reg)
+
+nb_obj_for_pred_154 <-create_sp_poly_one_date_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+
+#this is 155
+r_var <- subset(r_stack,155)
+r_clip <- raster_w
+proj_str<- CRS_WGS84 
+#out_dir and out_suffix set earlier
+out_suffix_s <- paste("one_date_155",out_suffix,sep="_")
+#undebug(create_sp_poly_spatial_reg)
+
+nb_obj_for_pred_155 <-create_sp_poly_one_date_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+
+#this is 156
+r_var <- subset(r_stack,156)
+r_clip <- raster_w
+proj_str<- CRS_WGS84 
+#out_dir and out_suffix set earlier
+out_suffix_s <- paste("one_date_156",out_suffix,sep="_")
+#undebug(create_sp_poly_spatial_reg)
+
+nb_obj_for_pred_156 <-create_sp_poly_one_date_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
