@@ -1,11 +1,10 @@
 ####################################    Space Time Analyses PAPER   #######################################
-############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
-#This script produces a prediction for the dates following the Hurricane event.       
-#The script uses spatial neighbour to predict NDVI values in the MOORE EDGY region.                        
+############################  Yucatan case study: Comparison of results  #######################################
+#This script compares predictions results obtain from spatial regression and ARIAM.                        
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
-#DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/10/2014
-#Version: 2
+#DATE CREATED: 03/10/2014 
+#DATE MODIFIED: 03/11/2014
+#Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
 
@@ -49,58 +48,31 @@ create_uniform_mask_fun <- function(r_var,proj_str=NULL,r_clip=NULL){
   return(r_NA_mask)
 }
 
-predict_var_spatial_reg <-function(i,list_param){
-
-  #Extract parameters/arguments
-  test_shp_fname <- list_param$list_shp[i]
-  out_dir  <- list_param$out_dir
-  r_ref_s    <- list_param$r_ref #if NULL, no image is created
-  proj_str <- list_param$proj_str
-  list_models <- list_param$list_models
-  out_suffix <- list_param$out_suffix[i]
-  file_format <- list_param$file_format
+calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones){
   
-  #### START SCRIPT
+  ##Functions used
+  rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
+  mae_fun <-function(x){mean(abs(x),na.rm=TRUE)}
+
+  ##Start script
   
-  list_formulas<-lapply(list_models,as.formula,env=.GlobalEnv) #mulitple arguments passed to lapply!!  
-  formula <-list_formulas[[i]]
+  #Accuracy/errors by zones
+  r_res_s <- r_pred_s - r_var_s
+  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean")
+  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean")
+  rmse_zones_tb <- sqrt(mse_zones_tb)
   
-  r_ref <- subset(r_ref_s,i)
-  test_shp <- readOGR(dsn=dirname(test_shp_fname),
-                    layer=gsub(extension(basename(test_shp_fname)),"",basename(test_shp_fname)))
-
-  test_df <- as.data.frame(test_shp)
-  #lm_mod<-lm(v2~W_V1+v1,data=test_df) #tested model
+  #Overall Accuracy/errors 
   
-  lm_mod <- try(lm(formula,data=test_df)) #tested model
+  mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
+  rmse_tb <- sqrt(cellStats((r_res_s)^2,mean))
 
-  test_shp$pred_R <- lm_mod$fitted.values
-  test_shp$pred_R_res <- lm_mod$residuals
-  proj4string(test_shp) <- proj_str
-
-  r_spat_pred <- rasterize(test_shp,r_ref,field="pred_R") #this is the prediction from lm model
-  #file_format <- ".rst"
-  raster_name <- paste("r_spat_pred","_",out_suffix,file_format,sep="")
-  writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
-  #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
-  r_spat_res <- rasterize(test_shp,r_ref,field="pred_R_res") #this is the prediction from lm model
-  #file_format <- ".rst"
-  raster_name2 <- paste("r_spat_res","_",out_suffix,file_format,sep="")
-  writeRaster(r_spat_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
-
-  #Now write out gal and shp files
-
-  out_fname <-file.path(out_dir,paste("test_shp_in_R","_",out_suffix,".shp",sep=""))  
-  writeOGR(test_shp,dsn= dirname(out_fname),layer= gsub(".shp","",basename(out_fname)), 
-         driver="ESRI Shapefile",overwrite_layer=TRUE)
+  ac_obj <- list(mae_tb,rmse_tb,mae_zones_tb,rmse_zones_tb)
+  names(ac_obj) <- c("mae_tb","rmse_tb","mae_zones_tb","rmse_zones_tb")
   
-  #could add mod objet
-  spat_reg_obj <- list(lm_mod,out_fname,raster_name,raster_name2)
-  names(spat_reg_obj) <- c("lm_mod","shp","raster_pred","raster_res")
-  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj","_",out_suffix,".RData",sep="")))
-
-  return(spat_reg_obj)
+  return(ac_obj)
 }
+
 
 #####  Parameters
 
@@ -141,33 +113,6 @@ r_var <- subset(r_stack,153:154) #date before hurricane is 153
 r_clip <- moore_w
 NAvalue(r_clip) <- 0
 
-r_NA_mask_1 <- create_uniform_mask_fun(r_var=subset(r_stack,152:153),proj_str=CRS_WGS84,r_clip=r_clip)
-r_NA_mask_2 <- create_uniform_mask_fun(r_var=subset(r_stack,153:154),proj_str=CRS_WGS84,r_clip=r_clip)
-r_NA_mask_3 <- create_uniform_mask_fun(r_var=subset(r_stack,154:155),proj_str=CRS_WGS84,r_clip=r_clip)
-r_NA_mask_4 <- create_uniform_mask_fun(r_var=subset(r_stack,155:156),proj_str=CRS_WGS84,r_clip=r_clip)
-
-#r4 <- create_uniform_mask_fun(r_var,proj_str=NULL,r_clip=NULL)
-
-list_shp <- list.files(path=test_shp_path,pattern="TEST_SPATIAL.*.shp",full.names=TRUE)
-list_shp <- list_shp[c(2,4,3,1)]
-r_ref <- stack(r_NA_mask_1,r_NA_mask_2,r_NA_mask_3,r_NA_mask_4)
-
-#Add option to run other stuff than lm!!
-list_models<-c("v2~W_V1+v1",
-               "v2~W_V1+v1",  
-               "v2~W_V1+v1",
-               "v2~W_V1+v1")
-
-## function to predict...
-out_suffix_s <- paste(c("_1","_2","_3","_4"),out_suffix,sep="_")
-list_param_spat_reg <-list(list_shp, out_dir,r_ref,proj_str,list_models,out_suffix_s,file_format)
-names(list_param_spat_reg) <- c("list_shp", "out_dir","r_ref","proj_str","list_models","out_suffix","file_format")
-
-#debug(predict_var_spatial_reg)
-spat_reg_pred_obj1 <- predict_var_spatial_reg(1,list_param=list_param_spat_reg) 
-spat_reg_pred_obj2 <- predict_var_spatial_reg(2,list_param=list_param_spat_reg) 
-spat_reg_pred_obj3 <- predict_var_spatial_reg(3,list_param=list_param_spat_reg) 
-spat_reg_pred_obj4 <- predict_var_spatial_reg(4,list_param=list_param_spat_reg) 
 
 #list_spat_reg_obj <- lapply(1:length(list_models),FUN=predict_var_spatial,list_param=list_param_spat_reg)
 
@@ -178,31 +123,6 @@ r_pred_spat <- subset(r_pred_spat,1:4)
 #r_pred_s <- subset(r_pred_s,1:4)
 
 #### NOW TAKE A LOOK AT THE ACCURACY OF PREDICTION!!!
-
-calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones){
-  
-  ##Functions used
-  rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
-  mae_fun <-function(x){mean(abs(x),na.rm=TRUE)}
-
-  ##Start script
-  
-  #Accuracy/errors by zones
-  r_res_s <- r_pred_s - r_var_s
-  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean")
-  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean")
-  rmse_zones_tb <- sqrt(mse_zones_tb)
-  
-  #Overall Accuracy/errors 
-  
-  mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
-  rmse_tb <- sqrt(cellStats((r_res_s)^2,mean))
-
-  ac_obj <- list(mae_tb,rmse_tb,mae_zones_tb,rmse_zones_tb)
-  names(ac_obj) <- c("mae_tb","rmse_tb","mae_zones_tb","rmse_zones_tb")
-  
-  return(ac_obj)
-}
 
 mae_val <- c(mae1,mae2,mae3,mae4)
 ref_sejidos_name <- "~/Data/Space_Time/00_sejidos_group_sel5_ids.rst"
@@ -248,10 +168,28 @@ mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
 mae_tot_tb <- as.data.frame(mae_tot_tb)
 row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","arima")
-mae_tot_tb$time <- 1:4
+mae_tot_tb$time <- as.integer(1:4)
 
-plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(800,2000))
-lines(arima ~ time, type="b",col="cyan",data=mae_tot_tb)
+layout_m<-c(1,1.5) #one row two columns
+
+png(paste("Figure_accuracy_","mae","_","total_by_model","_",out_suffix,".png", sep=""),
+    height=480*layout_m[1],width=480*layout_m[2])
+
+plot(spat_reg ~ time, type="b",col="magenta",pch=1,data=mae_tot_tb,ylim=c(800,1900),
+     ylab="MAE for NDVI")
+lines(arima ~ time, type="b",col="cyan",pch=2,data=mae_tot_tb)
+#axis(side=1,las=1,tick=TRUE,
+#       at=breaks_lab,labels=tick_lab, cex.axis=1.2,font=2) #reduce number of labels to Jan and June
+#  #text(tick_lab, par(\u201cusr\u201d)[3], labels = tick_lab, srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9)
+#  axis(2,cex.axis=1.4,font=2)
+#  box()
+legend("topleft",legend=names(mae_tot_tb)[1:2], 
+        cex=1.4, col=c("magenta","cyan"),bty="n",
+        lty=1,pch=1:2)
+title("Average Mean Absolute Error (MAE) by method",cex=1.6, font=2)
+
+dev.off()
+
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 
 #### BY ZONES ASSESSMENT
@@ -272,6 +210,11 @@ avg_ac_tb$time <- c(rep(1,6),rep(2,6),rep(3,6),rep(4,6))
 avg_ac_tb$method <- rep(c("spat_reg","spat_reg","spat_reg","arima","arima","arima"),4)
 names(avg_ac_tb)[1]<- "ac_val"
 names_panel_plot <- c("time -1","time +1","time +2","time +3")
+layout_m<-c(1,1.5) #one row two columns
+
+png(paste("Figure_accuracy_","mae","_","by_winds_zones","_",out_suffix,".png", sep=""),
+    height=480*layout_m[1],width=480*layout_m[2])
+
 p <- xyplot(ac_val~zones|time, # |set up pannels using method_interp
             group=method,data=avg_ac_tb, #group by model (covariates)
             main="Average MAE by winds zones and time step ",
@@ -287,7 +230,7 @@ p <- xyplot(ac_val~zones|time, # |set up pannels using method_interp
             xlab="Winds zones",
             ylab="MAE for NDVI")
 print(p)
-
+dev.off()
 ## Other plots
 
 #Compare predictions for 153 (t-1), before hurricane
