@@ -4,7 +4,7 @@
 #The script uses spatial neighbour to predict NDVI values in the MOORE EDGY region.                        
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/13/2014
+#DATE MODIFIED: 03/17/2014
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -123,7 +123,7 @@ CRS_interp <- proj_modis_str
 
 file_format <- ".tif"
 NA_value <- "-9999"
-out_suffix <-"03132014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"03172014" #output suffix for the files that are masked for quality and for 
 
 ########### START SCRIPT #################
 
@@ -161,26 +161,32 @@ r_ref <- stack(r_NA_mask_1,r_NA_mask_2,r_NA_mask_3,r_NA_mask_4)
 #               "v2~W_V1+v1",
 #               "v2~W_V1+v1")
 #Run regression without spatial lag variable...
-list_models<-c("v2~ v1",
-               "v2~ v1",  
-               "v2~ v1",
-               "v2~ v1")
+#list_models<-c("v2~ v1",
+#               "v2~ v1",  
+#               "v2~ v1",
+#               "v2~ v1")
 
+#Run regression with spatial lag variable...
+list_models<-c("v2~ W_V1",
+               "v2~ W_V1",  
+               "v2~ W_V1",
+               "v2~ W_V1")
 
 ## function to predict...
-out_suffix_s <- paste(c("_LM_OLS_1","_LM_OLS_2","_LM_OLS_3","_LM_OLS_4"),out_suffix,sep="_")
+out_suffix_s <- paste(c("_spat_lag_1","_spat_lag_2","_spat_lag_3","_spat_lag_4"),out_suffix,sep="_")
 list_param_spat_reg <-list(list_shp, out_dir,r_ref,proj_str,list_models,out_suffix_s,file_format)
 names(list_param_spat_reg) <- c("list_shp", "out_dir","r_ref","proj_str","list_models","out_suffix","file_format")
 
 #debug(predict_var_spatial_reg)
-spat_reg_pred_obj1 <- predict_var_spatial_reg(1,list_param=list_param_spat_reg) 
-spat_reg_pred_obj2 <- predict_var_spatial_reg(2,list_param=list_param_spat_reg) 
-spat_reg_pred_obj3 <- predict_var_spatial_reg(3,list_param=list_param_spat_reg) 
-spat_reg_pred_obj4 <- predict_var_spatial_reg(4,list_param=list_param_spat_reg) 
+#spat_reg_pred_obj1 <- predict_var_spatial_reg(1,list_param=list_param_spat_reg) 
+#spat_reg_pred_obj2 <- predict_var_spatial_reg(2,list_param=list_param_spat_reg) 
+#spat_reg_pred_obj3 <- predict_var_spatial_reg(3,list_param=list_param_spat_reg) 
+#spat_reg_pred_obj4 <- predict_var_spatial_reg(4,list_param=list_param_spat_reg) 
 
-#list_spat_reg_obj <- lapply(1:length(list_models),FUN=predict_var_spatial,list_param=list_param_spat_reg)
+#list_spat_reg_obj <- lapply(1:length(list_models),FUN=predict_var_spatial_reg,list_param=list_param_spat_reg)
+list_spat_reg_obj <- mclapply(1:length(list_models),FUN=predict_var_spatial_reg,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
 
-r_pred_spat <- stack(list.files(path=out_dir,pattern=paste(out_suffix,file_format,sep="")))
+r_pred_spat <- stack(list.files(path=out_dir,pattern=paste(out_suffix_s,".*",file_format,sep="")))
 plot(r_pred_spat,colNA="black")
 
 r_pred_spat <- subset(r_pred_spat,1:4)
