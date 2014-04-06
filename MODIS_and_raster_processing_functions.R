@@ -93,11 +93,11 @@ mosaic_m_raster_list<-function(j,list_param){
   ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
   ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
   ## Start remove
-  #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
-  #files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
-  #if(length(files_to_remove)>0){
-  #  file.remove(files_to_remove)
-  #}
+  tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+  if(length(files_to_remove)>0){
+    file.remove(files_to_remove)
+  }
   #now remove temp files from raster package located in rasterTmpDir
   removeTmpFiles(h=0) #did not work if h is not set to 0
   ## end of remove section
@@ -117,11 +117,17 @@ create__m_raster_region <-function(j,list_param){
   reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
   out_rast_name <- list_param$out_rast_name[j]
   NA_flag_val <- list_param$NA_flag_val
+  input_proj_str <- list_param$input_proj_str #default null?
   
   ## Start #
   layer_rast<-raster(raster_name)
-  new_proj<-projection(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
-  region_temp_projected<-projectExtent(reg_ref_rast,CRS(new_proj))     #Project from ref to current region coord. system
+  if(is.null(input_proj_str)){
+    input_proj_str <-projection(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
+  }else{
+    
+    projection(layer_rast) <- input_proj_str #assign projection info
+  }
+  region_temp_projected<-projectExtent(reg_ref_rast,CRS(input_proj_str))     #Project from ref to current region coord. system
   layer_crop_rast<-crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
   #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
   layer_projected_rast<-projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb")
@@ -375,6 +381,8 @@ screen_for_qc_valid_fun <-function(i,list_param){
     ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
     ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
     ## Start remove
+    rm(rast_var_m)
+    rm(r_qc_m)
     tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
     files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
     if(length(files_to_remove)>0){
