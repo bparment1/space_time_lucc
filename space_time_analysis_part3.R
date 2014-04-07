@@ -3,7 +3,7 @@
 #This script prepares data for the Space-Time Symposium at Williams and Mary.                        
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 04/06/2014 
-#DATE MODIFIED: 04/06/2014
+#DATE MODIFIED: 04/07/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin and Space time project, YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -92,10 +92,10 @@ projection(r_stack) <- proj_modis_str
 
 #first create folder to store reprojected data:
 
-l_out_dir <- list(file.path(in_dir,"moore_NDVI_wgs84"))
+l_out_dir <- list(file.path(in_dir,"moore_NDVI_wgs84")) #store reprojected images there
 
 create_output_dir(1,l_out_dir)
-moore_window <- file.path(in_dir,"moore_window.rst")
+moore_w <- raster(moore_window)
 projection(moore_w) <- proj_modis_str
 ref_rast <- projectRaster(from=moore_w,crs=CRS_WGS84,method="ngb") #Check that it is using ngb
 
@@ -113,7 +113,8 @@ names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_n
 #test<-create__m_raster_region(1,list_param_create_region)
 
 #reg_var_moore_list <-mclapply(1:11, list_param=list_param_create_region, create__m_raster_region,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
-reg_var_list_moore_list <-mclapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+reg_var_moore_list <-mclapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+
 #reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region) 
 
 #test<-stack(reg_var_moore_list[1:4])
@@ -123,7 +124,6 @@ reg_var_list_moore_list <-mclapply(1:length(var_list_outnames), list_param=list_
 
 #ref_sejidos_name <- "~/Data/Space_Time/00_sejidos_group_sel5_ids.rst"
 #ref_winds_name <- "~/Data/Space_Time/00_windzones_moore_sin.rst"
-
 
 r_clip <- ref_rast
 NAvalue(r_clip) <- 0
@@ -163,6 +163,11 @@ NAvalue(r_clip) <- 0
 s_dat_var <- mask(s_dat_var,r_clip)
 
 EDGY_dat_spdf <- as(s_dat_var,"SpatialPointsDataFrame") #create a SpatialPointsDataFrame
+#need to drop the last two columns that contain x and y
+#pos1<- grep(c("x"),names(EDGY_dat_spdf))
+#pos2<- grep(c("y"),names(EDGY_dat_spdf))
+EDGY_dat_spdf <- EDGY_dat_spdf[,!(names(EDGY_dat_spdf) %in% c("x","y"))]
+
 NDVI_names <- paste("NDVI_",1:276,sep="")
 names(EDGY_dat_spdf) <- c(c("pix_id_r","r_x","r_y","z_winds","sejidos"),NDVI_names)
 #change names!!
