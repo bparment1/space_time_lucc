@@ -61,8 +61,8 @@ create_dir_fun <- function(out_dir,out_suffix){
 #############################
 ### Parameters and arguments
 
-in_dir <- "C:/Users/mmmillones/Dropbox/Space_Time" #ATLAS SERVER 
-out_dir <- "D:/DR_MARCO/SBT" #ATLAS SERVER 
+in_dir <- "/home/parmentier/Data/Space_Time" #ATLAS SERVER 
+out_dir <- "/home/parmentier/Data/Space_Time" #ATLAS SERVER 
 
 #load additional function!!
 function_analyses_paper <-"MODIS_and_raster_processing_functions_04172014.R"
@@ -112,6 +112,7 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 #CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_interp <- proj_modis_str
+product_type = c("NDVI") #can be LST, ALBEDO etc.
 
 #run all processing steps
 #steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
@@ -140,7 +141,6 @@ list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string i
 
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
-  #debug(modis_product_download)
   download_modis_obj <- modis_product_download(MODIS_product,version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
   out_dir_tiles <- (file.path(out_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
@@ -225,11 +225,21 @@ print(r_qc_s)
 #################################
 ##### STEP 3: APPLY/DEAL WITH QC FLAG AND SCREEN VALUE FOR VALID RANGE ###
 
-## Get QC information for lST and mask values
-QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
-names(QC_obj)
-#QC_data_lst <- QC_obj$LST
-QC_data_ndvi <- QC_obj$NDVI
+## Get QC information for lST/NDVI and mask values: imporove and automate this later
+if(product_type=="NDVI"){
+  QC_obj <- create_MODIS_QC_table(LST=FALSE, NDVI=TRUE) #Get table corresponding to QC for LST
+  names(QC_obj)
+  #QC_data_lst <- QC_obj$LST
+  QC_data_ndvi <- QC_obj$NDVI
+  #For NDVI: use this section to process. This is the default processing quality
+  #Select level 1:
+  qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
+  #Select level 2:
+  qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
+
+}
+
+#QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 
 #For LST
 #Select level 1:
@@ -239,11 +249,6 @@ QC_data_ndvi <- QC_obj$NDVI
 #Select level 3:
 #...
 
-#For NDVI: use this section to process
-#Select level 1:
-qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
-#Select level 2:
-qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
 #Select level 3:
 #...
 names(qc_lst_valid)
@@ -369,7 +374,7 @@ if (ref_rast_name==""){
   ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
   projection(ref_rast) <- CRS_interp #Assign given reference system from master script...
 }
-
+      
 ##Create output names for region
 out_suffix_var <-paste(out_suffix,file_format,sep="")          
 var_list_outnames <- change_names_file_list(list_var_mosaiced,out_suffix_var,"reg_",file_format,out_path=out_dir)     
