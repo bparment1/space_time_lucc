@@ -18,7 +18,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 12/28/2013
+#MODIFIED ON : 04/17/2013
 #PROJECT: NCEAS and general MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -43,46 +43,56 @@ library(raster)                              # Hijmans et al. package for raster
 library(rasterVis)
 library(spgwr)
 
+#Functions used in the script:
+
+create_dir_fun <- function(out_dir,out_suffix){
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    out_dir <- file.path(out_dir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
+  return(out_dir)
+}
+
+
 #############################
 ### Parameters and arguments
 
-#in_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
-#out_dir<- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan"
-#in_dir<- "/Volumes/Data/Ecuador_Project" #path to parent directory where output are/will be based
-#out_dir<- "/Volumes/Data/Ecuador_Project"
-in_dir <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/"
-out_dir <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/"
+in_dir <- "C:/Users/mmmillones/Dropbox/Space_Time" #ATLAS SERVER 
+out_dir <- "D:/DR_MARCO/SBT" #ATLAS SERVER 
 
-setwd(out_dir)
+#load additional function!!
+function_analyses_paper <-"MODIS_and_raster_processing_functions_04172014.R"
+script_path <- file.path(in_dir,"R") #path to script functions
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_12282013.R"
-script_path <- "/Users/Parmentier/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #infile_reg_outline=""  #input region outline defined by polygon: none for Venezuela
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
-#infile_reg_outline <- "/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_MX_tri-state_latlong.shp"  #input region outline defined by polygon: Oregon
 infile_reg_outline <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/region_outlines_ref_files/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
 
-#ref_rast_name<-""  #local raster name defining resolution, exent, local projection--. set on the fly?? 
-#ref_rast_name<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/GYRS_Municipios/GYRS_latlong_mask_1km.rst"  #local raster name defining resolution, exent: oregon
-ref_rast_name<-"/Volumes/Seagate Backup Plus Drive/region_outlines_ref_files/mean_day244_rescaled.rst"  #local raster name defining resolution, exent: oregon
+ref_rast_name<-file.path(in_dir,"/reg_input_yucatan/gyrs_sin_mask_1km_windowed.rst")  #local raster name defining resolution, exent: oregon
 
-#infile_modis_grid<-"/Users/Parmentier/Documents/Benoit/Space_Time_Yucatan/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
-infile_modis_grid <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/region_outlines_ref_files/modis_sinusoidal_grid_world.shp" #modis grid tiling system, global
+infile_modis_grid <- file.path(in_dir,"/reg_input_yucatan/modis_sinusoidal_grid_world.shp")
 
-out_suffix <- "12282013" #output suffix for the files that are masked for quality and for 
+out_suffix <- "04172014" #output suffix for the files that are masked for quality and for 
+create_out_dir_param <- TRUE #create output directory using previously set out_dir and/or out_suffix
 
 ## Other specific parameters
 
-MODIS_product <- "MOD13Q1.005" #NDVI/EVI 250m product (monthly)
+MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly)
 #MODIS_product <- "MOD11A1.005"
-#start_date <- "2001.01.01"
-#end_date <- "2001.03.05"
 start_date <- "2001.01.01"
-end_date <- "2012.12.31"
+#end_date <- "2001.03.05"
+#start_date <- "2006.01.01"
+end_date <- "2013.12.31"
 
-list_tiles_modis<- c("h09v08,h09v09,h10v09,h10v08") 
+#list_tiles_modis<- c("h09v08,h09v09,h10v09,h10v08") 
+list_tiles_modis<- c("h09v06,h09v07") 
+
 #list_tiles_modis<- NULL
 
 file_format_download <- "hdf"
@@ -107,24 +117,30 @@ CRS_interp <- proj_modis_str
 #steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 #run specific processing steps
 #steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
-steps_to_run <- list(download=FALSE,import=FALSE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
+
+#Create output directory
+
+if(create_out_dir_param==TRUE){
+  out_dir <- create_dir_fun(out_dir,out_suffix)
+  setwd(out_dir)
+}else{
+  setwd(out_dir) #use previoulsy defined directory
+}
 
 #####################################
 #### STEP 1:  DOWNLOAD MODIS PRODUCT  ####
 
 #Note that files are downloaded in the ouput directory in subdirectory with tile_name (e.g. h08v04)
 
-#if(list_tiles_modis==NULL){
-#  d
-#}
-
 list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
 
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
+  #debug(modis_product_download)
   download_modis_obj <- modis_product_download(MODIS_product,version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
   out_dir_tiles <- (file.path(out_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
@@ -143,8 +159,8 @@ if(steps_to_run$download==TRUE){
 #infile_LST <- list_files_tiles #use only hdf!!!
 #names(download_modis_obj)
 infile_var <- list_files_by_tiles[,1]
-#GDALinfo_hdf<-GDALinfo(infile_var[1],returnScaleOffset=FALSE)
-GDALinfo_hdf<-GDALinfo(infile_var[1])
+GDALinfo_hdf<-GDALinfo(infile_var[1],returnScaleOffset=FALSE)
+#GDALinfo_hdf<-GDALinfo(infile_var[1])
 str(GDALinfo_hdf)
 modis_subdataset <- attributes(GDALinfo_hdf)$subdsmdata
 print(modis_subdataset)
@@ -249,11 +265,11 @@ if(steps_to_run$apply_QC_flag==TRUE){
     out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
     file_format_s <-file_format
     #debug(create_raster_list_from_file_pat)
-    list_r_lst[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    list_r_lst[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
     
     out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
     out_suffix_s <- paste(qc_modis_name,sep="") #for qc flags
-    list_r_qc[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    list_r_qc[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
     
     ###
     
@@ -268,7 +284,6 @@ if(steps_to_run$apply_QC_flag==TRUE){
     
   }
 }
-
 
 #r_lst_by_tiles <-mapply(1:length(list_tiles_modis),FUN=list.files,pattern=paste".*.day_LST.*.rst$",path=out_dir_s,full.names=T) #Use mapply to pass multiple arguments
 #r_lst <- mapply(1:length(out_suffix_s),FUN=create_raster_list_from_file_pat,
@@ -320,27 +335,27 @@ list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mos
 
 # FIRST SET UP STUDY AREA ####
 
-if (infile_reg_outline!=""){
-  filename<-sub(".shp","",basename(infile_reg_outline))   #Removing path and the extension from file name.
-  reg_outline<-readOGR(dsn=dirname(infile_reg_outline), filename) # Read in the region outline
-}
+#if (infile_reg_outline!=""){
+#  filename<-sub(".shp","",basename(infile_reg_outline))   #Removing path and the extension from file name.
+#  reg_outline<-readOGR(dsn=dirname(infile_reg_outline), filename) # Read in the region outline
+#}
 #if no shapefile defining the study/processing area then create one using modis grid tiles
-if (infile_reg_outline==""){
-  filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
-  modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
-  reg_outline_modis <-create_modis_tiles_region(modis_grid,list_tiles_modis) #problem...this does not 
-  #align with extent of modis LST!!!
-  #now add projection on the fly
-  infile_reg_outline <-paste("modis_outline",out_region_name,"_",out_suffix,".shp",sep="")
-  writeOGR(reg_outline_modis,dsn= out_path,layer= sub(".shp","",infile_reg_outline), 
-           driver="ESRI Shapefile",overwrite_layer="TRUE")
-  reg_outline_obj <- define_crs_from_extent_fun(reg_outline_modis,buffer_dist)
-  reg_outline <-reg_outline_obj$reg_outline
-  CRS_interp <-reg_outline_obj$CRS_interp
-  infile_reg_outline <-paste("outline",out_region_name,"_",out_suffix,".shp",sep="")
-  writeOGR(reg_outline,dsn= out_path,layer= sub(".shp","",infile_reg_outline), 
-           driver="ESRI Shapefile",overwrite_layer="TRUE")
-}
+#if (infile_reg_outline==""){
+#  filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
+#  modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
+#  reg_outline_modis <-create_modis_tiles_region(modis_grid,list_tiles_modis) #problem...this does not 
+# #align with extent of modis LST!!!
+#now add projection on the fly
+#  infile_reg_outline <-paste("modis_outline",out_region_name,"_",out_suffix,".shp",sep="")
+#  writeOGR(reg_outline_modis,dsn= out_path,layer= sub(".shp","",infile_reg_outline), 
+#           driver="ESRI Shapefile",overwrite_layer="TRUE")
+#  reg_outline_obj <- define_crs_from_extent_fun(reg_outline_modis,buffer_dist)
+#  reg_outline <-reg_outline_obj$reg_outline
+#  CRS_interp <-reg_outline_obj$CRS_interp
+#  infile_reg_outline <-paste("outline",out_region_name,"_",out_suffix,".shp",sep="")
+#  writeOGR(reg_outline,dsn= out_path,layer= sub(".shp","",infile_reg_outline), 
+#          driver="ESRI Shapefile",overwrite_layer="TRUE")
+#}
 
 # NOW PROJECT AND CROP WIHT REF REGION ####
 
