@@ -4,7 +4,7 @@
 #Predictions are done with ARIMA model leveraging temporal correlation.                        
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/27/2013 
-#DATE MODIFIED: 04/22/2014
+#DATE MODIFIED: 04/21/2014
 #Version: 4
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
 #################################################################################################
@@ -57,7 +57,6 @@ raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
                                   
   return(pred_obj)
 }
-
 
 raster_ts_arima_predict <- function(i,list_param){
   
@@ -160,9 +159,28 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-#freq_r_stack(r_stack){
-#  
-#}
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
+
+extract_arima_mod_info <- function(i,list_param){
+  fname <- list_param$arima_mod_name[i]
+  arima_mod <- load_obj(fname)
+  #summary(arima_mod)
+  #coef(arima_mod)
+  arima_specification <- arima_mod$arma
+  arima_coef <-  coef(arima_mod)
+  #http://stackoverflow.com/questions/19483952/how-to-extract-integration-order-d-from-auto-arima
+  #a$arma[length(a$arma)-1] is the order d
+  #[1] 2 0 0 0 1 0 0
+  #A compact form of the specification, as a vector giving the number of AR (1), MA (2), 
+  #seasonal AR (3) and seasonal MA coefficients (4), 
+  #plus the period (5) and the number of non-seasonal (6) and seasonal differences (7).
+  
+  return(list(arima_specification,arima_coef))
+} 
 
 ################### Parameters and arguments #################
 
@@ -171,7 +189,7 @@ create_dir_fun <- function(out_dir,out_suffix){
 in_dir<- "/home/parmentier/Data/Space_Time/"
 #out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
 out_dir<- "/home/parmentier/Data/Space_Time"
-out_suffix <-"04222014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"04212014" #output suffix for the files that are masked for quality and for 
 
 moore_window <- file.path(in_dir,"moore_window.rst")
 
@@ -196,7 +214,7 @@ create_out_dir_param <- TRUE #create output directory using previously set out_d
 infile_reg_outline <- "~/Data/Space_Time/GYRS_MX_trisate_sin_windowed.shp"  #input region outline defined by polygon: Oregon
 ## Other specific parameters
 NA_flag_val<- -9999
-file_format <- ".tif" #problem wiht writing IDRISI for hte time being
+file_format <- ".rst" #problem wiht writing IDRISI for hte time being
 
 ############################  START SCRIPT ###################
 
@@ -227,7 +245,7 @@ if(create_out_dir_param==TRUE){
 ################# PART 1: TEMPORAL PREDICTIONS ###################
 
 #Hurricane August 17, 2007
-day_event <- strftime(as.Date("2007.08.17",format="%Y.%m.%d"),"%j")
+day_event<-strftime(as.Date("2007.08.17",format="%Y.%m.%d"),"%j")
 #153,154
 names(r_stack)
 grep(paste("2007",day_event,sep=""),names(r_stack))
@@ -256,25 +274,25 @@ n_pred_ahead <- 4 #number of temporal ARIMA predictions ahead..
 
 ## Now prepare predictions: should this a be a function?
 
-list_param_predict_arima_2 <- list(pix_val=pix_val2,na.rm=T,arima_order=c(1,1,0),n_ahead=n_pred_ahead)
-#undebug(raster_ts_arima_predict)
-#tmp_val <- raster_ts_arima_predict(2,list_param_predict_arima_2)
+list_param_predict_arima_2 <- list(pix_val=pix_val2,na.rm=T,arima_order=NULL,n_ahead=n_pred_ahead)
+#debug(raster_ts_arima_predict)
+#tmp_val <- raster_ts_arima_predict(1,list_param_predict_arima_2)
 ttx2 <- mclapply(1:length(pix_val2), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
 save(ttx2,file=paste("raster_ts_arima_predict_obj",out_suffix,".RData",sep=""))
+
+ttx3 <- load_obj("raster_ts_arima_predict_obj04212014.RData")
 #ttx2 <- mclapply(1:length(pix_val), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 12) #This is the end bracket from mclapply(...) statement
 #ttx2 <- lapply(1:length(pix_val2), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2) #This is the end bracket from mclapply(...) statement
 
+r_ref <- rast_ref
 file_format <- ".rst"
 NA_flag_val <- -9999
 
-out_rastnames <- paste(paste("NDVI_mooore_auto",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
-list_param_arima_convert <- list(rast_ref,ttx2,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+out_rastnames <- paste(paste("NDVI_pred_mooore_auto",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
+list_param_arima_convert <- list(rast_ref,ttx3,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
 names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
 
-
-#undebug(convert_arima_pred_to_raster)
-#pred_t_l<-lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert)
-
+#debug(convert_arima_pred_to_raster)
 ## Convert predicted values to raster...
 
 pred_t_l<-lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert)
@@ -283,3 +301,33 @@ pred_t_l <-unlist(pred_t_l)
 r_pred  <- stack(pred_t_l[-c(grep(pattern="error",pred_t_l))])
 r_error <- stack(pred_t_l[c(grep(pattern="error",pred_t_l))])
 
+r_huric_w <- subset(r_stack,153:156)
+#r_huric_w <- crop(r_huric_w,moore_w)
+
+r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
+names(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+
+#### Analyses of Model fitted...
+
+l_arima_mod <- list.files(path=out_dir,pattern="arima_mod.*.RData",full.names=T)
+
+list_param_extract_arima <- list(arima_mod_name=l_arima_mod)
+
+#debug(extract_arima_mod_info)
+test <- extract_arima_mod_info(1,list_param_extract_arima)
+
+#tmp_val <- raster_ts_arima_predict(1,list_param_predict_arima_2)
+l_arima_info <- mclapply(1:length(l_arima_mod), FUN=extract_arima_mod_info,list_param=list_param_extract_arima,
+                         mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+
+
+save(l_arima_mod,file=paste("l_arima_mod_info_obj",out_suffix,".RData",sep=""))
+
+#mod_specification <- mclapply(l_arima_info[1:11],FUN=function(i){i[[1]]},mc.preschedule=FALSE,mc.cores = 11)
+
+mod_specification <- mclapply(l_arima_info,FUN=function(i){i[[1]]},mc.preschedule=FALSE,mc.cores = 11)
+
+fitted_mod_spec <- do.call(rbind,mod_specification)
+save(l_arima_mod,file=paste("l_arima_mod_info_obj",out_suffix,".RData",sep=""))
+
+function(i){paste(fitted_mod_spec[i,],sep="")}
