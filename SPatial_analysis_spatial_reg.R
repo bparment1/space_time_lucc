@@ -218,13 +218,17 @@ predict_spat_reg_fun <- function(i,list_param){
   data_reg <- as.data.frame(data_reg_spdf)
   
   ## Add options later to choose the model type: lagsar,esar,spreg,lm etc.
-  sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                             data=data_reg,na.action=na.omit,zero.policy=TRUE,
-                             tol.solve=1e-36))
-  
-  #lm_mod <- try(lm(formula,data=test_df)) #tested model
-  sam.esar<- spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-              het = TRUE, verbose=TRUE)
+  if(mle==TRUE){
+    sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,zero.policy=TRUE,
+                               tol.solve=1e-36))
+  }
+  if(gmm==TRUE){
+    #lm_mod <- try(lm(formula,data=test_df)) #tested model
+    sam.esar<- spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE)
+    
+  }
   
   #summary(sam.esar)
   #Predicted values and
