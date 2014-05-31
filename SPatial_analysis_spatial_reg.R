@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 04/23/2014
+#DATE MODIFIED: 05/31/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -29,7 +29,7 @@ library(raster)
 #library(lubridate)
 library(colorRamps) #contains matlab.like color palette
 library(rgeos)
-#library(sphet)
+library(sphet) #contains spreg
 
 ###### Functions used in this script
 
@@ -52,7 +52,7 @@ create_uniform_mask_fun <- function(r_var,proj_str=NULL,r_clip=NULL){
   return(r_NA_mask)
 }
 
-
+##This function needs to be modified...it is still using two dates format...!!
 create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffix,out_dir="."){
   #Function to remove NA accross two raster layers and create no empty neighbour list
   #inputs: 
@@ -129,7 +129,7 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   return(nb_obj)
   
 }
-
+#Predict using the previous date and OLS
 predict_temp_reg_fun <-function(i,list_param){
   #Extract parameters/arguments
   #test_shp_fname <- list_param$list_shp[i]
@@ -186,7 +186,7 @@ predict_temp_reg_fun <-function(i,list_param){
   return(temp_reg_obj)
   
 }
-
+#Predict using lag or error model...
 predict_spat_reg_fun <- function(i,list_param){
   
   #Extract parameters/arguments
@@ -198,17 +198,18 @@ predict_spat_reg_fun <- function(i,list_param){
   list_models <- list_param$list_models
   out_suffix <- list_param$out_suffix[i]
   file_format <- list_param$file_format
-  
+  estimator <- list_param$estimator
+    
   #### START SCRIPT
   
   if(!is.null(list_models)){
     list_formulas<-lapply(list_models,as.formula,env=.GlobalEnv) #mulitple arguments passed to lapply!!  
     formula <-list_formulas[[i]]
   }
-  r_ref_s <- subset(r_ref_s,i)
+  r_ref_s <- subset(r_ref_s,i) #subset the relevant layer
   #out_dir and out_suffix set earlier
   
-  nb_obj_for_pred_t <-create_sp_poly_spatial_reg(r_ref_s,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_ref_s,r_clip,proj_str,out_suffix=out_suffix,out_dir)
   
   r_poly_name <- nb_obj_for_pred_t$r_poly_name
   reg_listw_w <- nb_obj_for_pred_t$r_listw
@@ -218,43 +219,55 @@ predict_spat_reg_fun <- function(i,list_param){
   data_reg <- as.data.frame(data_reg_spdf)
   
   ## Add options later to choose the model type: lagsar,esar,spreg,lm etc.
-  if(mle==TRUE){
-    sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+  ##Can also add a loop to use all of them and output table???
+  if(estimator=="mle"){ #maximum likelihood estimator is used for the 
+    spat_mod <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
                                data=data_reg,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
   }
-  if(gmm==TRUE){
+  if(estimator=="gmm"){ #generalized method of moments: this is not available old packages...
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
-    sam.esar<- spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-                     het = TRUE, verbose=TRUE)
-    
+    spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE))
+  }
+  #res<- spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+  #            het = TRUE, verbose=TRUE)
+  #ordinary least square, this estimator should not be used for spatial reg but is  here for didactic purposes (course):
+  #ie. values of standard errors can be compared with other...
+  if(estimator=="ols"){  
+    #lm_mod <- try(lm(formula,data=test_df)) #tested model
+    v2 <- lag(reg_listw_w,var=data_reg$v2) #creating a lag variable...#maybe this should be in the cleaning out function?
+    data_reg$v3 <- data_reg$v2 #this is the lag variable...
+    data_reg$v3 <- v2
+    spat_mod <- try(lm(v1 ~ v2,data=data_reg))
   }
   
   #summary(sam.esar)
   #Predicted values and
-  data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
-  data_reg_spdf$spat_reg_res <- sam.esar$residuals
+  data_reg_spdf$spat_reg_pred <- spat_mod$fitted.values #should work for any of the three model
+  data_reg_spdf$spat_reg_res <- spat_mod$residuals
   
   r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name <- paste("r_spat_pred","_",out_suffix,file_format,sep="")
+  raster_name <- paste("r_spat_pred_",estimator,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
   r_spat_res <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_res") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name2 <- paste("r_spat_res","_",out_suffix,file_format,sep="")
+  raster_name2 <- paste("r_spat_res_",estimator,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
   
-  #could add mod objet
-  spat_reg_obj <- list(sam.esar,r_poly_name,reg_listw_w,raster_name,raster_name2)
-  names(spat_reg_obj) <- c("esar_mod","r_poly_name","reg_listw_w","raster_pred","raster_res")
-  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj","_",out_suffix,".RData",sep="")))
+  #Return object contains model fitted, input and output rasters
+  spat_reg_obj <- list(spat_mod,r_poly_name,reg_listw_w,raster_name,raster_name2)
+  names(spat_reg_obj) <- c("spat_mod","r_poly_name","reg_listw_w","raster_pred","raster_res")
+  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",out_suffix,".RData",sep="")))
   
   return(spat_reg_obj)
 }
 
 create_dir_fun <- function(out_dir,out_suffix){
+  #if out_suffix is not null then append out_suffix string
   if(!is.null(out_suffix)){
     out_name <- paste("output_",out_suffix,sep="")
     out_dir <- file.path(out_dir,out_name)
@@ -310,11 +323,11 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 
 #in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
 #in_dir <-"/home/parmentier/Data/Space_Time"
-in_dir <- "/Users/benoitparmentier/Dropbox/Data/Space_Time/"
-out_dir <-  in_dir
+in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
+#out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 
-moore_window <- file.path(in_dir,"R_data_geoprocessing_workshop_04232014","window_test4.rst")
-winds_zones_fname <- file.path(in_dir,"R_data_geoprocessing_workshop_04232014","00_windzones_moore_sin.rst")
+moore_window <- file.path(in_dir,"window_test4.rst")
+winds_zones_fname <- file.path(in_dir,"00_windzones_moore_sin.rst")
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -324,7 +337,7 @@ CRS_interp <- proj_modis_str
 
 file_format <- ".rst"
 NA_value <- "-9999"
-out_suffix <-"_predictions_04232014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"_predictions_05312014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -333,8 +346,10 @@ create_out_dir_param=TRUE
 #set up the working directory
 #Create output directory
 
+out_dir <- in_dir #output will be created in the input dir
+out_suffix_s <- out_suffix #can modify name of output suffix
 if(create_out_dir_param==TRUE){
-  out_dir <- create_dir_fun(out_dir,out_suffix)
+  out_dir <- create_dir_fun(out_dir,out_suffix_s)
   setwd(out_dir)
 }else{
   setwd(out_dir) #use previoulsy defined directory
@@ -342,16 +357,17 @@ if(create_out_dir_param==TRUE){
 
 ## Read in data defining the area of study
 moore_w <- raster(moore_window) #read raster file
-moore_w <- moore_w > -999 #reclass image
+moore_w <- moore_w > -9999 #reclass image
 rast_ref <- moore_w #create ref image
+projection(rast_ref) <- CRS_WGS84
 freq(rast_ref) #frequency of values in rast_ref
 rast_ref[rast_ref==0] <- NA #assign NA for zero val
 
-winds_r <- raster(winds_zones_fname) #read raster file
+winds_r <- raster(winds_zones_fname) #read raster file, this is sinusoidal projection
 
 projection(winds_r) <- proj_modis_str #assign projection
 
-#reproject data to latlong WGS83 (EPSG4326)
+#reproject data to latlong WGS84 (EPSG4326)
 winds_wgs84 <- projectRaster(from=winds_r,crs=CRS_WGS84,method="ngb") #Check that it is using ngb
 
 #reads input NDVI time series images
@@ -361,6 +377,7 @@ reg_var_list <- list.files(path=file.path(in_dir,"moore_NDVI_wgs84"),
 
 #Create a stack of layers
 r_stack <- stack(reg_var_list) #276 images from 2001 to 2012 included
+projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
 levelplot(r_stack,layers=1:2) #show first 2 images (half a year more or less)
 plot(r_stack,y=1:2)
 
@@ -369,18 +386,18 @@ plot(r_stack,y=1:2)
 #Now mask and crop layer
 r_var <- subset(r_stack,153:154) #date before hurricane is 153
 r_clip <- rast_ref
-r_var <- crop(r_var,rast_ref)
+r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
 
 pix_id_r <- rast_ref
-values(pix_id_r) <- 1:ncell(rast_ref)
-pix_id_r <- mask(pix_id_r,rast_ref)
+values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
+pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
 
 #pix_id_r <- mask(pix_id_r,rast_ref)
-pix_id_poly <- rasterToPolygons(pix_id_r)# {raster}
-reg_list_nb <-poly2nb(pix_id_poly,pix_id_poly$pix_id_r,queen=TRUE)
-reg_listw_b <-nb2listw(reg_list_nb, style="B",zero.policy=TRUE)
-reg_listw_w <- nb2listw(reg_list_nb, style="W",zero.policy=TRUE)
-
+pix_id_poly <- rasterToPolygons(pix_id_r) #convert raster to polygon (raster package option)
+reg_list_nb <-poly2nb(pix_id_poly,pix_id_poly$pix_id_r,queen=TRUE) #list of neighbours generated from poly
+reg_listw_b <-nb2listw(reg_list_nb, style="B",zero.policy=TRUE) #weight list using binary style
+reg_listw_w <- nb2listw(reg_list_nb, style="W",zero.policy=TRUE) #weight list using row centering
+#Note that zero.policy allows for tracking features with zero neighbours
 #EDGY_dat_spdf_04062014
 # SAR model
 
@@ -388,7 +405,7 @@ data_reg <- as(r_var,"SpatialPointsDataFrame")
 data_reg <- as.data.frame(data_reg) #errorsarlm needs a dataframe!!!
 names(data_reg)[1:2] <- c("NDVI_153","NDVI_154")
   
-NDVI_selected="NDVI_153"
+NDVI_selected="NDVI_153" #this is the variable modeled...
 data_reg$NDVI <- data_reg[[NDVI_selected]]
 
 ## NOW RUN THE SPATIAL MODEL...
@@ -396,30 +413,32 @@ data_reg$NDVI <- data_reg[[NDVI_selected]]
 sam.esar <- errorsarlm(NDVI~1, listw=reg_listw_w, 
                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
                       tol.solve=1e-36)
-#This does not work because of NA!!
+#This does not work because some pixels have neighbours with NA!!
 
 ### CLEAN OUT AND SCREEN NA and list of neighbours
-
+#Let's use our function we created to clean out neighbours
 #Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
 #this is for prediction t -1 
-r_var <- subset(r_stack,153)
-r_clip <- rast_ref
-proj_str<- CRS_WGS84 
+r_var <- subset(r_stack,153) #this is the date we want to use to run the spatial regression
+r_clip <- rast_ref #this is the image defining the study area
+proj_str<- NULL #SRS/CRS projection system
 out_suffix_s <- paste("d153",out_suffix,sep="_")
 #out_dir and out_suffix set earlier
 
 nb_obj_for_pred_t_153 <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
-
-r_poly_name <- nb_obj_for_pred_t_153$r_poly_name
-reg_listw_w <- nb_obj_for_pred_t_153$r_listw
-
+names(nb_obj_for_pred_t_153) #show the structure of object (which is made up of a list)
+r_poly_name <- nb_obj_for_pred_t_153$r_poly_name #name of the shapefile that has been cleaned out
+reg_listw_w <- nb_obj_for_pred_t_153$r_listw #list of weights for cleaned out shapefile
+#Use OGR to load the screened out data: note that we have now 2858 features with 3 fields
 data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
-data_reg <- as.data.frame(data_reg_spdf)
+data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
 
+#Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
+#This takes a bit less than 3minutes for the dataset containing 2858 polygons
 sam.esar <- errorsarlm(v1~ 1, listw=reg_listw_w, 
                        data=data_reg,na.action=na.omit,zero.policy=TRUE,
-                       tol.solve=1e-36)
+                       tol.solve=1e-36) #tol.solve use in matrix operations
 summary(sam.esar)
 #Predicted values and
 data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
@@ -446,9 +465,10 @@ data_reg2$lm_temp_res <- lm_mod$residuals
 coordinates(data_reg2) <- c("x","y")
 proj4string(data_reg2) <- CRS_WGS84
 
-### NOW CREATE THE IMAGES BACK ...
+###########################################
+############## PART IV: Produce images from the individual predictions using time and space ####
 
-#proj4string(test_shp) <- proj_str
+### NOW CREATE THE IMAGES BACK ...
 
 r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
 #file_format <- ".rst"
@@ -461,24 +481,50 @@ raster_name <- paste("r_temp_pred","_",out_suffix,file_format,sep="")
 writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
 
 ## This can be repeated in a loop to produce predictions and compare the actual to predicted
+r_pred <- stack(r_spat_pred,r_temp_pred) #stack of predictions
+layerNames(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names when using R 3.0 or above
+plot(stack(r_spat_pred,r_temp_pred))
+levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="NDVI predictions after hurricane")
+
+#### Examining difference between predictions
+r_dif <- r_spat_pred - r_temp_pred
+plot(r_dif)
+hist(r_dif)
 
 ##############################################################################################
-############## PART IV PREDICT MODELS FOR USING TEMP AND SPAT REGRESSION OVER 4 time steps ####
+############## PART V PREDICT MODELS FOR USING TEMP AND SPAT REGRESSION OVER 4 time steps ####
 
-r_spat_var <- subset(r_stack,152:155)
-list_models <-NULL
-out_suffix_s <- paste("t_",152:155,out_suffix,sep="")
-list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format)
-names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format")
+##This times will we use an automated function to generate predictions over 4 dates
+
+### Predict using spatial regression
+r_spat_var <- subset(r_stack,152:155) #predict before (step 152) and three dates after (step 153)
+list_models <- NULL
+proj_str <- NULL #if null the raster images are not reprojected
+out_suffix_s <- paste("t_",152:155,out_suffix,sep="") #use mle estimation, name "mle" is included in the output automatically?
+estimator <- "mle"
+
+list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
+names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator")
 n_pred <- nlayers(r_spat_var)
+## First predict for one date for testing and comparison
 #debug(predict_spat_reg_fun)
-test_spat <- predict_spat_reg_fun(1,list_param_spat_reg)
+#use mle estimator
+testd1_spat_mle <- predict_spat_reg_fun(1,list_param_spat_reg)
+#use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
+list_param_spat_reg$estimator <- "gmm"
+#use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
+testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
+list_param_spat_reg$estimator <- "ols"
+testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
+## Now predict for four dates using "mle"
+list_param_spat_reg$estimator <- "mle"
 pred_spat_l <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 
 #pred_temp_l <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
-spat_pred_rast <- stack(lapply(pred_spat_l,FUN=function(x){x$raster_pred}))
+spat_pred_rast <- stack(lapply(pred_spat_l,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast <- stack(lapply(pred_spat_l,FUN=function(x){x$raster_res})) #get stack of predicted images
 
 ## Predict using temporal info: time steps 153,154,155,156
 
@@ -511,4 +557,4 @@ out_suffix_s <- paste("spat_",out_suffix,sep="_")
 ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_pred_spat,r_var_s=r_huric_w,r_zones=r_winds_m,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
-##### END OF SCRIPT ########
+##### END OF SCRIPT ########R
