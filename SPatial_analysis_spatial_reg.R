@@ -165,20 +165,20 @@ predict_temp_reg_fun <-function(i,list_param){
   data_reg2$lm_temp_res <- lm_mod$residuals
   
   coordinates(data_reg2) <- c("x","y")
-  proj4string(data_reg2) <- proj_str
+  proj4string(data_reg2) <- projection(r_ref_s)
   
-  r_temp_pred <- rasterize(data_reg2,rast_ref,field="lm_temp_pred") #this is the prediction from lm model
+  r_temp_pred <- rasterize(data_reg2,r_ref_s,field="lm_temp_pred") #this is the prediction from lm model
   #file_format <- ".rst"
   raster_name <- paste("r_temp_pred","_",out_suffix,file_format,sep="")
   writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
-  r_temp_res <- rasterize(data_reg2,r_ref,field="lm_temp_res") #this is the prediction from lm model
+  r_temp_res <- rasterize(data_reg2,r_ref_s,field="lm_temp_res") #this is the prediction from lm model
   #file_format <- ".rst"
   raster_name2 <- paste("r_temp_res","_",out_suffix,file_format,sep="")
   writeRaster(r_temp_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
   
-  #could add mod objet
+  #Adding mod object, the ARIMA model will be different...function...most likely
   temp_reg_obj <- list(lm_mod,raster_name,raster_name2)
   names(temp_reg_obj) <- c("lm_mod","raster_pred","raster_res")
   save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",out_suffix,".RData",sep="")))
@@ -302,8 +302,8 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   
   #Accuracy/errors by zones
   r_res_s <- r_pred_s - r_var_s #residuals, stack of raster layers
-  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean") #mean square error
-  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean") #absolute error
+  mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="mean") #mean square error
+  mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="mean") #absolute error
   rmse_zones_tb <- sqrt(mse_zones_tb) #root mean square error
   
   #Overall Accuracy/errors 
@@ -363,12 +363,10 @@ projection(rast_ref) <- CRS_WGS84
 freq(rast_ref) #frequency of values in rast_ref
 rast_ref[rast_ref==0] <- NA #assign NA for zero val
 
-winds_r <- raster(winds_zones_fname) #read raster file, this is sinusoidal projection
+r_winds <- raster(winds_zones_fname) #read raster file, this is sinusoidal projection
 
-projection(winds_r) <- proj_modis_str #assign projection
+projection(r_winds) <- proj_modis_str #assign projection
 
-#reproject data to latlong WGS84 (EPSG4326)
-winds_wgs84 <- projectRaster(from=winds_r,crs=CRS_WGS84,method="ngb") #Check that it is using ngb
 
 #reads input NDVI time series images
 reg_var_list <- list.files(path=file.path(in_dir,"moore_NDVI_wgs84"),
@@ -519,42 +517,115 @@ testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
 ## Now predict for four dates using "mle"
 list_param_spat_reg$estimator <- "mle"
-pred_spat_l <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+#Use parallel processing on MAC and Linux/Unix systems
+#pred_spat_mle <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,,mc.preschedule=FALSE,mc.cores = 2)
+#list_param_spat_reg$estimator <- "gmm"
+#pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 
-#pred_temp_l <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
-
-spat_pred_rast <- stack(lapply(pred_spat_l,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast <- stack(lapply(pred_spat_l,FUN=function(x){x$raster_res})) #get stack of predicted images
+spat_pred_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
 
 ## Predict using temporal info: time steps 153,154,155,156
 
-r_temp_var <- subset(r_stack,151:155)
+r_temp_var <- subset(r_stack,151:155) #need date 151 because it relies on the previous date in contrast to spat reg
 list_models <-NULL
 out_suffix_s <- paste("t_",152:155,out_suffix,sep="")
 list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format)
 names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format")
 n_pred <- nlayers(r_temp_var) -1
-#undebug(predict_temp_reg_fun)
-test_temp <- predict_temp_reg_fun(1,list_param_temp_reg)
+#debug(predict_temp_reg_fun)
+#test_temp <- predict_temp_reg_fun(1,list_param_temp_reg)
 
-pred_temp_l <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
+pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 temp_pred_rast <- stack(lapply(pred_temp_l,FUN=function(x){x$raster_pred}))
-
+temp_res_rast <- stack(lapply(pred_temp_l,FUN=function(x){x$raster_res}))
+levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
 
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
 r_huric_w <- subset(r_stack,152:155)
 r_huric_w <- crop(r_huric_w,rast_ref)
 
+#reproject data to latlong WGS84 (EPSG4326)
+r_winds_m <- projectRaster(from=r_winds,res_temp_s,method="ngb") #Check that it is using ngb
+
+#r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
 res_temp_s <- temp_pred_rast - r_huric_w
-res_spat_s <- spat_pred_rast _ r_huric_w
+res_spat_s <- spat_pred_rast - r_huric_w
 
 out_suffix_s <- paste("temp_",out_suffix,sep="_")
-ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_pred_temp,r_var_s=r_huric_w,r_zones=r_winds_m,
+#debug(calc_ac_stat_fun)
+ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_winds_m,
                                 file_format=file_format,out_suffix=out_suffix_s)
 out_suffix_s <- paste("spat_",out_suffix,sep="_")  
-ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_pred_spat,r_var_s=r_huric_w,r_zones=r_winds_m,
+ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_winds_m,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
-##### END OF SCRIPT ########R
+#mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+mae_tot_tb <- as.data.frame(mae_tot_tb)
+row.names(mae_tot_tb) <- NULL
+names(mae_tot_tb)<- c("spat_reg","temp")
+mae_tot_tb$time <- 1:4
+
+plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(800,2000))
+lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
+write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
+legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
+title("Overall MAE for spatial and temporal models")
+
+#### BY ZONES ASSESSMENT
+
+mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb[2:3,],
+                      ac_temp_obj$mae_zones_tb[2:3,])
+mae_zones_tb <- as.data.frame(mae_zones_tb)
+mae_zones_tb$method <- c("spat_reg","spat_reg","temp","temp")
+names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
+
+write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+
+#Very quick and dirty plot
+time <-1:4
+x <- as.numeric(mae_zones_tb[1,2:5])
+plot(x~time,, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
+x <- as.numeric(mae_zones_tb[2,2:5])
+lines(x~time, type="b",lty=2,col="magenta")
+#add temporal
+x <- as.numeric(mae_zones_tb[3,2:5]) #zone 4
+lines(x~time,, type="b",col="cyan",lty=1,ylim=c(400,2000))
+x <- as.numeric(mae_zones_tb[4,2:5]) #zone 5
+lines(x~time, type="b",lty=2,col="cyan")
+legend("topleft",legend=c("spat zone 4","spat zone 5","temp zone 4","temp zone 5"),
+        col=c("magenta","magenta","cyan","cyan"),lty=c(1,2,1,2))
+title("MAE per wind zones for spatial and temporal models")
+
+### more advanced plot to fix later....
+#mae_val <- (as.vector(as.matrix(mae_zones_tb[,2:5])))
+#avg_ac_tb <- as.data.frame(mae_val)
+
+# avg_ac_tb$metric <- rep("mae",length(mae_val))
+# avg_ac_tb$zones <- rep(c(3,4,5),4)
+# avg_ac_tb$time <- c(rep(1,6),rep(2,6),rep(3,6),rep(4,6))
+# avg_ac_tb$method <- rep(c("spat_reg","spat_reg","spat_reg","arima","arima","arima"),4)
+# names(avg_ac_tb)[1]<- "ac_val"
+# names_panel_plot <- c("time -1","time +1","time +2","time +3")
+# p <- xyplot(ac_val~zones|time, # |set up pannels using method_interp
+#             group=method,data=avg_ac_tb, #group by model (covariates)
+#             main="Average MAE by winds zones and time step ",
+#             type="b",as.table=TRUE,
+#             #strip = strip.custom(factor.levels=c("time -1","time +1","time +2","time +3")),
+#             strip=strip.custom(factor.levels=names_panel_plot),
+#             index.cond=list(c(1,2,3,4)), #this provides the order of the panels)
+#             pch=1:length(avg_ac_tb$method),
+#             par.settings=list(superpose.symbol = list(
+#               pch=1:length(avg_ac_tb$method))),
+#             auto.key=list(columns=1,space="right",title="Model",cex=1),
+#             #auto.key=list(columns=5),
+#             xlab="Winds zones",
+#             ylab="MAE for NDVI")
+# print(p)
+
+################### END OF SCRIPT ##################
