@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/31/2014
+#DATE MODIFIED: 06/19/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -86,7 +86,7 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   
   r_s <- stack(r1,r2) #will contain the values for teh spatial model
   #names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
-  layerNames(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+  names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
   
   if(!is.null(proj_str)){
     r_s <- projectRaster(r_s,crs=CRS_WGS84) #project to latlong
@@ -285,6 +285,29 @@ load_obj <- function(f){
   env[[nm]]
 }
 
+rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999){
+  data_spdf <- data_tb
+  coordinates(data_spdf) <- cbind(data_spdf[[coord_names[1]]],data_spdf[[coord_names[2]]])
+  proj4string(data_spdf) <- proj_str
+
+  data_pix <- as(data_spdf,"SpatialPixelsDataFrame")
+  data_grid <- as(d,"SpatialGridDataFrame") #making it a regural grid
+  r_ref <- raster(data_grid) #this is the ref image
+  rast_list <- vector("list",length=ncol(data_tb))
+  
+  for(i in 1:(ncol(data_tb))){
+    field_name <- names(data_tb)[i]
+    r <-rasterize(data_spdf,r_ref,field_name)
+    data_name<-paste("r_",field_name,sep="") #can add more later...
+    #raster_name<-paste(data_name,out_names[j],".tif", sep="")
+    raster_name<-paste(data_name,out_suffix,file_format, sep="")
+  
+    writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),overwrite=TRUE)
+    #Writing the data in a raster file format...
+    rast_list[i] <-file.path(out_dir,raster_name)
+  }
+  return(unlist(rast_list))
+}
 
 calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suffix){
   #Parameters:
@@ -321,9 +344,9 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 
 #####  Parameters and argument set up ###########
 
-#in_dir<-"C:/Users/mmmillones/Dropbox/Space_Time"
+in_dir<-"~/Data/Space_beats_time/R_Workshop_April2014"
 #in_dir <-"/home/parmentier/Data/Space_Time"
-in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
+#in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 #out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 
 moore_window <- file.path(in_dir,"window_test4.rst")
@@ -336,8 +359,9 @@ proj_str<- CRS_WGS84
 CRS_interp <- proj_modis_str
 
 file_format <- ".rst"
-NA_value <- "-9999"
-out_suffix <-"_predictions_05312014" #output suffix for the files that are masked for quality and for 
+NA_value <- -9999
+NA_flag_val <- NA_value
+out_suffix <-"_predictions_06192014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -355,37 +379,39 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-## Read in data defining the area of study
-moore_w <- raster(moore_window) #read raster file
-moore_w <- moore_w > -9999 #reclass image
-rast_ref <- moore_w #create ref image
-projection(rast_ref) <- CRS_WGS84
-freq(rast_ref) #frequency of values in rast_ref
-rast_ref[rast_ref==0] <- NA #assign NA for zero val
+data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
+data_tb <-read.table(data_fname,sep=",")
 
-r_winds <- raster(winds_zones_fname) #read raster file, this is sinusoidal projection
+#### Make this a function...
 
-projection(r_winds) <- proj_modis_str #assign projection
+coord_names <- c("XCoord","YCoord")
+l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val)
+#debug(rasterize_df_fun)
 
+reg_var_list <- l_rast[6:18]
+r_stack <- stack(reg_var_list)
+plot(1:13,data_tb[600,6:18])
 
+r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
 #reads input NDVI time series images
 reg_var_list <- list.files(path=file.path(in_dir,"moore_NDVI_wgs84"),
                            pattern="moore_reg.*.MOD13A2_A.*04062014.*.rst$",full.name=TRUE)
 #moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.tif
 
 #Create a stack of layers
-r_stack <- stack(reg_var_list) #276 images from 2001 to 2012 included
+#r_stack <- stack(reg_var_list) #276 images from 2001 to 2012 included
 projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
-levelplot(r_stack,layers=1:2) #show first 2 images (half a year more or less)
-plot(r_stack,y=1:2)
+levelplot(r_stack,layers=5:6) #show first 2 images (half a year more or less)
+plot(r_stack,y=5:6)
 
 ################ PART II : RUN SPATIAL REGRESSION ############
 
 #Now mask and crop layer
-r_var <- subset(r_stack,153:154) #date before hurricane is 153
-r_clip <- rast_ref
-r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
-
+r_var <- subset(r_stack,5:6) #date before hurricane is 153
+#r_clip <- rast_ref
+#r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
+rast_ref <- subset(r_stack,1)
+rast_ref <- rast_ref != NA_flag_val
 pix_id_r <- rast_ref
 values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
 pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
@@ -401,14 +427,14 @@ reg_listw_w <- nb2listw(reg_list_nb, style="W",zero.policy=TRUE) #weight list us
 
 data_reg <- as(r_var,"SpatialPointsDataFrame")
 data_reg <- as.data.frame(data_reg) #errorsarlm needs a dataframe!!!
-names(data_reg)[1:2] <- c("NDVI_153","NDVI_154")
+names(data_reg)[1:2] <- c("pop_2004","pop_2005")
   
-NDVI_selected="NDVI_153" #this is the variable modeled...
-data_reg$NDVI <- data_reg[[NDVI_selected]]
+var_selected="pop_2005" #this is the variable modeled...
+data_reg$var <- data_reg[[var_selected]]
 
 ## NOW RUN THE SPATIAL MODEL...
 
-sam.esar <- errorsarlm(NDVI~1, listw=reg_listw_w, 
+sam.esar <- errorsarlm(var~1, listw=reg_listw_w, 
                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
                       tol.solve=1e-36)
 #This does not work because some pixels have neighbours with NA!!
@@ -417,16 +443,16 @@ sam.esar <- errorsarlm(NDVI~1, listw=reg_listw_w,
 #Let's use our function we created to clean out neighbours
 #Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
 #this is for prediction t -1 
-r_var <- subset(r_stack,153) #this is the date we want to use to run the spatial regression
+r_var <- subset(r_stack,6) #this is the date we want to use to run the spatial regression
 r_clip <- rast_ref #this is the image defining the study area
 proj_str<- NULL #SRS/CRS projection system
-out_suffix_s <- paste("d153",out_suffix,sep="_")
+out_suffix_s <- paste("d2005",out_suffix,sep="_")
 #out_dir and out_suffix set earlier
 
-nb_obj_for_pred_t_153 <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
-names(nb_obj_for_pred_t_153) #show the structure of object (which is made up of a list)
-r_poly_name <- nb_obj_for_pred_t_153$r_poly_name #name of the shapefile that has been cleaned out
-reg_listw_w <- nb_obj_for_pred_t_153$r_listw #list of weights for cleaned out shapefile
+nb_obj_for_pred_t_2005 <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+names(nb_obj_for_pred_t_2005) #show the structure of object (which is made up of a list)
+r_poly_name <- nb_obj_for_pred_t_2005$r_poly_name #name of the shapefile that has been cleaned out
+reg_listw_w <- nb_obj_for_pred_t_2005$r_listw #list of weights for cleaned out shapefile
 #Use OGR to load the screened out data: note that we have now 2858 features with 3 fields
 data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
@@ -446,7 +472,7 @@ data_reg_spdf$spat_reg_res <- sam.esar$residuals
 
 #### NOW PREDICTION USING PREVIOUS TIME STEP 
 
-r_var2 <- subset(r_stack,152:153)
+r_var2 <- subset(r_stack,5:6)
 r_var2_w <- crop(r_var2,rast_ref)
 
 data_reg2_spdf <- as(r_var2_w,"SpatialPointsDataFrame")
@@ -480,9 +506,9 @@ writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
 
 ## This can be repeated in a loop to produce predictions and compare the actual to predicted
 r_pred <- stack(r_spat_pred,r_temp_pred) #stack of predictions
-layerNames(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names when using R 3.0 or above
+names(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names when using R 3.0 or above
 plot(stack(r_spat_pred,r_temp_pred))
-levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="NDVI predictions after hurricane")
+levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="Var predictions after hurricane")
 
 #### Examining difference between predictions
 r_dif <- r_spat_pred - r_temp_pred
@@ -495,10 +521,10 @@ hist(r_dif)
 ##This times will we use an automated function to generate predictions over 4 dates
 
 ### Predict using spatial regression
-r_spat_var <- subset(r_stack,152:155) #predict before (step 152) and three dates after (step 153)
+r_spat_var <- subset(r_stack,2:13) #predict before (step 152) and three dates after (step 153)
 list_models <- NULL
 proj_str <- NULL #if null the raster images are not reprojected
-out_suffix_s <- paste("t_",152:155,out_suffix,sep="") #use mle estimation, name "mle" is included in the output automatically?
+out_suffix_s <- paste("t_",2001:2012,out_suffix,sep="") #use mle estimation, name "mle" is included in the output automatically?
 estimator <- "mle"
 
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
@@ -527,11 +553,11 @@ spat_pred_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #g
 spat_res_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
 levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
 
-## Predict using temporal info: time steps 153,154,155,156
+## Predict using temporal info: time steps 2005..2012
 
-r_temp_var <- subset(r_stack,151:155) #need date 151 because it relies on the previous date in contrast to spat reg
+r_temp_var <- subset(r_stack,1:13) #need date 151 because it relies on the previous date in contrast to spat reg
 list_models <-NULL
-out_suffix_s <- paste("t_",152:155,out_suffix,sep="")
+out_suffix_s <- paste("t_",2001:2012,out_suffix,sep="")
 list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format)
 names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format")
 n_pred <- nlayers(r_temp_var) -1
@@ -540,17 +566,19 @@ n_pred <- nlayers(r_temp_var) -1
 
 pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
-temp_pred_rast <- stack(lapply(pred_temp_l,FUN=function(x){x$raster_pred}))
-temp_res_rast <- stack(lapply(pred_temp_l,FUN=function(x){x$raster_res}))
-levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
+temp_pred_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
+temp_res_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
+levelplot(temp_pred_rast) #view the four predictions using mle spatial reg.
+projection(temp_pred_rast) <- CRS_WGS84
+projection(spat_pred_rast) <- CRS_WGS84
 
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
-r_huric_w <- subset(r_stack,152:155)
+r_huric_w <- subset(r_stack,2:13)
 r_huric_w <- crop(r_huric_w,rast_ref)
 
 #reproject data to latlong WGS84 (EPSG4326)
-r_winds_m <- projectRaster(from=r_winds,res_temp_s,method="ngb") #Check that it is using ngb
+#r_winds_m <- projectRaster(from=r_winds,res_temp_s,method="ngb") #Check that it is using ngb
 
 #r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
 res_temp_s <- temp_pred_rast - r_huric_w
@@ -558,10 +586,10 @@ res_spat_s <- spat_pred_rast - r_huric_w
 
 out_suffix_s <- paste("temp_",out_suffix,sep="_")
 #debug(calc_ac_stat_fun)
-ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_winds_m,
+ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=rast_ref,
                                 file_format=file_format,out_suffix=out_suffix_s)
 out_suffix_s <- paste("spat_",out_suffix,sep="_")  
-ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_winds_m,
+ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=rast_ref,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
 #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
@@ -569,9 +597,9 @@ mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
 mae_tot_tb <- as.data.frame(mae_tot_tb)
 row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp")
-mae_tot_tb$time <- 1:4
+mae_tot_tb$time <- 1:12
 
-plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(800,2000))
+plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(0,1000))
 lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
@@ -579,20 +607,20 @@ title("Overall MAE for spatial and temporal models")
 
 #### BY ZONES ASSESSMENT
 
-mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb[2:3,],
-                      ac_temp_obj$mae_zones_tb[2:3,])
-mae_zones_tb <- as.data.frame(mae_zones_tb)
-mae_zones_tb$method <- c("spat_reg","spat_reg","temp","temp")
-names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
+#mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb[2:3,],
+#                      ac_temp_obj$mae_zones_tb[2:3,])
+#mae_zones_tb <- as.data.frame(mae_zones_tb)
+#mae_zones_tb$method <- c("spat_reg","spat_reg","temp","temp")
+#names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
 
-write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+#write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
 
 #Very quick and dirty plot
-time <-1:4
-x <- as.numeric(mae_zones_tb[1,2:5])
-plot(x~time,, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
-x <- as.numeric(mae_zones_tb[2,2:5])
-lines(x~time, type="b",lty=2,col="magenta")
+#time <-1:4
+#x <- as.numeric(mae_zones_tb[1,2:5])
+#plot(x~time,, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
+#x <- as.numeric(mae_zones_tb[2,2:5])
+#lines(x~time, type="b",lty=2,col="magenta")
 #add temporal
 x <- as.numeric(mae_zones_tb[3,2:5]) #zone 4
 lines(x~time,, type="b",col="cyan",lty=1,ylim=c(400,2000))
