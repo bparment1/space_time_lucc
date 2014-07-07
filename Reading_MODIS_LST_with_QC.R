@@ -18,7 +18,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 04/17/2013
+#MODIFIED ON : 07/07/2014
 #PROJECT: NCEAS and general MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -61,24 +61,28 @@ create_dir_fun <- function(out_dir,out_suffix){
 #############################
 ### Parameters and arguments
 
-in_dir <- "/home/parmentier/Data/Space_Time" #ATLAS SERVER 
-out_dir <- "/home/parmentier/Data/Space_Time" #ATLAS SERVER 
+in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
+out_dir <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/" #ATLAS SERVER 
 
 #load additional function!!
 function_analyses_paper <-"MODIS_and_raster_processing_functions_04172014.R"
-script_path <- file.path(in_dir,"R") #path to script functions
+script_path <- "/Data/Space_Time/R"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 #infile_reg_outline=""  #input region outline defined by polygon: none for Venezuela
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
-infile_reg_outline <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/region_outlines_ref_files/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
+#infile_reg_outline <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/region_outlines_ref_files/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
+infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
-ref_rast_name<-file.path(in_dir,"/reg_input_yucatan/gyrs_sin_mask_1km_windowed.rst")  #local raster name defining resolution, exent: oregon
+#ref_rast_name<-file.path(in_dir,"/reg_input_yucatan/gyrs_sin_mask_1km_windowed.rst")  #local raster name defining resolution, exent: oregon
 
-infile_modis_grid <- file.path(in_dir,"/reg_input_yucatan/modis_sinusoidal_grid_world.shp")
+ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
+infile_modis_grid <- "/data/project/layers/commons/modis/modis_sinusoidal/modis_sinusoidal_grid_world.shp")
+#infile_modis_grid <- file.path(in_dir,"/reg_input_yucatan/modis_sinusoidal_grid_world.shp")
 
-out_suffix <- "04172014" #output suffix for the files that are masked for quality and for 
+
+out_suffix <- "07072014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param <- TRUE #create output directory using previously set out_dir and/or out_suffix
 
 ## Other specific parameters
@@ -88,10 +92,12 @@ MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly)
 start_date <- "2001.01.01"
 #end_date <- "2001.03.05"
 #start_date <- "2006.01.01"
-end_date <- "2013.12.31"
+#end_date <- "2013.12.31"
+end_date <- "2010.12.31"
 
 #list_tiles_modis<- c("h09v08,h09v09,h10v09,h10v08") 
-list_tiles_modis<- c("h09v06,h09v07") 
+#list_tiles_modis<- c("h09v06,h09v07") 
+list_tiles_modis<- c("h08v04,h09v04") 
 
 #list_tiles_modis<- NULL
 
@@ -99,26 +105,27 @@ file_format_download <- "hdf"
 file_format <- ".rst" #output format
 NA_flag_val <- -9999 #Flag used for missing values for values out of range
 product_version <- 5
-#temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly)
-temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
+temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly)
+#temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
+scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+#scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done 
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get qc LST layer
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 #CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
-#CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
-CRS_interp <- proj_modis_str
-product_type = c("NDVI") #can be LST, ALBEDO etc.
+CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+#CRS_interp <- proj_modis_str
+#product_type = c("NDVI") #can be LST, ALBEDO etc.
+product_type = c("LST") #can be LST, ALBEDO etc.
 
 #run all processing steps
 #steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 #run specific processing steps
 #steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
-steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -142,11 +149,11 @@ list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string i
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
   download_modis_obj <- modis_product_download(MODIS_product,version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
-  out_dir_tiles <- (file.path(out_dir,list_tiles_modis))
+  out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
   colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
 }else{
-  out_dir_tiles <- (file.path(out_dir,list_tiles_modis))
+  out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,pattern="*.hdf$",path=out_dir_tiles,full.names=T) #Use mapply to pass multiple arguments
   colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
 }
@@ -170,9 +177,9 @@ print(modis_subdataset)
 #modis_subdataset_str2<- "SUBDATASET_3_NAME=HDF4_EOS:EOS_GRID:\"MOD13Q1.A2012353.h10v08.005.2013009145323.hdf\":MODIS_Grid_16DAY_250m_500m_VI:250m 16 days VI Quality"
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset_str1,"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset_str2,"\""))[3] #Get day QC layer
-
+#should select automatically QC flag!!
 modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
-modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day QC layer
+modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
 
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset_str1,"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset_str2,"\""))[3] #Get day QC layer
@@ -197,8 +204,8 @@ if(steps_to_run$import==TRUE){
     out_suffix_s <- var_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
-    #undebug(import_list_modis_layers_fun)
-    #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+    debug(import_list_modis_layers_fun)
+    r1 <- import_list_modis_layers_fun(1,list_param_import_modis)
     r_var_s <- lapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis)
     #r_var_s <- mclapply(1:11,FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
@@ -239,15 +246,29 @@ if(product_type=="NDVI"){
 
 }
 
+## Get QC information for lST/NDVI and mask values: imporove and automate this later
+if(product_type=="LST"){
+  QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
+  names(QC_obj)
+  #For LST
+  QC_data_lst <- QC_obj$LST
+  #Select level 1:
+  qc_lst_valid <- subset(x=QC_data_lst,QA_word1 == "LST Good Quality" | QA_word1 =="LST Produced,Check QA")
+  #Select level 2:
+  qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 == "Good Data" | QA_word2 =="Other Quality")
+  #Select level 3:
+  #...
+
+  #QC_data_ndvi <- QC_obj$NDVI
+  #For NDVI: use this section to process. This is the default processing quality
+  #Select level 1:
+  #qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
+  #Select level 2:
+  #qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
+
+}
 #QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 
-#For LST
-#Select level 1:
-#qc_lst_valid <- subset(x=QC_data_lst,QA_word1 == "LST Good Quality" | QA_word1 =="LST Produced,Check QA")
-#Select level 2:
-#qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 == "Good Data" | QA_word2 =="Other Quality")
-#Select level 3:
-#...
 
 #Select level 3:
 #...
