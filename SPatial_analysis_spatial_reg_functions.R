@@ -329,4 +329,28 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   return(ac_obj)
 }
 
+rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999){
+  data_spdf <- data_tb
+  coordinates(data_spdf) <- cbind(data_spdf[[coord_names[1]]],data_spdf[[coord_names[2]]])
+  proj4string(data_spdf) <- proj_str
+
+  data_pix <- as(data_spdf,"SpatialPixelsDataFrame")
+  data_grid <- as(data_pix,"SpatialGridDataFrame") #making it a regural grid
+  r_ref <- raster(data_grid) #this is the ref image
+  rast_list <- vector("list",length=ncol(data_tb))
+  
+  for(i in 1:(ncol(data_tb))){
+    field_name <- names(data_tb)[i]
+    r <-rasterize(data_spdf,r_ref,field_name)
+    data_name<-paste("r_",field_name,sep="") #can add more later...
+    #raster_name<-paste(data_name,out_names[j],".tif", sep="")
+    raster_name<-paste(data_name,out_suffix,file_format, sep="")
+  
+    writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),overwrite=TRUE)
+    #Writing the data in a raster file format...
+    rast_list[i] <-file.path(out_dir,raster_name)
+  }
+  return(unlist(rast_list))
+}
+
 ################### END OF SCRIPT ##################
