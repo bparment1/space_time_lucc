@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 07/14/2014
+#DATE MODIFIED: 09/09/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -254,7 +254,11 @@ predict_spat_reg_fun <- function(i,list_param){
   
   #summary(sam.esar)
   #Predicted values and
-  data_reg_spdf$spat_reg_pred <- spat_mod$fitted.values #should work for any of the three model
+  if(estimator!="gmm"){
+    data_reg_spdf$spat_reg_pred <- spat_mod$fitted.values #should work for any of the three model
+  }else{
+    data_reg_spdf$spat_reg_pred <- spat_mod$residuals + data_reg_spdf$v1
+  }
   data_reg_spdf$spat_reg_res <- spat_mod$residuals
   
   r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
@@ -329,19 +333,39 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   return(ac_obj)
 }
 
-rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999){
+#Fuction to rasterize a table with coordinates and variables...,maybe add option for ref image??
+rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999,tolerance_val= 0.000120005){
   data_spdf <- data_tb
   coordinates(data_spdf) <- cbind(data_spdf[[coord_names[1]]],data_spdf[[coord_names[2]]])
   proj4string(data_spdf) <- proj_str
 
-  data_pix <- as(data_spdf,"SpatialPixelsDataFrame")
+  data_pix <- try(as(data_spdf,"SpatialPixelsDataFrame"))
+  #tolerance_val <- 0.000120005 
+  #tolerance_val <- 0.000856898
+  if(inherits(data_pix,"try-error")){
+      data_pix <- SpatialPixelsDataFrame(data_spdf, data=data_spdf@data, tolerance=tolerance_val) 
+  }
+  
+  #test <- as(data_spdf,"SpatialPixelsDataFrame")
+
+  # set up an 'empty' raster, here via an extent object derived from your data
+  #e <- extent(s100[,1:2])
+  #e <- e + 1000 # add this as all y's are the same
+
+  #r <- raster(e, ncol=10, nrow=2)
+  # or r <- raster(xmn=, xmx=,  ...
+
   data_grid <- as(data_pix,"SpatialGridDataFrame") #making it a regural grid
   r_ref <- raster(data_grid) #this is the ref image
   rast_list <- vector("list",length=ncol(data_tb))
   
   for(i in 1:(ncol(data_tb))){
     field_name <- names(data_tb)[i]
-    r <-rasterize(data_spdf,r_ref,field_name)
+    var <- as.numeric(data_spdf[[field_name]])
+    data_spdf$var  <- var
+    #r <-rasterize(data_spdf,r_ref,field_name)
+    r <-rasterize(data_spdf,r_ref,"var",NAflag=NA_flag_val,fun=mean) #prolem with NA in NDVI!!
+
     data_name<-paste("r_",field_name,sep="") #can add more later...
     #raster_name<-paste(data_name,out_names[j],".tif", sep="")
     raster_name<-paste(data_name,out_suffix,file_format, sep="")
