@@ -264,8 +264,8 @@ r_huric_w <- subset(r_stack_w,152:156) #date before hurricane and  after
 #pix_val <- extract(r_stack,moore_dat,df=TRUE)
 #pix_val <- t(pix_val[,1:153])
 pix_val2 <- as.data.frame(pix_val)
-pix_val2 <-  pix_val2[,1:152]
-pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))
+pix_val2 <-  pix_val2[,1:152] 
+pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))#dim 152x26,616
 #
 #ttx2 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
 # <- mclapply(pix_val,,)
@@ -277,7 +277,7 @@ n_pred_ahead <- 4 #number of temporal ARIMA predictions ahead..
 list_param_predict_arima_2 <- list(pix_val=pix_val2,na.rm=T,arima_order=NULL,n_ahead=n_pred_ahead)
 #debug(raster_ts_arima_predict)
 #tmp_val <- raster_ts_arima_predict(1,list_param_predict_arima_2)
-ttx2 <- mclapply(1:length(pix_val2), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+ttx2 <- mclapply(1:length(pix_val2), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 11) 
 save(ttx2,file=paste("raster_ts_arima_predict_obj",out_suffix,".RData",sep=""))
 
 ttx3 <- load_obj("raster_ts_arima_predict_obj04212014.RData")
@@ -321,13 +321,30 @@ l_arima_info <- mclapply(1:length(l_arima_mod), FUN=extract_arima_mod_info,list_
                          mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
 
 
-save(l_arima_mod,file=paste("l_arima_mod_info_obj",out_suffix,".RData",sep=""))
-
+save(l_arima_mod,file=paste("l_arima_info_obj",out_suffix,".RData",sep=""))
+#l_arima_info <-load_obj("l_arima_mod_info_obj04212014.RData")
 #mod_specification <- mclapply(l_arima_info[1:11],FUN=function(i){i[[1]]},mc.preschedule=FALSE,mc.cores = 11)
-
+#test_name <- list.files(".","l_arima_mod_info_obj.*.RData")
 mod_specification <- mclapply(l_arima_info,FUN=function(i){i[[1]]},mc.preschedule=FALSE,mc.cores = 11)
+mod_specification2 <- mod_specification[1:26216]
+#[1] 2 0 0 0 1 0 0
+#A compact form of the specification, as a vector giving the number of AR (1), MA (2), 
+#seasonal AR (3) and seasonal MA coefficients (4), 
+#plus the period (5) and the number of non-seasonal (6) and seasonal differences (7).
 
-fitted_mod_spec <- do.call(rbind,mod_specification)
-save(l_arima_mod,file=paste("l_arima_mod_info_obj",out_suffix,".RData",sep=""))
+fitted_mod_spec <- as.data.frame(do.call(rbind,mod_specification2))
+#should add  id or coordinates!!!!so you can map it!!
+names(fitted_mod_spec) <- c("AR","MA","S_AR","S_MA","P","D","S_D")
+arima_mod_str <- lapply(1:nrow(fitted_mod_spec),FUN=function(i){paste(c(fitted_mod_spec[i,]),collapse="_")})
+fitted_mod_spec$mod <- arima_mod_str
 
-function(i){paste(fitted_mod_spec[i,],sep="")}
+read.table(file=paste("fitted_mod_spec_tb","_",out_suffix,".txt",)
+
+write.table(fitted_mod_spec,file=paste("fitted_mod_spec_tb","_",out_suffix,".txt",col.names=T,row.names=F,sep=","))
+
+## Now plot
+            
+hist(fitted_mod_spec$AR) #how to present everything at once?? should this be transposed?
+hist(fitted_mod_spec$MA)
+hist(fitted_mod_spec$mod)
+################### END OF SCRIPT ################
