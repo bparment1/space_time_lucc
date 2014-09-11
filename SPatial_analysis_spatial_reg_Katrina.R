@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/18/2014
+#DATE MODIFIED: 09/09/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -30,12 +30,13 @@ library(raster)
 library(colorRamps) #contains matlab.like color palette
 library(rgeos)
 library(sphet) #contains spreg
+library(reshape) #Data format and type transformation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_08172014_functions.R"
-
-script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09092014_functions.R"
+script_path <- "/home/parmentier/Data/Space_Time/R" #path to script
+#script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 
@@ -58,7 +59,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"_predictions_08182014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"_predictions_09092014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -76,30 +77,61 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
+#data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
+data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
+
 data_tb <-read.table(data_fname,sep=",",header=T)
 
 #### Make this a function...
 
+#Transform table text file into a raster image
 coord_names <- c("XCoord","YCoord")
-l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val)
+#coord_names <- c("POINT_X1","POINT_Y1")
+l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
 #debug(rasterize_df_fun)
 
-reg_var_list <- l_rast[6:18]
+r_FID <- raster(l_rast[4])
+plot(r_FID,main="Pixel ID")
+freq(r_FID)
+
+reg_var_list <- l_rast[7:19] #only select population raster
 r_stack <- stack(reg_var_list)
-plot(1:13,data_tb[600,6:18],type="l")
+names(r_stack) <- 2000:2012
 
-#r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
-#reads input NDVI time series images
-reg_var_list <- list.files(path=file.path(in_dir,"moore_NDVI_wgs84"),
-                           pattern="moore_reg.*.MOD13A2_A.*04062014.*.rst$",full.name=TRUE)
-#moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.tif
-
-#Create a stack of layers
-#r_stack <- stack(reg_var_list) #276 images from 2001 to 2012 included
-projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
-levelplot(r_stack,layers=5:6) #show first 2 images (half a year more or less)
+#projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
+levelplot(r_stack,layers=5:6,col.regions=matlab.like(125)) #show first 2 images (half a year more or less)
 plot(r_stack,y=5:6)
+histogram(subset(r_stack,5:6))
+
+plot(2000:2012,data_tb[300,6:18],type="b", main="Population temporal  profile at pixel 300 and pixel 200 (red)",
+     ylim=c(0,1600),ylab="Population",xlab="Year")#This is for line 600 in the table
+abline(v=2005,lty=3)
+lines(2000:2012,data_tb[200,6:18],col="red",type="b", main="Population temporal  profile at pixel 600",
+     ylab="Population",xlab="Year")#This is for line 600 in the table
+
+data_tb$FID[300] #FID 599
+data_tb$FID[200] #FID 599
+
+data_tb
+
+mean_vals <- colMeans(data_tb[,7:19],na.rm=T)
+plot(2000:2012,mean_vals,type="b",ylab="pop",xlab="year",
+     main="Average Population")
+lines(2000:2012,data_tb[200,6:18],col="red",type="b", main="Population temporal  profile at pixel 600",
+     ylab="Population",xlab="Year")#This is for line 600 in the table
+data_tb
+
+mean_by_zones <- aggregate(.~Elev_Zone,data=data_tb[,c(7:19,22)],mean)
+plot(2000:2012,as.numeric(mean_by_zones[1,2:14]),type="b",
+     col="black",lty=1,ylim=c(0,2000),
+     ylab="pop",xlab="year")
+lines(2000:2012,as.numeric(mean_by_zones[2,2:14]),type="b",col="red",lty=2)
+lines(2000:2012,as.numeric(mean_by_zones[3,2:14]),type="b",col="blue",lty=3)
+lines(2000:2012,as.numeric(mean_by_zones[4,2:14]),type="b",col="green",lty=4)
+
+legend("topright",legend=c("zone 1","zone 2","zone 3","zone 4"),
+        col=c("black","red","blue","green"),lty=c(1,2,3,4))
+title("Average pop per elevation zones (observed data)")
 
 ################ PART II : RUN SPATIAL REGRESSION ############
 
@@ -134,7 +166,6 @@ data_reg$var <- data_reg[[var_selected]]
 sam.esar <- errorsarlm(var~1, listw=reg_listw_w, 
                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
                       tol.solve=1e-36)
-#This does not work because some pixels have neighbours with NA!!
 
 ### CLEAN OUT AND SCREEN NA and list of neighbours
 #Let's use our function we created to clean out neighbours
@@ -153,6 +184,8 @@ reg_listw_w <- nb_obj_for_pred_t_2005$r_listw #list of weights for cleaned out s
 #Use OGR to load the screened out data: note that we have now 2858 features with 3 fields
 data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
+
+
 data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
 
 #Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
@@ -164,6 +197,16 @@ summary(sam.esar)
 #Predicted values and
 data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
 data_reg_spdf$spat_reg_res <- sam.esar$residuals
+
+
+spat_mod <- try(spautolm(v1 ~ 1,data=data_reg, listw= reg_listw_w,na.action=na.omit,zero.policy=TRUE,
+                               tol.solve=1e-36))
+spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE))
+
+#res<-gstslshet(v1 ~ v2 , data=data_reg, listw=reg_listw_w)
+spautolm <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE))
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
 
@@ -207,11 +250,12 @@ names(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names w
 plot(r_pred)
 
 levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="Var predictions after hurricane")
+levelplot(r_pred,col.regions=matlab.like(25),main="Var predictions after hurricane")
 
 #### Examining difference between predictions
 r_dif <- r_spat_pred - r_temp_pred
-plot(r_dif)
-hist(r_dif)
+plot(r_dif,main="Difference between spatial and temporal models")
+hist(r_dif,main="Difference between spatial and temporal models")
 
 ##############################################################################################
 ############## PART V PREDICT MODELS FOR USING TEMP AND SPAT REGRESSION OVER 4 time steps ####
@@ -235,7 +279,9 @@ testd1_spat_mle <- predict_spat_reg_fun(1,list_param_spat_reg)
 #use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
 list_param_spat_reg$estimator <- "gmm"
 #use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
+#debug(predict_spat_reg_fun)
 testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
+
 list_param_spat_reg$estimator <- "ols"
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
@@ -244,12 +290,18 @@ list_param_spat_reg$estimator <- "mle"
 pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 #Use parallel processing on MAC and Linux/Unix systems
 #pred_spat_mle <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,,mc.preschedule=FALSE,mc.cores = 2)
-#list_param_spat_reg$estimator <- "gmm"
-#pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+list_param_spat_reg$estimator <- "gmm"
+pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 
 spat_pred_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #get stack of predicted images
 spat_res_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
 levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+
+spat_pred_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_gmm) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_gmm,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ## Predict using temporal info: time steps 2005..2012
 
@@ -269,6 +321,7 @@ temp_res_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
 levelplot(temp_pred_rast) #view the four predictions using mle spatial reg.
 projection(temp_pred_rast) <- CRS_WGS84
 projection(spat_pred_rast) <- CRS_WGS84
+projection(spat_pred_rast_gmm) <- CRS_WGS84
 
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
@@ -282,12 +335,33 @@ r_huric_w <- crop(r_huric_w,rast_ref)
 res_temp_s <- temp_pred_rast - r_huric_w
 res_spat_s <- spat_pred_rast - r_huric_w
 
-out_suffix_s <- paste("temp_",out_suffix,sep="_")
+names(temp_pred_rast)
+names(spat_pred_rast)
+names(res_temp_s) <- sub("predictions","residuals",names(res_temp_s))
+names(res_spat_s) <- sub("predictions","residuals",names(res_spat_s))
+r_in <-stack(l_rast)
+projection(r_in) <- CRS_WGS84
+r_results <- stack(r_in,temp_pred_rast,spat_pred_rast,res_temp_s,res_spat_s,r_zones)
+
+dat_out <- as.data.frame(r_results)
+dat_out <- na.omit(dat_out)
+write.table(dat_out,file=paste("dat_out_",out_suffix,".txt",sep=""),
+            row.names=F,sep=",",col.names=T)
+
 #debug(calc_ac_stat_fun)
-ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=rast_ref,
+projection(rast_ref) <- CRS_WGS84
+r_zones <- raster(l_rast[22])
+projection(r_zones) <- CRS_WGS84
+
+out_suffix_s <- paste("temp_",out_suffix,sep="_")
+ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_zones,
                                 file_format=file_format,out_suffix=out_suffix_s)
 out_suffix_s <- paste("spat_",out_suffix,sep="_")  
-ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=rast_ref,
+ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_zones,
+                                file_format=file_format,out_suffix=out_suffix_s)
+
+out_suffix_s <- paste("spat_gmm",out_suffix,sep="_")  
+ac_spat_gmm_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_gmm,r_var_s=r_huric_w,r_zones=rast_ref,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
 #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
@@ -297,36 +371,130 @@ row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp")
 mae_tot_tb$time <- 1:12
 
-plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(0,1000))
+plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,
+     ylim=c(0,1000),ylab="MAE",xlab="time step")
 lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
-write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
-legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
+legend("topright",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
 title("Overall MAE for spatial and temporal models")
+
+write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
+
+##Now add GMM
+
+#mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+#gmm_mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb,ac_spat_gmm_obj$mae_tb))
+#mae_tot_tb <- as.data.frame(gmm_mae_tot_tb)
+#row.names(mae_tot_tb) <- NULL
+#names(mae_tot_tb)<- c("spat_reg","temp","gmm")
+#mae_tot_tb$time <- 1:12
+
+#plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(0,1000))
+#lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
+#lines(gmm ~ time, type="b",col="cyan",data=mae_tot_tb)
+
+#write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
+#legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
+#title("Overall MAE for spatial and temporal models")
 
 #### BY ZONES ASSESSMENT
 
-#mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb[2:3,],
-#                      ac_temp_obj$mae_zones_tb[2:3,])
-#mae_zones_tb <- as.data.frame(mae_zones_tb)
-#mae_zones_tb$method <- c("spat_reg","spat_reg","temp","temp")
-#names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
+mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb[1:4,],
+                      ac_temp_obj$mae_zones_tb[1:4,])
+mae_zones_tb <- as.data.frame(mae_zones_tb)
+mae_zones_tb$method <- c("spat_reg","spat_reg","spat_reg","spat_reg",
+                         "temp","temp","temp","temp")
 
-#write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+#names(mae_zones_tb) <- c("zones",paste("d",2001:2012,sep="_"),"method")
+names(mae_zones_tb) <- c("zones",2001:2012,"method")
+
+write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+
+#prepare to automate the plotting of   all columns
+
+#Should make this a function...
+mydata<-mae_zones_tb
+dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+#dd$lag <- mydata$lag 
+dd$zones <- mydata$zones
+dd$method <- mydata$method
+#drop first four rows
+dd <- dd[9:nrow(dd),]
+
+xyplot(data~which |zones,group=method,dd,type="b",xlab="year",ylab="pop",
+       strip = strip.custom(factor.levels=c("z1","z2","z3","z4")))
+#             strip=strip.custom(factor.levels=names_panel_plot),
+
+xyplot(data~which |zones+method,dd,type="b",xlab="year",ylab="lab")
+
+xyplot(data~which,groups=zones+method,dd,type="b")
+xyplot(data~which, groups=method+as.character(zones),dd,type="b")
+
+plot(1:12,as.numeric(mae_zones_tb[1,2:13]),type="b",col="black",ylim=c(0,1000))
+lines(1:12,as.numeric(mae_zones_tb[2,2:13]),type="b",col="red")
+lines(1:12,as.numeric(mae_zones_tb[3,2:13]),type="b",col="blue")
+lines(1:12,as.numeric(mae_zones_tb[4,2:13]),type="b",col="green")
+
+#Zone 1: spatial and temp
+plot(1:12,as.numeric(mae_zones_tb[1,2:13]),type="b",col="magenta",
+     ylim=c(0,1000),lty=1,ylab="pop",xlab="year")
+lines(1:12,as.numeric(mae_zones_tb[5,2:13]),type="b",col="cyan",
+      lty=2)
+legend("topleft",legend=c("spat zone 1","temp zone 1"),
+        col=c("magenta","cyan"),lty=c(1,2))
+
+#Zone 2: spatial and temp
+plot(1:12,as.numeric(mae_zones_tb[2,2:13]),type="b",col="magenta",
+     ylim=c(0,1000),lty=1,xlab="year",ylab="year")
+lines(1:12,as.numeric(mae_zones_tb[6,2:13]),type="b",col="cyan",
+      lty=2)
+legend("topleft",legend=c("spat zone 2","temp zone 2"),
+        col=c("magenta","cyan"),lty=c(1,2))
+
+#Zone 3: spatial and temp
+plot(1:12,as.numeric(mae_zones_tb[3,2:13]),type="b",col="magenta",
+     ylim=c(0,1000),lty=1)
+lines(1:12,as.numeric(mae_zones_tb[7,2:13]),type="b",col="cyan",
+      lty=2)
+legend("topleft",legend=c("spat zone 3","temp zone 3"),
+        col=c("magenta","cyan"),lty=c(1,2))
+
+#Zone 4: spatial and temp
+plot(1:12,as.numeric(mae_zones_tb[4,2:13]),type="b",col="magenta",
+     ylim=c(0,1000),lty=1)
+lines(1:12,as.numeric(mae_zones_tb[8,2:13]),type="b",col="cyan",
+      lty=2)
+legend("topleft",legend=c("spat zone 4","temp zone 4"),
+        col=c("magenta","cyan"),lty=c(1,2))
 
 #Very quick and dirty plot
-#time <-1:4
+#time <-1:12
 #x <- as.numeric(mae_zones_tb[1,2:5])
+
+#mod_pat<-glob2rx("d_*")
+#var_pat<-grep(mod_pat,names(mae_zones_tb),value=TRUE) # using grep with "value" extracts the matching names
+#var_pat <- names(mae_zones_tb)
+#tb_melt<-melt(mae_zones_tb,
+#              measure=var_pat,
+#              id=c("zones","method"),
+#              na.rm=F)
+
+#tb_melt<-melt(mae_zones_tb,
+#              id=var_pat,
+#              measure=var_pat,
+#              na.rm=F)
+
+
 #plot(x~time,, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
 #x <- as.numeric(mae_zones_tb[2,2:5])
 #lines(x~time, type="b",lty=2,col="magenta")
 #add temporal
-x <- as.numeric(mae_zones_tb[3,2:5]) #zone 4
-lines(x~time,, type="b",col="cyan",lty=1,ylim=c(400,2000))
-x <- as.numeric(mae_zones_tb[4,2:5]) #zone 5
-lines(x~time, type="b",lty=2,col="cyan")
-legend("topleft",legend=c("spat zone 4","spat zone 5","temp zone 4","temp zone 5"),
-        col=c("magenta","magenta","cyan","cyan"),lty=c(1,2,1,2))
-title("MAE per wind zones for spatial and temporal models")
+#x <- as.numeric(mae_zones_tb[3,2:5]) #zone 4
+#lines(x~time,, type="b",col="cyan",lty=1,ylim=c(400,2000))
+#x <- as.numeric(mae_zones_tb[4,2:5]) #zone 5
+#lines(x~time, type="b",lty=2,col="cyan")
+#legend("topleft",legend=c("spat zone 4","spat zone 5","temp zone 4","temp zone 5"),
+#        col=c("magenta","magenta","cyan","cyan"),lty=c(1,2,1,2))
+#title("MAE per wind zones for spatial and temporal models")
 
 ### more advanced plot to fix later....
 #mae_val <- (as.vector(as.matrix(mae_zones_tb[,2:5])))
@@ -353,5 +521,12 @@ title("MAE per wind zones for spatial and temporal models")
 #             xlab="Winds zones",
 #             ylab="MAE for NDVI")
 # print(p)
+
+#dat_out__predictions_09092014.txt
+
+#pdf("SampleGraph.pdf",width=7,height=5)
+#plot(r_in,1)
+
+#dev.off()
 
 ################### END OF SCRIPT ##################
