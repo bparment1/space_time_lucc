@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/09/2014
+#DATE MODIFIED: 09/19/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -234,6 +234,7 @@ predict_spat_reg_fun <- function(i,list_param){
                                data=data_reg,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
   }
+  #This might need to be changed!!!
   if(estimator=="gmm"){ #generalized method of moments: this is not available old packages...
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
     spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
@@ -245,7 +246,7 @@ predict_spat_reg_fun <- function(i,list_param){
   #ie. values of standard errors can be compared with other...
   if(estimator=="ols"){  
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
-    v2 <- lag(reg_listw_w,var=data_reg$v2) #creating a lag variable...#maybe this should be in the cleaning out function?
+    v2 <- lag.listw(reg_listw_w,var=data_reg$v2) #creating a lag variable...#maybe this should be in the cleaning out function?
     data_reg$v3 <- data_reg$v2 #this is the lag variable...
     #This is the error!!! changed on 08/06/2014
     data_reg$v2 <- v2
