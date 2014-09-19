@@ -321,7 +321,7 @@ l_arima_info <- mclapply(1:length(l_arima_mod), FUN=extract_arima_mod_info,list_
                          mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
 
 
-save(l_arima_mod,file=paste("l_arima_info_obj",out_suffix,".RData",sep=""))
+save(l_arima_info,file=paste("l_arima_info_obj",out_suffix,".RData",sep=""))
 #l_arima_info <-load_obj("l_arima_mod_info_obj04212014.RData")
 #mod_specification <- mclapply(l_arima_info[1:11],FUN=function(i){i[[1]]},mc.preschedule=FALSE,mc.cores = 11)
 #test_name <- list.files(".","l_arima_mod_info_obj.*.RData")
@@ -336,15 +336,38 @@ fitted_mod_spec <- as.data.frame(do.call(rbind,mod_specification2))
 #should add  id or coordinates!!!!so you can map it!!
 names(fitted_mod_spec) <- c("AR","MA","S_AR","S_MA","P","D","S_D")
 arima_mod_str <- lapply(1:nrow(fitted_mod_spec),FUN=function(i){paste(c(fitted_mod_spec[i,]),collapse="_")})
-fitted_mod_spec$mod <- arima_mod_str
+fitted_mod_spec$mod <- as.character(arima_mod_str)
+fitted_mod_spec$mod_fac <- as.factor(fitted_mod_spec$mod)
 
-read.table(file=paste("fitted_mod_spec_tb","_",out_suffix,".txt",)
+#read.table(file=paste("fitted_mod_spec_tb","_",out_suffix,".txt",)
 
 write.table(fitted_mod_spec,file=paste("fitted_mod_spec_tb","_",out_suffix,".txt",col.names=T,row.names=F,sep=","))
 
 ## Now plot
             
-hist(fitted_mod_spec$AR) #how to present everything at once?? should this be transposed?
-hist(fitted_mod_spec$MA)
-hist(fitted_mod_spec$mod)
+p1 <- histogram(fitted_mod_spec$AR) #how to present everything at once?? should this be transposed?
+p2 <- histogram(fitted_mod_spec$MA)
+p3 <- histogram(fitted_mod_spec$P)
+p4 <- histogram(fitted_mod_spec$D)
+p3 <- histogram(fitted_mod_spec$mod_fac)
+
+#p3 <- histogram(fitted_mod_spec$mod)
+
+p3 <- histogram(fitted_mod_spec$mod_fac)
+dat_arima <- fitted_mod_spec
+coordinates(dat_arima) <- coordinates(pix_val)
+
+#rasterize(dat_arima)
+r_ar <- rasterize(dat_arima,rast_ref,field="AR") #this is the prediction from lm model
+r_ma <- rasterize(dat_arima,rast_ref,field="MA") #this is the prediction from lm model
+r_p <- rasterize(dat_arima,rast_ref,field="P") #this is the prediction from lm model
+r_d <- rasterize(dat_arima,rast_ref,field="D") #this is the prediction from lm model
+
+r_arima_s <- stack(r_ar,r_ma,r_p,r_d)
+names(r_arima_s) <- c("AR","MA","P","D")
+plot(r_arima_s)
+
+plot(r_ar,col=c("red","blue","green","grey","black"),main="AR")
+plot(r_ma,col=c("red","blue","green","grey","black"),main="MA")
+
 ################### END OF SCRIPT ################
