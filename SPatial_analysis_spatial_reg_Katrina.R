@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/09/2014
+#DATE MODIFIED: 09/19/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -34,7 +34,7 @@ library(reshape) #Data format and type transformation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09092014_functions.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09192014_functions.R"
 script_path <- "/home/parmentier/Data/Space_Time/R" #path to script
 #script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -59,7 +59,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"_predictions_09092014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"_predictions_09192014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -81,6 +81,13 @@ if(create_out_dir_param==TRUE){
 data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
 
 data_tb <-read.table(data_fname,sep=",",header=T)
+data_tb$ezone_c[data_tb$Elev_zone 
+
+attach(data_tb)
+data_tb$ezone_c[Elev_Zone < 3] <- 1
+data_tb$ezone_c[Elev_Zone == 3] <- NA  
+data_tb$ezone_c[Elev_Zone == 4] <- 2  
+detach(data_tb)
 
 #### Make this a function...
 
@@ -88,7 +95,10 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 coord_names <- c("XCoord","YCoord")
 #coord_names <- c("POINT_X1","POINT_Y1")
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
+
 #debug(rasterize_df_fun)
+s_raster <- stack(l_rast) #stack with all the variables
+names(s_raster) <- names(data_tb)                
 
 r_FID <- raster(l_rast[4])
 plot(r_FID,main="Pixel ID")
@@ -103,10 +113,10 @@ levelplot(r_stack,layers=5:6,col.regions=matlab.like(125)) #show first 2 images 
 plot(r_stack,y=5:6)
 histogram(subset(r_stack,5:6))
 
-plot(2000:2012,data_tb[300,6:18],type="b", main="Population temporal  profile at pixel 300 and pixel 200 (red)",
+plot(2000:2012,data_tb[300,7:19],type="b", main="Population temporal  profile at pixel 300 and pixel 200 (red)",
      ylim=c(0,1600),ylab="Population",xlab="Year")#This is for line 600 in the table
 abline(v=2005,lty=3)
-lines(2000:2012,data_tb[200,6:18],col="red",type="b", main="Population temporal  profile at pixel 600",
+lines(2000:2012,data_tb[200,7:19],col="red",type="b", main="Population temporal  profile at pixel 600",
      ylab="Population",xlab="Year")#This is for line 600 in the table
 
 data_tb$FID[300] #FID 599
@@ -115,10 +125,14 @@ data_tb$FID[200] #FID 599
 data_tb
 
 mean_vals <- colMeans(data_tb[,7:19],na.rm=T)
-plot(2000:2012,mean_vals,type="b",ylab="pop",xlab="year",
-     main="Average Population")
-lines(2000:2012,data_tb[200,6:18],col="red",type="b", main="Population temporal  profile at pixel 600",
+plot(2000:2012,mean_vals,type="b",ylab="pop",xlab="year",ylim=c(0,1600),
+     main="Average Population and pixel 200 profile")
+lines(2000:2012,data_tb[200,7:19],col="red",type="b", main="Population temporal  profile at pixel 600",
      ylab="Population",xlab="Year")#This is for line 600 in the table
+legend("topright",legend=c("Overall average pop ","Pixel 200 pop"),
+        col=c("black","red"),lty=c(1,2))
+#title("Average pop per elevation zones (observed data)")
+
 data_tb
 
 mean_by_zones <- aggregate(.~Elev_Zone,data=data_tb[,c(7:19,22)],mean)
@@ -133,6 +147,19 @@ legend("topright",legend=c("zone 1","zone 2","zone 3","zone 4"),
         col=c("black","red","blue","green"),lty=c(1,2,3,4))
 title("Average pop per elevation zones (observed data)")
 
+mean_by_ezones_c <- aggregate(.~ezone_c,data=data_tb[,c(7:19,23)],mean)
+plot(2000:2012,as.numeric(mean_by_ezones_c[1,2:14]),type="b",
+     col="black",lty=1,ylim=c(0,2000),
+     ylab="pop",xlab="year")
+lines(2000:2012,as.numeric(mean_by_ezones_c[2,2:14]),type="b",col="red",lty=2)
+
+legend("topright",legend=c("zone 1: low","zone 2: high"),
+        col=c("black","red","blue","green"),lty=c(1,2,3,4))
+title("Average pop per elevation ezones c (observed data)")
+
+elev_s <- subset(s_raster,c("Elev_Zone","ezone_c"))
+levelplot(elev_s)             
+
 ################ PART II : RUN SPATIAL REGRESSION ############
 
 #Now mask and crop layer
@@ -145,28 +172,9 @@ pix_id_r <- rast_ref
 values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
 pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
 
-#pix_id_r <- mask(pix_id_r,rast_ref)
-pix_id_poly <- rasterToPolygons(pix_id_r) #convert raster to polygon (raster package option)
-reg_list_nb <-poly2nb(pix_id_poly,pix_id_poly$pix_id_r,queen=TRUE) #list of neighbours generated from poly
-reg_listw_b <-nb2listw(reg_list_nb, style="B",zero.policy=TRUE) #weight list using binary style
-reg_listw_w <- nb2listw(reg_list_nb, style="W",zero.policy=TRUE) #weight list using row centering
-#Note that zero.policy allows for tracking features with zero neighbours
-#EDGY_dat_spdf_04062014
-# SAR model
-
-data_reg <- as(r_var,"SpatialPointsDataFrame")
-data_reg <- as.data.frame(data_reg) #errorsarlm needs a dataframe!!!
-names(data_reg)[1:2] <- c("pop_2004","pop_2005")
-  
-var_selected="pop_2005" #this is the variable modeled...
-data_reg$var <- data_reg[[var_selected]]
-
-## NOW RUN THE SPATIAL MODEL...
-
-sam.esar <- errorsarlm(var~1, listw=reg_listw_w, 
-                      data=data_reg,na.action=na.omit,zero.policy=TRUE,
-                      tol.solve=1e-36)
-
+########
+### TEST SPATIAL Prediction on one date....
+                
 ### CLEAN OUT AND SCREEN NA and list of neighbours
 #Let's use our function we created to clean out neighbours
 #Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
@@ -185,7 +193,6 @@ reg_listw_w <- nb_obj_for_pred_t_2005$r_listw #list of weights for cleaned out s
 data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
 
-
 data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
 
 #Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
@@ -198,14 +205,21 @@ summary(sam.esar)
 data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
 data_reg_spdf$spat_reg_res <- sam.esar$residuals
 
-
 spat_mod <- try(spautolm(v1 ~ 1,data=data_reg, listw= reg_listw_w,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
 spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
 
 #res<-gstslshet(v1 ~ v2 , data=data_reg, listw=reg_listw_w)
-spautolm <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE))
+
+#Should we the var with mean removed?                
+data_reg$v3 <- data_reg$v1 - mean(data_reg$v1)
+spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE))
+
+spat_mod_spreg3 <- try(spreg(v1 ~ v3,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
@@ -229,8 +243,8 @@ data_reg2$lm_temp_res <- lm_mod$residuals
 coordinates(data_reg2) <- c("x","y")
 proj4string(data_reg2) <- CRS_WGS84
 
-###########################################
-############## PART IV: Produce images from the individual predictions using time and space ####
+########################################### 
+############## PART IV:Produce images from the individual predictions using time and space ####
 
 ### NOW CREATE THE IMAGES BACK ...
 
@@ -281,7 +295,9 @@ list_param_spat_reg$estimator <- "gmm"
 #use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
 #debug(predict_spat_reg_fun)
 testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
+testd1_spat_gmm <- predict_spat_reg_fun(5,list_param_spat_reg) #2005
 
+#debug(predict_spat_reg_fun)                
 list_param_spat_reg$estimator <- "ols"
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
@@ -293,10 +309,13 @@ pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_s
 list_param_spat_reg$estimator <- "gmm"
 pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 
-spat_pred_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+list_param_spat_reg$estimator <- "ols"
+pred_spat_ols <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+
+spat_pred_rast_mle <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_mle <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_mle) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_mle,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 spat_pred_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_pred})) #get stack of predicted images
 spat_res_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_res})) #get stack of predicted images
@@ -320,8 +339,45 @@ temp_pred_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
 temp_res_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
 levelplot(temp_pred_rast) #view the four predictions using mle spatial reg.
 projection(temp_pred_rast) <- CRS_WGS84
-projection(spat_pred_rast) <- CRS_WGS84
+projection(spat_pred_rast_mle) <- CRS_WGS84
 projection(spat_pred_rast_gmm) <- CRS_WGS84
+
+## Extract spatial coefficients
+
+#pred_spat_mle
+l_coef_mle <- lapply(pred_spat_mle,FUN=function(x){coef(x$spat_mod)})
+#pred_spat_gmm
+l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
+#pred_spat_ols
+l_coef_ols <- lapply(pred_spat_ols,FUN=function(x){coef(x$spat_mod)})
+
+tb_coef_mle <- as.data.frame(do.call(rbind,l_coef_mle))
+tb_coef_mle  <- tb_coef_mle[,c(2,1)]
+names(tb_coef_mle)<- c("(Intercept)","rho")
+tb_coef_mle$v2<- NA
+tb_coef_mle$time <- 2001:2012
+tb_coef_mle$method <- "mle"
+tb_coef_gmm <- as.data.frame(t(do.call(cbind,(l_coef_gmm))))
+tb_coef_gmm <- tb_coef_gmm[,c(1,3,2)]
+names(tb_coef_gmm)<- c("(Intercept)","rho","v2")
+tb_coef_gmm$time <- 2001:2012
+tb_coef_gmm$method <- "gmm"             
+tb_coef_ols <- as.data.frame(do.call(rbind,l_coef_ols))
+tb_coef_ols <- tb_coef_ols[,c(1,2)]
+names(tb_coef_ols)<- c("(Intercept)","rho")
+tb_coef_ols$v2 <- NA                
+tb_coef_ols$time <- 2001:2012                
+tb_coef_ols$method <- "ols"                
+
+tb_coef_method <- rbind(tb_coef_mle,tb_coef_gmm,tb_coef_ols)
+
+xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
+                 auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+                     border = FALSE, lines = TRUE,cex=1.2),
+                main="Comparison of rho coefficients with different methods for 2001-2012"
+)
+
+write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.names=F,col.names=T)                
 
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
@@ -333,35 +389,51 @@ r_huric_w <- crop(r_huric_w,rast_ref)
 
 #r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
 res_temp_s <- temp_pred_rast - r_huric_w
-res_spat_s <- spat_pred_rast - r_huric_w
-
+res_spat_mle_s <- spat_pred_rast_mle - r_huric_w
+res_spat_gmm_s <- spat_pred_rast_gmm  - r_huric_w
 names(temp_pred_rast)
-names(spat_pred_rast)
+names(spat_pred_rast_mle)
 names(res_temp_s) <- sub("predictions","residuals",names(res_temp_s))
-names(res_spat_s) <- sub("predictions","residuals",names(res_spat_s))
-r_in <-stack(l_rast)
-projection(r_in) <- CRS_WGS84
-r_results <- stack(r_in,temp_pred_rast,spat_pred_rast,res_temp_s,res_spat_s,r_zones)
+names(res_spat_mle_s) <- sub("predictions","residuals",names(res_spat_mle_s))
+names(res_spat_gmm_s) <- sub("predictions","residuals",names(res_spat_gmm_s))
+
+#debug(calc_ac_stat_fun)
+projection(rast_ref) <- CRS_WGS84
+#r_zones <- raster(l_rast[22])
+r_elev_zones <- subset(s_raster,"Elev_Zone")
+projection(r_elev_zones) <- CRS_WGS84
+
+r_ezones_c <- subset(s_raster,"ezone_c")
+projection(r_ezones_c) <- CRS_WGS84
+                
+#r_in <-stack(l_rast)
+projection(s_raster) <- CRS_WGS84
+r_results <- stack(s_raster,temp_pred_rast,spat_pred_rast_mle,spat_pred_rast_gmm,res_temp_s,res_spat_mle_s,res_spat_gmm_s)
 
 dat_out <- as.data.frame(r_results)
 dat_out <- na.omit(dat_out)
 write.table(dat_out,file=paste("dat_out_",out_suffix,".txt",sep=""),
             row.names=F,sep=",",col.names=T)
 
-#debug(calc_ac_stat_fun)
-projection(rast_ref) <- CRS_WGS84
-r_zones <- raster(l_rast[22])
-projection(r_zones) <- CRS_WGS84
-
+#Use elevation categories  as zones
 out_suffix_s <- paste("temp_",out_suffix,sep="_")
-ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_zones,
+ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_elev_zones,
                                 file_format=file_format,out_suffix=out_suffix_s)
 out_suffix_s <- paste("spat_",out_suffix,sep="_")  
-ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_zones,
+ac_spat_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_elev_zones,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
-out_suffix_s <- paste("spat_gmm",out_suffix,sep="_")  
-ac_spat_gmm_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_gmm,r_var_s=r_huric_w,r_zones=rast_ref,
+                
+#Use modified elevation categories  as zones: ezones c                
+out_suffix_s <- paste("temp2_",out_suffix,sep="_")
+ac_temp_obj2 <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=r_ezones_c,
+                                file_format=file_format,out_suffix=out_suffix_s)
+out_suffix_s <- paste("spat2_",out_suffix,sep="_")  
+ac_spat_obj2 <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_w,r_zones=r_ezones_c,
+                                file_format=file_format,out_suffix=out_suffix_s)
+
+out_suffix_s <- paste("spat_gmm2",out_suffix,sep="_")  
+ac_spat_gmm_obj2 <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_gmm,r_var_s=r_huric_w,r_zones=r_ezones_c,
                                 file_format=file_format,out_suffix=out_suffix_s)
 
 #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
@@ -378,6 +450,21 @@ legend("topright",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
 title("Overall MAE for spatial and temporal models")
 
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
+
+#mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+mae_tot_tb2 <- (cbind(ac_spat_obj2$mae_tb,ac_temp_obj2$mae_tb))
+mae_tot_tb2 <- as.data.frame(mae_tot_tb2)
+row.names(mae_tot_tb2) <- NULL
+names(mae_tot_tb2)<- c("spat_reg","temp")
+mae_tot_tb2$time <- 1:12
+
+plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb2,
+     ylim=c(0,1000),ylab="MAE",xlab="time step")
+lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb2)
+legend("topright",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
+title("Overall MAE for spatial and temporal models")
+
+write.table(mae_tot_tb2,file=paste("mae_tot_tb2","_",out_suffix,".txt",sep=""))
 
 ##Now add GMM
 
@@ -409,10 +496,21 @@ names(mae_zones_tb) <- c("zones",2001:2012,"method")
 
 write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
 
+mae_zones_tb2 <- rbind(ac_spat_obj2$mae_zones_tb[1:2,],
+                      ac_temp_obj2$mae_zones_tb[1:2,])
+mae_zones_tb2 <- as.data.frame(mae_zones_tb2)
+mae_zones_tb2$method <- c("spat_reg","spat_reg",
+                         "temp","temp")
+
+#names(mae_zones_tb) <- c("zones",paste("d",2001:2012,sep="_"),"method")
+names(mae_zones_tb2) <- c("zones",2001:2012,"method")
+
 #prepare to automate the plotting of   all columns
 
+### Use Elev Zone
+                
 #Should make this a function...
-mydata<-mae_zones_tb
+mydata<- mae_zones_tb
 dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
 #dd$lag <- mydata$lag 
 dd$zones <- mydata$zones
@@ -420,14 +518,25 @@ dd$method <- mydata$method
 #drop first four rows
 dd <- dd[9:nrow(dd),]
 
-xyplot(data~which |zones,group=method,dd,type="b",xlab="year",ylab="pop",
+xyplot(data~which |zones,group=method,data=dd,type="b",xlab="year",ylab="pop",
        strip = strip.custom(factor.levels=c("z1","z2","z3","z4")))
+
+#Should make this a function...USING EZONE_C!! RECLASSIFIED DATA
+mydata2<- mae_zones_tb2
+dd2 <- do.call(make.groups, mydata2[,-ncol(mydata2)]) 
+#dd$lag <- mydata$lag 
+dd2$zones <- mydata2$zones
+dd2$method <- mydata2$method
+#drop first four rows
+dd2 <- dd2[5:nrow(dd2),]
+
+xyplot(data~which |zones,group=method,data=dd2,type="b",xlab="year",ylab="pop",
+       strip = strip.custom(factor.levels=c("z1","z2")))
 #             strip=strip.custom(factor.levels=names_panel_plot),
 
-xyplot(data~which |zones+method,dd,type="b",xlab="year",ylab="lab")
-
-xyplot(data~which,groups=zones+method,dd,type="b")
-xyplot(data~which, groups=method+as.character(zones),dd,type="b")
+#xyplot(data~which |zones+method,dd,type="b",xlab="year",ylab="lab")
+#xyplot(data~which,groups=zones+method,dd,type="b")
+#xyplot(data~which, groups=method+as.character(zones),dd,type="b")
 
 plot(1:12,as.numeric(mae_zones_tb[1,2:13]),type="b",col="black",ylim=c(0,1000))
 lines(1:12,as.numeric(mae_zones_tb[2,2:13]),type="b",col="red")
