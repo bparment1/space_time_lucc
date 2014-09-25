@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/19/2014
+#DATE MODIFIED: 09/25/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -34,11 +34,10 @@ library(reshape) #Data format and type transformation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09192014_functions.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09252014_functions.R"
 script_path <- "/home/parmentier/Data/Space_Time/R" #path to script
 #script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-
 
 #####  Parameters and argument set up ###########
 
@@ -59,7 +58,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"_predictions_09192014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"_predictions_09252014" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -81,7 +80,7 @@ if(create_out_dir_param==TRUE){
 data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
 
 data_tb <-read.table(data_fname,sep=",",header=T)
-data_tb$ezone_c[data_tb$Elev_zone 
+#data_tb$ezone_c[data_tb$Elev_zone 
 
 attach(data_tb)
 data_tb$ezone_c[Elev_Zone < 3] <- 1
@@ -147,11 +146,11 @@ legend("topright",legend=c("zone 1","zone 2","zone 3","zone 4"),
         col=c("black","red","blue","green"),lty=c(1,2,3,4))
 title("Average pop per elevation zones (observed data)")
 
-mean_by_ezones_c <- aggregate(.~ezone_c,data=data_tb[,c(7:19,23)],mean)
-plot(2000:2012,as.numeric(mean_by_ezones_c[1,2:14]),type="b",
+mean_by_ezone_c <- aggregate(.~ezone_c,data=data_tb[,c(7:19,23)],mean) #get mean for all column of data.frame!!
+plot(2000:2012,as.numeric(mean_by_ezone_c[1,2:14]),type="b",
      col="black",lty=1,ylim=c(0,2000),
      ylab="pop",xlab="year")
-lines(2000:2012,as.numeric(mean_by_ezones_c[2,2:14]),type="b",col="red",lty=2)
+lines(2000:2012,as.numeric(mean_by_ezone_c[2,2:14]),type="b",col="red",lty=2)
 
 legend("topright",legend=c("zone 1: low","zone 2: high"),
         col=c("black","red","blue","green"),lty=c(1,2,3,4))
@@ -159,6 +158,7 @@ title("Average pop per elevation ezones c (observed data)")
 
 elev_s <- subset(s_raster,c("Elev_Zone","ezone_c"))
 levelplot(elev_s)             
+plot(elev_s,col=matlab.like(2))    
 
 ################ PART II : RUN SPATIAL REGRESSION ############
 
@@ -194,13 +194,27 @@ data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
 
 data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
-
+#test a fake covariate
+data_reg$v4 <- 1
 #Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
 #This takes a bit less than 3minutes for the dataset containing 2858 polygons
 sam.esar <- errorsarlm(v1~ 1, listw=reg_listw_w, 
                        data=data_reg,na.action=na.omit,zero.policy=TRUE,
                        tol.solve=1e-36) #tol.solve use in matrix operations
 summary(sam.esar)
+v5 <- rnorm(nrow(data_reg))
+data_reg$v5 <- v5 - mean(v5) 
+sam.esar2 <- errorsarlm(v1~ v4, listw=reg_listw_w, 
+                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
+                       tol.solve=1e-36) #tol.solve use in matrix operations
+summary(sam.esar)
+
+#data_reg$v5 <- rnorm(nrow(data_reg))
+sam.esar3 <- errorsarlm(v1~ v5, listw=reg_listw_w, 
+                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
+                       tol.solve=1e-36) #tol.solve use in matrix operations
+print(coef(sam.esar))
+print(coef(sam.esar3)) #almost equal could set the seed to make it reproducib
 #Predicted values and
 data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
 data_reg_spdf$spat_reg_res <- sam.esar$residuals
@@ -216,11 +230,19 @@ spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="er
 
 #Should we the var with mean removed?                
 data_reg$v3 <- data_reg$v1 - mean(data_reg$v1)
-spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
+spat_mod_spreg2 <- try(spreg(v1 ~ v4,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
 
-spat_mod_spreg3 <- try(spreg(v1 ~ v3,data=data_reg, listw= reg_listw_w, model="error",   
+spat_mod_spreg3 <- try(spreg(v1 ~ v5,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
+
+lm_mod <- try(lm(v1 ~ v5,data=data_reg))
+lm_mod2 <- try(lm(v1 ~ v4,data=data_reg))
+mean(data_reg$v2)
+mean(data_reg$v5)
+
+all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this works...
+#A work around may be to include a standar normal random variable!!
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
 
