@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/19/2014
+#DATE MODIFIED: 09/25/2014
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -237,8 +237,12 @@ predict_spat_reg_fun <- function(i,list_param){
   #This might need to be changed!!!
   if(estimator=="gmm"){ #generalized method of moments: this is not available old packages...
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
+    v2 <- rnorm(nrow(data_reg))  #see if this work...
+    data_reg$v2 <- v2 - mean(v2)
     spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
+    #spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
+    #                 het = TRUE, verbose=TRUE))
   }
   #res<- spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
   #            het = TRUE, verbose=TRUE)
@@ -335,6 +339,7 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 }
 
 #Fuction to rasterize a table with coordinates and variables...,maybe add option for ref image??
+#Make this more efficient!!!
 rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999,tolerance_val= 0.000120005){
   data_spdf <- data_tb
   coordinates(data_spdf) <- cbind(data_spdf[[coord_names[1]]],data_spdf[[coord_names[2]]])
