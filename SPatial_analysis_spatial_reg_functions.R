@@ -374,7 +374,7 @@ rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir="."
 
     data_name<-paste("r_",field_name,sep="") #can add more later...
     #raster_name<-paste(data_name,out_names[j],".tif", sep="")
-    raster_name<-paste(data_name,out_suffix,file_format, sep="")
+    raster_name<-paste(data_name,"_",out_suffix,file_format, sep="")
   
     writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),overwrite=TRUE)
     #Writing the data in a raster file format...
