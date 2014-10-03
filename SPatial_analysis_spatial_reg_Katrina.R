@@ -78,6 +78,7 @@ if(create_out_dir_param==TRUE){
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
 data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
+#/Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/run2/csv
 
 data_tb <-read.table(data_fname,sep=",",header=T)
 #data_tb$ezone_c[data_tb$Elev_zone 
@@ -158,7 +159,6 @@ title("Average pop per elevation ezones c (observed data)")
 
 elev_s <- subset(s_raster,c("Elev_Zone","ezone_c"))
 levelplot(elev_s)             
-plot(elev_s,col=matlab.like(2))    
 
 ################ PART II : RUN SPATIAL REGRESSION ############
 
@@ -241,7 +241,7 @@ lm_mod2 <- try(lm(v1 ~ v4,data=data_reg))
 mean(data_reg$v2)
 mean(data_reg$v5)
 
-all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this works...
+all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this work...
 #A work around may be to include a standar normal random variable!!
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
