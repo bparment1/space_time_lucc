@@ -34,8 +34,8 @@ library(reshape) #Data format and type transformation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09252014_functions.R"
-script_path <- "/home/parmentier/Data/Space_Time/R" #path to script
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions.R"
+script_path <- "F:/Research/spaceTime/space_time_lucc" #path to script
 # script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 
 # source all functions used in this script 
@@ -43,45 +43,58 @@ source(file.path(script_path, function_spatial_regression_analyses))
 
 #####  Parameters and argument set up ###########
 
-in_dir <- "~/Data/Space_beats_time/R_Workshop_April2014"
+# in_dir <- "~/Data/Space_beats_time/R_Workshop_April2014"
 # in_dir <-"/home/parmentier/Data/Space_Time"
 # in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 # out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 
-moore_window <- file.path(in_dir ,"window_test4.rst")
-winds_zones_fname <- file.path(in_dir, "00_windzones_moore_sin.rst")
+# moore_window <- file.path(in_dir ,"window_test4.rst")
+# winds_zones_fname <- file.path(in_dir, "00_windzones_moore_sin.rst")
+
+setwd("F:/Research/spaceTime")
+
+out.directory  <- "/output" 
+new.outputDirectory <- TRUE  # if true, a new output directory is created...
+# output suffix for the files and directory created
+output.suffix       <- paste("slm_",Sys.Date(), sep="")  
+
+if (new.outputDirectory==TRUE){
+  out_dir <- paste(getwd(), out.directory, "/", output.suffix, sep="")
+  dir.create(out.directory)
+}
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 # CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
-proj_st r<- CRS_WGS84
+proj_str <- CRS_WGS84
 CRS_interp <- proj_modis_str
 
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <- "_predictions_09252014" #output suffix for the files that are masked for quality and for 
+out_suffix <- paste("_predictions", Sys.Date(), sep = "") #output suffix for the files that are masked for quality and for 
 create_out_dir_param = TRUE
 
 ################# START SCRIPT ###############################
 
 ### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
 # set up the working directory
-# Create output directory
-
-out_dir <- in_dir  # output will be created in the input dir
-out_suffix_s <- out_suffix  # can modify name of output suffix
-if(create_out_dir_param==TRUE){
-  out_dir <- create_dir_fun(out_dir, out_suffix_s)
-  setwd(out_dir)
-}else{
-  setwd(out_dir) #use previoulsy defined directory
-}
+# # Create output directory
+# 
+# out_dir <- "F:/Research/spaceTime/output"  # output will be created in the input dir
+# out_suffix_s <- out_suffix  # can modify name of output suffix
+# if(create_out_dir_param==TRUE){
+#   out_dir <- create_dir_fun(out_dir, out_suffix_s)
+#   setwd(out_dir)
+# }else{
+#   setwd(out_dir) #use previoulsy defined directory
+# }
 
 # data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014",
 #                         "Katrina_Output_CSV - Katrina_pop.csv")
 
-data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv", "Katrina2.csv")
+
+data_fname <- file.path(getwd(), "Katrina2.csv")
 # /Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/run2/csv
 
 data_tb <- read.table(data_fname, sep = ",", header = T)
@@ -99,7 +112,7 @@ detach(data_tb)
 coord_names <- c("XCoord", "YCoord")
 # coord_names <- c("POINT_X1","POINT_Y1")
 l_rast <- rasterize_df_fun(data_tb, coord_names, proj_str, out_suffix, 
-                           out_dir = ".", file_format, NA_flag_val, 
+                           out_dir = out_dir, file_format, NA_flag_val, 
                            tolerance_val = 0.000120005)
 
 # debug(rasterize_df_fun)
@@ -145,7 +158,7 @@ legend("topright", legend = c("Overall average pop", "Pixel 200 pop"),
         col = c("black", "red"), lty = c(1,2))
 # title("Average pop per elevation zones (observed data)")
 
-data_tb
+# data_tb
 
 mean_by_zones <- aggregate(.~Elev_Zone, data = data_tb[,c(7:19,22)], mean)
 plot(2000:2012, as.numeric(mean_by_zones[1,2:14]), type = "b",
@@ -202,8 +215,12 @@ proj_str<- NULL  # SRS/CRS projection system
 out_suffix_s <- paste("d2005", out_suffix, sep = "_")
 # out_dir and out_suffix set earlier
 
+#
+# problem: output wouldn't work \\\ solution: had to create output folder
+#
 nb_obj_for_pred_t_2005 <- create_sp_poly_spatial_reg(r_var, r_clip, proj_str,
                                                      out_suffix = out_suffix_s, out_dir)
+
 names(nb_obj_for_pred_t_2005)  # show the structure of object (which is made up of a list)
 r_poly_name <- nb_obj_for_pred_t_2005$r_poly_name  # name of the shapefile that has been cleaned out
 reg_listw_w <- nb_obj_for_pred_t_2005$r_listw  # list of weights for cleaned out shapefile
@@ -368,6 +385,10 @@ pred_spat_ols <- lapply(1:n_pred, FUN = predict_spat_reg_fun,
                        list_param = list_param_spat_reg)
 
 # get stack of predicted images
+# `F:\Research\spaceTime\r_spat_pred_mle_t_2001_predictions2014-10-30.rst' does not exist in the file system,
+# and is not recognised as a supported dataset name.
+setwd("F:/Research/spaceTime/output/slm_2014-10-30")
+
 spat_pred_rast_mle <- stack(lapply(pred_spat_mle, FUN = function(x){x$raster_pred}))
 spat_res_rast_mle <- stack(lapply(pred_spat_mle, FUN = function(x){x$raster_res})) 
 # view the four predictions using mle spatial reg.
@@ -482,11 +503,13 @@ write.table(dat_out,file=paste("dat_out_", out_suffix, ".txt", sep = ""),
 
 # Use elevation categories  as zones
 out_suffix_s <- paste("temp_", out_suffix, sep = "_")
+# problem: object 'spat_pred_rast' not found 
+# solution: changed spat_pred_rast to spat_pred_rast_mle
 ac_temp_obj <- calc_ac_stat_fun(r_pred_s = temp_pred_rast, r_var_s = r_huric_w,
                                 r_zones = r_elev_zones, file_format = file_format, 
                                 out_suffix = out_suffix_s)
 out_suffix_s <- paste("spat_", out_suffix, sep = "_")  
-ac_spat_obj <- calc_ac_stat_fun(r_pred_s = spat_pred_rast, r_var_s = r_huric_w, 
+ac_spat_obj <- calc_ac_stat_fun(r_pred_s = spat_pred_rast_mle, r_var_s = r_huric_w, 
                                 r_zones = r_elev_zones, file_format = file_format, 
                                 out_suffix = out_suffix_s)
                 
@@ -496,7 +519,7 @@ ac_temp_obj2 <- calc_ac_stat_fun(r_pred_s = temp_pred_rast, r_var_s = r_huric_w,
                                  r_zones = r_ezones_c, file_format = file_format,
                                  out_suffix = out_suffix_s)
 out_suffix_s <- paste("spat2_", out_suffix, sep = "_")  
-ac_spat_obj2 <- calc_ac_stat_fun(r_pred_s = spat_pred_rast, r_var_s = r_huric_w, 
+ac_spat_obj2 <- calc_ac_stat_fun(r_pred_s = spat_pred_rast_mle, r_var_s = r_huric_w, 
                                  r_zones = r_ezones_c, file_format = file_format,
                                  out_suffix = out_suffix_s)
 
