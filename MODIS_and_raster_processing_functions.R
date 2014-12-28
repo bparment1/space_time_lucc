@@ -295,7 +295,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
   ##Function to assign NA given qc flag values from MODIS or other raster
   #Author: Benoit Parmentier
   #Created On: 09/20/2013
-  #Modified On: 10/18/2013
+  #Modified On: 12/31/2013
   
   #Parse arguments:
   
@@ -342,6 +342,8 @@ screen_for_qc_valid_fun <-function(i,list_param){
     if(length(files_to_remove)>0){
       file.remove(files_to_remove)
     }
+    #now remove temp files from raster package located in rasterTmpDir
+    removeTmpFiles(h=0) #did not work if h is not set to 0
     ## end of remove section
     return(raster_name)
   }else{
@@ -350,7 +352,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
                 ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
     raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
-    raster_name_qc <- paste(raster_name_qc,"_",out_suffix,extension(rast_name_qc),sep="")
+    raster_name_qc <- paste(raster_name_qc,"_","mask","_",out_suffix,extension(rast_name_qc),sep="")
     writeRaster(r_qc_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name_qc)
                 ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
     r_stack_name <- list(file.path(out_dir,raster_name),file.path(out_dir,raster_name_qc))
@@ -360,13 +362,15 @@ screen_for_qc_valid_fun <-function(i,list_param){
     ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
     ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
     ## Start remove
-    rm(rast_var)
+    rm(rast_var_m)
     rm(r_qc_m)
     tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
     files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
     if(length(files_to_remove)>0){
       file.remove(files_to_remove)
     }
+    #now remove temp files from raster package located in rasterTmpDir
+    removeTmpFiles(h=0) #did not work if h is not set to 0
     ## end of remove section
     return(r_stack_name)
   }
@@ -617,11 +621,15 @@ import_list_modis_layers_fun <-function(i,list_param){
   ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
   ## Start remove
   rm(r)
+  product <- names_hdf[1]
   tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   files_to_remove<-grep(product,tempfiles,value=T) #list files to remove
   if(length(files_to_remove)>0){
     file.remove(files_to_remove)
   }
+  #now remove temp files from raster package located in rasterTmpDir
+  removeTmpFiles(h=0) #did not work if h is not set to 0
+  #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   ## end of remove section
   
   return(file.path(out_dir,raster_name)) 
