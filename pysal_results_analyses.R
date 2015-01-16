@@ -28,6 +28,7 @@ library(gridExtra)
 
 ###### Functions used in this script
 
+
 pysal_pred_conversion_fun <- function(i,list_param){
 
   #####
@@ -114,6 +115,17 @@ lf_shp <-mixedsort(list.files(path=in_dir1,pattern="^r_poly_t.*.shp",full.names=
 out_dir <- in_dir
 l_date <- 2001:2012
 out_suffix <- "01212014"
+
+out_dir <- in_dir #output will be created in the input dir
+out_suffix_s <- out_suffix #can modify name of output suffix
+if(create_out_dir_param==TRUE){
+  out_dir <- create_dir_fun(out_dir,out_suffix_s)
+  setwd(out_dir)
+}else{
+  setwd(out_dir) #use previoulsy defined directory
+}
+
+################## BEGIN SCRIPT ##############################
 
 lf_rst <- mixedsort(list.files(path=in_dir1,pattern=".rst",full.names=T))
 r<- raster(lf_rst[1])
@@ -202,15 +214,29 @@ for(i in 1:length(l_date)){
 
 df_val <- do.call(rbind,l_df_val)
 df_val$date <- l_date
+
+#### NOW PLOT COMPARISON
+
 #Now deal with coefficient...
-plot(mae_val_py ~ date, data=df_val,type="b",pch=1,ylim=c(0,1500))
-lines(mae_val_mle ~ date, data=df_val,type="b",pch=2)
+
+plot(mae_val_py ~ date, data=df_val,type="b",pch=1,col="black",
+     ylim=c(0,1500),
+     xlab="date predicted",ylab="Predictions Mean Absolute Error (MAE)",#This is for line 600 in the table
+     main="MAE for pysal and R mle predictions")
+lines(mae_val_mle ~ date, data=df_val,type="b",pch=2,col="red")
+
+legend("topright",legend=c("pysal","R mle"),
+        col=c("black","red"),pch=c(1,2),lty=c(1,1))
+
 #points(mae_val_mle ~ date, data=df_val)
 
-plot(cor_val ~ date,data=df_val,type="b",ylim=c(0,1))
-plot(mae_val_comp ~ date,data=df_val,type="b",ylim=c(0,1500))
-lines(mean_val_py ~ date,data=df_val,type="b",ylim=c(0,1500))
-plot(mae_val_comp ~ date,data=df_val,type="b",ylim=c(0,1500))
+plot(cor_val ~ date,data=df_val,type="b",ylim=c(0,1),
+     main="Correlation betweenpysal and R mle residuals")
+
+plot(mae_val_comp ~ date,data=df_val,type="b",ylim=c(0,1500),pch=1,col="black")
+lines(mean_val_py ~ date,data=df_val,type="b",ylim=c(0,1500),pch=2,col="red")
+legend("topright",legend=c("mae comp","mean residuals val "),
+        col=c("black","red"),pch=c(1,2),lty=c(1,1))
 
 
 #Plot of residuals compariing pysal and R mle sp package
@@ -236,8 +262,28 @@ grid.arrange(l_pred_p[[1]],l_pred_p[[2]],l_pred_p[[3]],
              ncol=3)
 dev.off()   
 
+#### COMPARISON OF COEFFICIENTS
+
 #Get the slope for lambda etc and compare to mle...
 
-txt <- readLines(list.files(pattern="*.txt",path=out_dir,full.names=T)[1])
+lf_mle_txt <- list.files(pattern="*.txt",path=out_dir,full.names=T)
+l_txt <- lapply(lf_mle_txt,function(x){readLines(x)})
+
+
+#txt[18]
+#b <- read.table(lf_mle_txt[[1]],skip=17,fill=T)
+
+tb_coef_method <- read.table(list.files(pattern="^tb.*.csv"),header=T,sep=",")
+
+xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
+                 auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+                     border = FALSE, lines = TRUE,cex=1.2),
+                 par.settings = list(axis.text = list(font = 2, cex = 1.3),
+                              superpose.symbol = list( #allow changing symbol size, type and color
+                              pch=1:4,cex=1.5,lty=1:4,col=1:4),
+                              layout=layout_m,
+                              par.main.text=list(font=2,cex=2)),
+
+                main="Comparison of rho coefficients with different methods for 2001-2012")
 
 ################### END OF SCRIPT ######################
