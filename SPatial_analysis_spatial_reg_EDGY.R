@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/30/2014
+#DATE MODIFIED: 01/23/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -57,7 +57,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"EDGY_predictions_09302014" #output suffix for the files that are masked for quality and for 
+out_suffix <-"EDGY_predictions_01232015" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -76,7 +76,7 @@ if(create_out_dir_param==TRUE){
 }
 #EDGY_dat_spdf_04072014.txt
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
-data_fname <- file.path("/home/parmentier/Data/Space_Time","EDGY_dat_spdf_04072014.txt")
+data_fname <- file.path("/home/parmentier/Data/Space_Time","EDGY_dat_spdf_04072014.txt") #contains the whole dataset
 
 data_tb <-read.table(data_fname,sep=",",header=T)
 
@@ -86,6 +86,7 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 #coord_names <- c("XCoord","YCoord") #for Katrina
 coord_names <- c("r_x","r_y") #for EDGY
 
+#Create raster images from the text file...
 #l_rast <- rasterize_df_fun(data_tb[,1:5],coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val)
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val)
 
@@ -96,6 +97,8 @@ names(s_raster) <- names(data_tb)
 r_FID <- raster(l_rast[1])
 plot(r_FID,main="Pixel ID")
 freq(r_FID)
+dim(s_raster) #128x242x283 (var 283)
+ncell(s_raster) #30,976
 
 reg_var_list <- l_rast[6:281] #only select population raster
 r_stack <- stack(reg_var_list)
@@ -134,11 +137,12 @@ data_tb$FID[200] #FID 599
 data_tb
 
 ## Read in data defining the area of study
+
 #moore_w <- raster(moore_window) #read raster file and create a RasterLayer object
 #don't use window...?
 #moore_w <- moore_w > -9999 #reclass image (this creates a boolean image with 1 and 0)
 #rast_ref <- moore_w #create ref image, this is a smaller area than the NDVI images
-rast_ref <- subset(s_raster)
+rast_ref <- subset(s_raster,"pix_id_r")
 projection(rast_ref) <- CRS_WGS84 #assign spatial reference informaiton
 freq(rast_ref) #frequency of values in rast_ref
 rast_ref[rast_ref==0] <- NA #assign NA for zero val
@@ -300,7 +304,7 @@ names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list
 n_pred <- nlayers(r_spat_var)
 ## First predict for one date for testing and comparison
 #debug(predict_spat_reg_fun)
-#use mle estimator
+#use mle estimator  
 #testd1_spat_mle <- predict_spat_reg_fun(1,list_param_spat_reg)
 #use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
 list_param_spat_reg$estimator <- "gmm"
@@ -311,11 +315,13 @@ testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
 list_param_spat_reg$estimator <- "ols"
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
-## Now predict for four dates using "mle"
+## Now predict for four dates using "mle": this does not work for such large area
 #list_param_spat_reg$estimator <- "mle"
 #pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 #Use parallel processing on MAC and Linux/Unix systems
 #pred_spat_mle <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,,mc.preschedule=FALSE,mc.cores = 2)
+
+
 list_param_spat_reg$estimator <- "gmm"
 #pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 pred_spat_gmm <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
@@ -343,16 +349,17 @@ list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_s
 names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format")
 n_pred <- nlayers(r_temp_var) -1
 #debug(predict_temp_reg_fun)
-#test_temp <- predict_temp_reg_fun(1,list_param_temp_reg)
+#test_temp <- predict_temp_reg_fun(1,lis  t_param_temp_reg)
 
 pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 temp_pred_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
 temp_res_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
-levelplot(temp_pred_rast) #view the four predictions using mle spatial reg.
+levelplot(temp_pred_rast,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 projection(temp_pred_rast) <- CRS_WGS84
-projection(spat_pred_rast) <- CRS_WGS84
+#projection(spat_pred_rast) <- CRS_WGS84
 projection(spat_pred_rast_gmm) <- CRS_WGS84
+levelplot(spat_pred_rast_gmm,col.regions=matlab.like(25))
 
 ## Extract spatial coefficients
 
@@ -381,13 +388,17 @@ tb_coef_ols$v2 <- NA
 tb_coef_ols$time <- 1:4                
 tb_coef_ols$method <- "ols"                
 
+tb_coef_sas_file <-"/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/EDGY_coeficients_SAS.csv"
+tb_coef_sas <- read.table(tb_coef_sas_file,sep=",",header=T)
+names(tb_coef_sas) <- names(tb_coef_gmm)
+
 #tb_coef_method <- rbind(tb_coef_mle,tb_coef_gmm,tb_coef_ols)
-tb_coef_method <- rbind(tb_coef_gmm,tb_coef_ols)
+tb_coef_method <- rbind(tb_coef_gmm,tb_coef_sas,tb_coef_ols)
 
 xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
                  auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                      border = FALSE, lines = TRUE,cex=1.2),
-                main="Comparison of rho coefficients with different methods for 2001-2012"
+                main="Comparison of rho coefficients with different methods for t 151-156"
 )
 
 write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.names=F,col.names=T)                
