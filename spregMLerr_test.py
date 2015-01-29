@@ -17,7 +17,7 @@ F:\Apps\WinPython-32bit-2.7.6.3\settings\.spyder2\.temp.py
 #
 # Authors: Sean McFall, Benoit Parmentier 
 # Created on: 11/04/2014
-# Updated on: 01/23/2015
+# Updated on: 01/29/2015
 # Project: WM Space Beats Time
 #
 ############### LOAD LIBRARY/MODULES USED IN THE SCRIPT #####################
@@ -61,7 +61,9 @@ out_suffix = "_01232015"
 #srootdir = '/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/output__predictions_09252014' #on Atlas
 #on Benoit's mac
 #rootdir = '/Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/output__predictions_09252014' #on 
-inDir ="/Users/benoitparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_01232015"
+#inDir ="/Users/benoitparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_01232015"
+inDir = "/home/parmentier/data/Space_beats_time/output_EDGY_predictions_01232015"
+
 outDir = inDir
 
 #out_dir = "output_data_"+out_suffix
@@ -73,7 +75,7 @@ outDir = inDir
 
 mlerr_dict = {}
 # unique id column
-unique_id = np.linspace(1, 373, num = 373)
+#unique_id = np.linspace(1, 373, num = 373)
 
 #r_poly_t_155EDGY_predictions_01232015
 for date in range(153,156):
@@ -99,18 +101,18 @@ for date in range(153,156):
     #ww = ps.open(rootdir + "r_poly_t_" + str(year) + "_predictions" + out_suffix +".gal", 'r')
     w = ww.read()
     ww.close()
-    w_name = str(year) + "pred.gal"
+    w_name = str(date) + "pred.gal"
     w.transform = 'r'
     
-    print year
+    print date
     
     mlerr = ps.spreg.ml_error.ML_Error(y, x, w,method="ord")
     #mlerr = ps.spreg.ml_error.ML_Error(y, x, w)
     
-    mlerr_dict[year] = mlerr
+    mlerr_dict[date] = mlerr
     
     # output summary to individual text file
-    out_file = os.path.join(outDir,"mlerrSummary" + str(year) +out_suffix+ ".txt")
+    out_file = os.path.join(outDir,"mlerrSummary" + str(date) +out_suffix+ ".txt")
     txt_file = open(out_file, "w")
     txt_file.write(mlerr.summary)
     txt_file.close()
@@ -118,6 +120,8 @@ for date in range(153,156):
     # output to array 
     
     # fourth column is the randomly generated numbers
+    #unique_id = np.linspace(1, 373, num = 373)
+
     all_data = np.column_stack((unique_id, mlerr.u, y[:,0], x[:,0], mlerr.predy))
     
     # why does the header insert a '#' symbol onto the front of the string? 
