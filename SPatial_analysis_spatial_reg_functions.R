@@ -321,8 +321,8 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   
   #Accuracy/errors by zones
   r_res_s <- r_pred_s - r_var_s #residuals, stack of raster layers
-  mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="mean") #mean square error
-  mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="mean") #absolute error
+  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean") #mean square error
+  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean") #absolute error
   rmse_zones_tb <- sqrt(mse_zones_tb) #root mean square error
   
   #Overall Accuracy/errors 
