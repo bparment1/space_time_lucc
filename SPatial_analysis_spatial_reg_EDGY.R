@@ -5,10 +5,16 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 01/23/2015
+#DATE MODIFIED: 02/02/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
+#
+#COMMENTS: Note that the current code does not include the ARIMA function yet!!!
+#TO DO:
+# - add ARIMA function with parallelization
+# - add confidence interval around reg coef
+#
 #################################################################################################
 
 ###Loading R library and packages                                                      
@@ -34,14 +40,13 @@ library(sphet) #contains spreg
 ###### Functions used in this script
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09252014_functions.R"
-script_path <- "/home/parmentier/Data/Space_Time/R" #path to script
+script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script
 #script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
-in_dir<-"~/Data/Space_beats_time/R_Workshop_April2014"
-#in_dir <-"/home/parmentier/Data/Space_Time"
+in_dir<-"~/Data/Space_beats_time/Case1a_data"
 #in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 #out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 
@@ -57,7 +62,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst"
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"EDGY_predictions_01232015" #output suffix for the files that are masked for quality and for 
+out_suffix <-"EDGY_predictions_02022015" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -66,7 +71,9 @@ create_out_dir_param=TRUE
 #set up the working directory
 #Create output directory
 
-out_dir <- in_dir #output will be created in the input dir
+#out_dir <- in_dir #output will be created in the input dir
+out_dir <- dirname(in_dir) #get parent dir where the output will be created..
+
 out_suffix_s <- out_suffix #can modify name of output suffix
 if(create_out_dir_param==TRUE){
   out_dir <- create_dir_fun(out_dir,out_suffix_s)
@@ -76,7 +83,7 @@ if(create_out_dir_param==TRUE){
 }
 #EDGY_dat_spdf_04072014.txt
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
-data_fname <- file.path("/home/parmentier/Data/Space_Time","EDGY_dat_spdf_04072014.txt") #contains the whole dataset
+data_fname <- file.path(in_dir,"EDGY_dat_spdf_04072014.txt") #contains the whole dataset
 
 data_tb <-read.table(data_fname,sep=",",header=T)
 
@@ -84,7 +91,7 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 
 #Transform table text file into a raster image
 #coord_names <- c("XCoord","YCoord") #for Katrina
-coord_names <- c("r_x","r_y") #for EDGY
+coord_names <- c("r_x","r_y") #coordinates for EDGY dataset
 
 #Create raster images from the text file...
 #l_rast <- rasterize_df_fun(data_tb[,1:5],coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val)
@@ -119,16 +126,16 @@ levelplot(r_stack,layers=153:154,col.regions=matlab.like(125)) #show first 2 ima
 plot(r_stack,y=153:154)
 histogram(subset(r_stack,153:154))
 
-plot(1:276,data_tb[300,6:281],type="b", main="Population temporal  profile at pixel 300 and pixel 200 (red)",
-     ylim=c(0,10000),ylab="Population",xlab="Year")#This is for line 600 in the table
-abline(v=154,lty=3)
-lines(1:276,data_tb[200,6:281],col="red",type="b", main="Population temporal  profile at pixel 600",
-     ylab="Population",xlab="Year")#This is for line 600 in the table
+#plot(1:276,data_tb[300,6:281],type="b", main="Variable temporal  profile at pixel 300 and pixel 200 (red)",
+#     ylim=c(0,10000),ylab="Population",xlab="date step")#This is for line 600 in the table
+#abline(v=154,lty=3)
+#lines(1:276,data_tb[200,6:281],col="red",type="b", main="Variable temporal  profile at pixel 600",
+#     ylab="Population",xlab="Year")#This is for line 600 in the table
 #Plot only year 2007
-plot(1:23,data_tb[8000,139:161],type="b", main="Population temporal  profile at pixel 300 and pixel 200 (red)",
-     ylim=c(2000,10000),ylab="Population",xlab="Year")#This is for line 600 in the table
+plot(1:23,data_tb[8000,139:161],type="b", main="Variable temporal  profile at pixel 300 and pixel 200 (red)",
+     ylim=c(2000,10000),ylab="Variable",xlab="date step")#This is for line 600 in the table
 abline(v=16,lty=3)
-lines(1:23,data_tb[20000,139:161],col="red",type="b", main="Population temporal  profile at pixel 600",
+lines(1:23,data_tb[20000,139:161],col="red",type="b", main="Variable temporal  profile at pixel 600",
      ylab="Population",xlab="Year")#This is for line 600 in the table
 
 data_tb$FID[40000] #FID 599
@@ -179,10 +186,10 @@ plot(r_stack,y=1:2)
 ################ PART II : RUN SPATIAL REGRESSION ############
 
 #Now mask and crop layer
-r_var <- subset(r_stack,153:154) #date before hurricane is 153
+r_var <- subset(r_stack,153:154) #date before hurricane is time step 153
 #r_clip <- rast_ref
 #r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
-rast_ref <- subset(r_stack,1)
+rast_ref <- subset(r_stack,1) #first image ID
 rast_ref <- rast_ref != NA_flag_val
 pix_id_r <- rast_ref
 values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
@@ -315,12 +322,11 @@ testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
 list_param_spat_reg$estimator <- "ols"
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
-## Now predict for four dates using "mle": this does not work for such large area
-#list_param_spat_reg$estimator <- "mle"
-#pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+## Now predict for four dates using "mle": this does not work for such large area such as EDGY!!
+list_param_spat_reg$estimator <- "mle"
+pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 #Use parallel processing on MAC and Linux/Unix systems
 #pred_spat_mle <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,,mc.preschedule=FALSE,mc.cores = 2)
-
 
 list_param_spat_reg$estimator <- "gmm"
 #pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
@@ -388,7 +394,7 @@ tb_coef_ols$v2 <- NA
 tb_coef_ols$time <- 1:4                
 tb_coef_ols$method <- "ols"                
 
-tb_coef_sas_file <-"/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/EDGY_coeficients_SAS.csv"
+tb_coef_sas_file <- file.path(in_dir,"EDGY_coeficients_SAS.csv")
 tb_coef_sas <- read.table(tb_coef_sas_file,sep=",",header=T)
 names(tb_coef_sas) <- names(tb_coef_gmm)
 
@@ -441,6 +447,8 @@ write.table(dat_out,file=paste("dat_out_",out_suffix,".txt",sep=""),
 out_suffix_s <- paste("temp_",out_suffix,sep="_")
 #debug(calc_ac_stat_fun)
 projection(rast_ref) <- CRS_WGS84
+projection(z_winds) <- CRS_WGS84 #making sure proj4 representation of projections are the same
+
 ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=z_winds,
                                 file_format=file_format,out_suffix=out_suffix_s)
 #out_suffix_s <- paste("spat_",out_suffix,sep="_")  
@@ -464,8 +472,7 @@ plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(0,1800))
 lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
-title("Overall MAE for spatial and temporal models")
-
+title("Overall MAE for spatial and temporal models for GMM") #Note that the results are different than for ARIMA!!!
 
 #### BY ZONES ASSESSMENT
 
@@ -492,9 +499,9 @@ xyplot(data~which |zones,group=method,data=dd,type="b",xlab="year",ylab="NDVI",
 )
 
 #Very quick and dirty plot
-time <-1:4
-x <- as.numeric(mae_zones_tb[1,3:5])
-plot(x~time,, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
+#time <-1:4
+#x <- as.numeric(mae_zones_tb[1,3:5])
+#plot(x~time, type="b",col="magenta",lty=1,ylim=c(400,2000),ylab="MAE for NDVI")
 #x <- as.numeric(mae_zones_tb[2,2:5])
 #lines(x~time, type="b",lty=2,col="magenta")
 #add temporal
