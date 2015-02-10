@@ -5,11 +5,16 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 09/25/2014
-#Version: 1
+#DATE MODIFIED: 02/12/2015
+#Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
-#PROJECT: Space beats time paper 
+#PROJECT: Space beats time paper
+#PROJECT: Geocomputation and AAG 2015
+#TO DO:
+# modify the rasterize_df_fun function to allow ref image
+# add the ARIMA method...in the temporal pred?
+#
 #################################################################################################
 
 #This script currently contains 7 functions:
@@ -20,7 +25,9 @@
 #[4] "create_uniform_mask_fun" : harmonize NA values given input layers with different valid values            
 #[5] "load_obj" : load R object                          
 #[6] "predict_spat_reg_fun" : function to perform spatial regresssion prediction
-#[7] "predict_temp_reg_fun : function to preforma temperoral  prediction       
+#[7] "predict_temp_reg_fun : function to preform temporal  predictions       
+#[8] "rasterize_df_fun" : create raster from textfile with location information
+
 
 ###Loading R library and packages                                                      
 
@@ -211,11 +218,14 @@ predict_spat_reg_fun <- function(i,list_param){
     
   #### START SCRIPT
   
+  #Formula option not in full use yet...
   if(!is.null(list_models)){
     list_formulas<-lapply(list_models,as.formula,env=.GlobalEnv) #mulitple arguments passed to lapply!!  
     formula <-list_formulas[[i]]
   }
-  r_ref_s <- subset(r_ref_s,i) #subset the relevant layer
+  #else set formula to default??
+  
+  r_ref_s <- subset(r_ref_s,i) #subset the relevant layer, i.e. date from i is the relevant timestep
   #out_dir and out_suffix set earlier
   
   nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_ref_s,r_clip,proj_str,out_suffix=out_suffix,out_dir)
@@ -257,6 +267,8 @@ predict_spat_reg_fun <- function(i,list_param){
     spat_mod <- try(lm(v1 ~ v2,data=data_reg))
   }
   
+  #### PREPARE OBJECT TO RETURN
+  
   #summary(sam.esar)
   #Predicted values and
   if(estimator!="gmm"){
@@ -264,6 +276,7 @@ predict_spat_reg_fun <- function(i,list_param){
   }else{
     data_reg_spdf$spat_reg_pred <- spat_mod$residuals + data_reg_spdf$v1
   }
+  
   data_reg_spdf$spat_reg_res <- spat_mod$residuals
   
   r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
@@ -306,6 +319,8 @@ load_obj <- function(f){
 
 
 calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suffix){
+  #Purpose: Calculate accuracy statistics for given regions/zones of the study area
+  #Statistics are MAE (Mean Absolute Error) and RMSE(Root Mean Square Error)
   #Parameters:
   #Input:
   #r_pred_s: raster stack of layers predictions (for example predicted NDVI)
@@ -340,7 +355,29 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 
 #Fuction to rasterize a table with coordinates and variables...,maybe add option for ref image??
 #Make this more efficient!!!
-rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=".rst",NA_flag_val=-9999,tolerance_val= 0.000120005){
+rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,num_cores=0,rast_ref=NULL,out_dir=".",file_format=".rst",NA_flag_val=-9999,tolerance_val= 0.000120005){
+  #This function creates a stack of raster images from a data frame table.
+  #If not reference raster image is provided, the function generate its own raster grid.
+  #The generated grid is a function of the distance between points and the tolrance index
+  #
+  #Inputs: 
+  #1)data)tb: data.frame with data
+  #2)coord_names: names of columns containing x,y coordinates
+  #3)proj_str: to reproject if needed, if null no reprojection
+  #4)out_suffix: suffix added to output file name
+  #5)num_cores: number of cores to use, if zero the no parralization (not implemented yet )
+  #6)rast_ref: 
+  #4)out_dir: output directory path
+  #8)file_format: raster format used in writing out files
+  #9)NA_flag_val: values of NA
+  #10)tolerance_val: spatial resolution tolerance used in the grid generation
+  #
+  #Outputs: list of raster files that are written out 
+  #r_listw: list of weights (Queen)
+  #r_poly_name: shapefile name screeened for NA and no neighbours features
+  #r_nb_name: neighbour object
+  #zero_nb: feature polygon with no neighbours that were removed
+
   data_spdf <- data_tb
   coordinates(data_spdf) <- cbind(data_spdf[[coord_names[1]]],data_spdf[[coord_names[2]]])
   proj4string(data_spdf) <- proj_str
@@ -365,6 +402,7 @@ rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir="."
   r_ref <- raster(data_grid) #this is the ref image
   rast_list <- vector("list",length=ncol(data_tb))
   
+  #this should be parallelized!!!
   for(i in 1:(ncol(data_tb))){
     field_name <- names(data_tb)[i]
     var <- as.numeric(data_spdf[[field_name]])
@@ -380,6 +418,8 @@ rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,out_dir="."
     #Writing the data in a raster file format...
     rast_list[i] <-file.path(out_dir,raster_name)
   }
+  
+  ##
   return(unlist(rast_list))
 }
 
