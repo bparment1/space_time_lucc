@@ -1,11 +1,11 @@
 ####################################    Space Time Analyses PAPER   #######################################
 ############################  Yucatan case study: Comparison of results  #######################################
 #This script compares predictions results obtained from spatial regression and ARIMA.                        
-#AUTHORS: Marco Millones and Benoit Parmentier                                             
+#AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/10/2014 
-#DATE MODIFIED: 03/17/2014
-#Version: 1
-#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones             
+#DATE MODIFIED: 03/12/2015
+#Version: 2
+#PROJECT: AAG and geocomputation with Marco Millones             
 #################################################################################################
 
 ###Loading R library and packages                                                      

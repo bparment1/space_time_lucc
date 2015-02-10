@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Marco Millones and Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/02/2015
+#DATE MODIFIED: 02/12/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -39,7 +39,7 @@ library(sphet) #contains spreg
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_09252014_functions.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02122015_functions.R"
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script
 #script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -49,8 +49,9 @@ source(file.path(script_path,function_spatial_regression_analyses)) #source all 
 in_dir<-"~/Data/Space_beats_time/Case1a_data"
 #in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
 #out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
-
-moore_window <- file.path(in_dir,"window_test4.rst")
+in_dir_NDVI <- file.path(in_dir,"moore_NDVI_wgs84") #contains NDVI 
+  
+moore_window <- file.path(in_dir,"window_test4.rst") #spatial subset of Moore region to test spatial regression
 winds_zones_fname <- file.path(in_dir,"00_windzones_moore_sin.rst")
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
@@ -59,10 +60,10 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84
 CRS_interp <- proj_modis_str
 
-file_format <- ".rst"
+file_format <- ".rst" #raster format used
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"EDGY_predictions_02022015" #output suffix for the files that are masked for quality and for 
+out_suffix <-"EDGY_predictions_02102015" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -86,6 +87,7 @@ if(create_out_dir_param==TRUE){
 data_fname <- file.path(in_dir,"EDGY_dat_spdf_04072014.txt") #contains the whole dataset
 
 data_tb <-read.table(data_fname,sep=",",header=T)
+dim(data_tb) #shows the dimensions: 26,216x283
 
 #### Make this a function...
 
@@ -106,10 +108,29 @@ plot(r_FID,main="Pixel ID")
 freq(r_FID)
 dim(s_raster) #128x242x283 (var 283)
 ncell(s_raster) #30,976
-
+freq(r_FID,value=NA) #4760
+ncell(s_raster) - freq(r_FID,value=NA) #26216
+freq(subset(s_raster,"NDVI_1"),value=NA) #4766
+ 
 reg_var_list <- l_rast[6:281] #only select population raster
 r_stack <- stack(reg_var_list)
 names(r_stack) <- paste("NDVI",1:nlayers(r_stack),sep="_") #2000:2012
+res(r_stack)
+
+##Compare to raster generated to original NDVI images:
+
+in_dir_NDVI
+#list input NDVI time series images: This is a stack of 276 raster images...
+ndvi_list <- list.files(path=in_dir_NDVI,
+                           pattern="moore_reg.*.MOD13A2_A.*04062014.*.rst$",full.name=TRUE)
+#moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.tif
+r_NDVI <- stack(ndvi_list)
+ncell(r_NDVI)
+projection(r_NDVI)#52,164
+freq(subset(r_NDVI,1),value=NA) #11,906
+res(r_NDVI)
+res(r_NDVI)
+res(r_stack) #same resolution!
 
 #debug(rasterize_df_fun)
 #r_FID <- raster(l_rast[3])
@@ -132,14 +153,17 @@ histogram(subset(r_stack,153:154))
 #lines(1:276,data_tb[200,6:281],col="red",type="b", main="Variable temporal  profile at pixel 600",
 #     ylab="Population",xlab="Year")#This is for line 600 in the table
 #Plot only year 2007
-plot(1:23,data_tb[8000,139:161],type="b", main="Variable temporal  profile at pixel 300 and pixel 200 (red)",
+pixel_num1 <- 8000
+pixel_num2 <- 20000
+plot(1:23,data_tb[pixel_num1,139:161],type="b", 
+     main=paste("Variable temporal  profile at pixel ", pixel_num1," and pixel ", pixel_num2," (red)",sep=""),
      ylim=c(2000,10000),ylab="Variable",xlab="date step")#This is for line 600 in the table
 abline(v=16,lty=3)
-lines(1:23,data_tb[20000,139:161],col="red",type="b", main="Variable temporal  profile at pixel 600",
+lines(1:23,data_tb[pixel_num2,139:161],col="red",type="b", main=paste("Variable temporal  profile at pixel ",pixel_num2,sep=""),
      ylab="Population",xlab="Year")#This is for line 600 in the table
 
-data_tb$FID[40000] #FID 599
-data_tb$FID[200] #FID 599
+data_tb$FID[pixel_num1] #FID 599
+data_tb$FID[pixel_num2] #FID 599
 
 data_tb
 
@@ -158,31 +182,12 @@ r_winds <- raster(winds_zones_fname) #read raster file about winds zone this is 
 
 projection(r_winds) <- proj_modis_str #assign projection
 
-#list input NDVI time series images: This is a stack of 276 raster images...
-#ndvi_list <- list.files(path=file.path(in_dir,"moore_NDVI_wgs84"),
-#                           pattern="moore_reg.*.MOD13A2_A.*04062014.*.rst$",full.name=TRUE)
-#moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.tif
-
 #Create a stack of layers
 r_stack <- stack(reg_var_list) #276 images from 2001 to 2012 included
 projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
 levelplot(r_stack,layers=153:154,col.regions=rev(terrain.colors(255))) #show first 2 images (half a year more or less)
 plot(r_stack,y=1:2)
 
-#projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
-#levelplot(r_stack,layers=5:6,col.regions=matlab.like(125)) #show first 2 images (half a year more or less)
-#plot(r_stack,y=5:6)
-
-#plot(2000:2012,data_tb[600,6:18],type="b", main="Population temporal  profile at pixel 600 and pixel 300 (red)",
-#     ylab="Population",xlab="Year")#This is for line 600 in the table
-#abline(v=2005,lty=3)
-#lines(2000:2012,data_tb[200,6:18],col="red",type="b", main="Population temporal  profile at pixel 600",
-#     ylab="Population",xlab="Year")#This is for line 600 in the table
-
-#data_tb$FID[600] #FID 599
-#data_tb$FID[300] #FID 599
-
-#data_tb
 ################ PART II : RUN SPATIAL REGRESSION ############
 
 #Now mask and crop layer
@@ -209,7 +214,7 @@ pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
 r_var <- subset(r_stack,154) #this is the date we want to use to run the spatial regression
 r_clip <- rast_ref #this is the image defining the study area
 proj_str<- NULL #SRS/CRS projection system
-out_suffix_s <- paste("t_154",out_suffix,sep="_")
+out_suffix_s <- paste("t_154",out_suffix,sep="_") #time step 154
 #out_dir and out_suffix set earlier
 
 nb_obj_for_pred_t_154 <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
@@ -221,17 +226,28 @@ data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
                     layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
 
 data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
+dim(data_reg) #18,842 points!!
 
 #Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
-v5 <- rnorm(nrow(data_reg))
-data_reg$v5 <- v5 - mean(v5) 
 
-#sam.esar3 <- errorsarlm(v1~ v5, listw=reg_listw_w, 
-#                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
-#                       tol.solve=1e-36) #tol.solve use in matrix operations
+#This uses the mle method with errorsarlm from the sp package
+
+#use errorsarlm
+
+#sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+#                               data=data_reg,na.action=na.omit,zero.policy=TRUE,
+#                               tol.solve=1e-36)) #tol.solve use in matrix operations
+#This on works (on 02/12/2015)! Must investigates changes in data and Ubuntu R system.
+#This is using 18,842 observations.
 
 #data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
 #data_reg_spdf$spat_reg_res <- sam.esar$residuals
+
+###Use the generalized methods of momments
+#with spreg function
+#This function because it requires covariates so we create a random variable for use as a "fake" covariate 
+v5 <- rnorm(nrow(data_reg))
+data_reg$v5 <- v5 - mean(v5) #v5 is the random "fake" covariate
 
 spat_mod_spreg3 <- try(spreg(v1 ~ v5,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
@@ -262,6 +278,9 @@ data_reg2$lm_temp_res <- lm_mod$residuals
 
 coordinates(data_reg2) <- c("x","y")
 proj4string(data_reg2) <- CRS_WGS84
+
+### Need to add ARIMA here...
+
 
 ###########################################
 ############## PART IV: Produce images from the individual predictions using time and space ####
@@ -312,8 +331,11 @@ n_pred <- nlayers(r_spat_var)
 ## First predict for one date for testing and comparison
 #debug(predict_spat_reg_fun)
 #use mle estimator  
-#testd1_spat_mle <- predict_spat_reg_fun(1,list_param_spat_reg)
+#testd1_spat_mle <- try(predict_spat_reg_fun(1,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
+testd4_spat_mle <- try(predict_spat_reg_fun(4,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
+
 #use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
+
 list_param_spat_reg$estimator <- "gmm"
 #use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
 #debug(predict_spat_reg_fun)
@@ -322,11 +344,16 @@ testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
 list_param_spat_reg$estimator <- "ols"
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
+#### RUN for four dates and the three methods..
+
 ## Now predict for four dates using "mle": this does not work for such large area such as EDGY!!
 list_param_spat_reg$estimator <- "mle"
-pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+#pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 #Use parallel processing on MAC and Linux/Unix systems
-#pred_spat_mle <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,,mc.preschedule=FALSE,mc.cores = 2)
+pred_spat_mle <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+
+debug(predict_spat_reg_fun)
+testd3_spat_mle <- predict_spat_reg_fun(3,list_param_spat_reg) #now working,checked on 02/10/2015...!!!
 
 list_param_spat_reg$estimator <- "gmm"
 #pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
@@ -409,7 +436,7 @@ xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
 
 write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.names=F,col.names=T)                
 
-############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
+############ PART V COMPARE MODELS IN TERM OF PREDICTION ACCURACY #################
 
 r_huric_w <- subset(r_stack,153:156)
 #r_huric_w <- crop(r_huric_w,rast_ref)
@@ -516,7 +543,6 @@ xyplot(data~which |zones,group=method,data=dd,type="b",xlab="year",ylab="NDVI",
 ### Use ARIMA predions instead of lm temporal pred...
 
 #...add here
-
 
 
 ### more advanced plot to fix later....
