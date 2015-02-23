@@ -17,7 +17,7 @@ F:\Apps\WinPython-32bit-2.7.6.3\settings\.spyder2\.temp.py
 #
 # Authors: Sean McFall, Benoit Parmentier 
 # Created on: 11/04/2014
-# Updated on: 01/10/2015
+# Updated on: 01/23/2015
 # Project: WM Space Beats Time
 #
 ############### LOAD LIBRARY/MODULES USED IN THE SCRIPT #####################
@@ -52,16 +52,17 @@ def create_dir_and_check_existence(path):
 
 np.random.seed(100)
 
-ds_name = "katrina2004"
+ds_name = "EDGY"
 y_name = "v1"
 x_name = "something else"
-out_suffix = "_09252014"
+out_suffix = "_01232015"
 
 #rootdir = '/home/sean/Documents/Research/space_time_lucc/output/'
 #srootdir = '/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/output__predictions_09252014' #on Atlas
 #on Benoit's mac
-rootdir = '/Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/output__predictions_09252014' #on 
-outDir =   '/Users/benoitparmentier/Google Drive/Space_beats_time/pysal_test'
+#rootdir = '/Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/output__predictions_09252014' #on 
+inDir ="/Users/benoitparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_01232015"
+outDir = inDir
 
 #out_dir = "output_data_"+out_suffix
 #out_dir = os.path.join(in_dir,out_dir)
@@ -74,10 +75,11 @@ mlerr_dict = {}
 # unique id column
 unique_id = np.linspace(1, 373, num = 373)
 
-for year in range(2001,2013):
+#r_poly_t_155EDGY_predictions_01232015
+for date in range(153,156):
     
     #in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions_09252014.dbf")
-    in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions"+ out_suffix +".dbf")
+    in_file = os.path.join(inDir, "r_poly_t_" + str(date) + "EDGY_predictions"+ out_suffix +".dbf")
     #r_poly_t_2004_predictions_09252014.dbf
     #katPred = ps.open(rootdir + "r_poly_t_" + str(year) + "_predictions.dbf")
     #r_poly_t_2004_predictions_09252014.dbf
@@ -91,7 +93,7 @@ for year in range(2001,2013):
     # array of ones
     #x = np.ones_like(y, dtype = np.int)
     #r_poly_t_2004_predictions_09252014
-    in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions"+ out_suffix +".gal")
+    in_file = os.path.join(inDir, "r_poly_t_" + str(date) + "EDGY_predictions"+ out_suffix +".gal")
     ww = ps.open(in_file, 'r')
 
     #ww = ps.open(rootdir + "r_poly_t_" + str(year) + "_predictions" + out_suffix +".gal", 'r')
