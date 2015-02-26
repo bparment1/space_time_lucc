@@ -3,14 +3,14 @@
 #This script produces a prediction for the dates following the Hurricane event.       
 #The script uses spatial neighbours to predict NDVI values in the MOORE EDGY region. 
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
-#AUTHORS: Marco Millones and Benoit Parmentier                                             
+#AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/12/2015
-#Version: 1
+#DATE MODIFIED: 02/26/2015
+#Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
 #
-#COMMENTS: Note that the current code does not include the ARIMA function yet!!!
+#COMMENTS: Testing alternative methods to eigen for spatial predictions: "Chebyshev" etc.
 #TO DO:
 # - add ARIMA function with parallelization
 # - add confidence interval around reg coef
@@ -39,7 +39,7 @@ library(sphet) #contains spreg
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02122015_functions.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02262015_functions.R"
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script
 #script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -63,7 +63,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst" #raster format used
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"EDGY_predictions_02102015" #output suffix for the files that are masked for quality and for 
+out_suffix <-"EDGY_predictions_02262015" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -214,7 +214,7 @@ pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
 r_var <- subset(r_stack,154) #this is the date we want to use to run the spatial regression
 r_clip <- rast_ref #this is the image defining the study area
 proj_str<- NULL #SRS/CRS projection system
-out_suffix_s <- paste("t_154",out_suffix,sep="_") #time step 154
+out_suffix_s <- paste("t_154",out_suffix,sep="_") #time step 154, just after the hurricane event
 #out_dir and out_suffix set earlier
 
 nb_obj_for_pred_t_154 <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
@@ -232,13 +232,38 @@ dim(data_reg) #18,842 points!!
 
 #This uses the mle method with errorsarlm from the sp package
 
-#use errorsarlm
+#use errorsarlm with chebychev
 
-#sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-#                               data=data_reg,na.action=na.omit,zero.policy=TRUE,
-#                               tol.solve=1e-36)) #tol.solve use in matrix operations
 #This on works (on 02/12/2015)! Must investigates changes in data and Ubuntu R system.
 #This is using 18,842 observations.
+
+sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,method="eigen",zero.policy=TRUE,
+                               tol.solve=1e-36)) #tol.solve use in matrix operations
+#test with chebyshev
+#
+sam.esar_chebyshev <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,method="Chebyshev",zero.policy=TRUE,
+                               tol.solve=1e-36)) #tol.solve use in matrix operations
+#keep track for warning?
+sam.esar_LU <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,method="LU",zero.policy=TRUE,
+                               tol.solve=1e-36)) #tol.solve use in matrix operations
+
+#Using 
+sam.esar_MC <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,method="MC",zero.policy=TRUE,
+                               tol.solve=1e-36)) #tol.solve use in matrix operations
+
+#Using the Matrix method based on updating of the Choleksky decomposition
+sam.esar_Matrix <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+                               data=data_reg,na.action=na.omit,method="Matrix",zero.policy=TRUE,
+                               tol.solve=1e-36)) #tol.solve use in matrix operations
+
+#Using the Smirnov/Anselin (2009) trace approximation
+#sam.esar_moments <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+#                               data=data_reg,na.action=na.omit,method="moments",zero.policy=TRUE,
+#                               tol.solve=1e-36)) #tol.solve use in matrix operations
 
 #data_reg_spdf$spat_reg_pred <- sam.esar$fitted.values
 #data_reg_spdf$spat_reg_res <- sam.esar$residuals
@@ -324,24 +349,31 @@ proj_str <- NULL #if null the raster images are not reprojected
 out_suffix_s <- paste("t_",153:156,out_suffix,sep="") #use mle estimation, name "mle" is included in the output automatically?
 #estimator <- "mle"
 estimator <- "mle"
+estimation_method <- "Chebyshev"
+#estimation_method <- "LU"
 
-list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
-names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator")
+#list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
+list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
+names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
 n_pred <- nlayers(r_spat_var)
 ## First predict for one date for testing and comparison
 #debug(predict_spat_reg_fun)
 #use mle estimator  
 #testd1_spat_mle <- try(predict_spat_reg_fun(1,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
-testd4_spat_mle <- try(predict_spat_reg_fun(4,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
+#testd4_spat_mle_chebyshev <- try(predict_spat_reg_fun(4,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
 
 #use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
 
 list_param_spat_reg$estimator <- "gmm"
+list_param_spat_reg$estimation_method <- NULL
+
 #use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
 #debug(predict_spat_reg_fun)
 testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
 
 list_param_spat_reg$estimator <- "ols"
+list_param_spat_reg$estimation_method <- NULL
+
 testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 
 #### RUN for four dates and the three methods..
@@ -350,18 +382,32 @@ testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
 list_param_spat_reg$estimator <- "mle"
 #pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 #Use parallel processing on MAC and Linux/Unix systems
-pred_spat_mle <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+list_param_spat_reg$estimation_method <- "Chebyshev"
+pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_mle_chebyshev_",out_suffix,".RData",sep="")))
 
-debug(predict_spat_reg_fun)
-testd3_spat_mle <- predict_spat_reg_fun(3,list_param_spat_reg) #now working,checked on 02/10/2015...!!!
+pred_spat_mle <- pred_spat_mle_chebyshev
+list_param_spat_reg$estimator <- "mle"
+#pred_spat_mle <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+#Use parallel processing on MAC and Linux/Unix systems
+list_param_spat_reg$estimation_method <- "eigen"
+#pred_spat_mle_eigen <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+pred_spat_mle_eigen <- lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
+
+save(pred_spat_mle_eigen,file.path(out_dir,paste("pred_spat_mle_eigen_",out_suffix,".RData",sep=""))
+
+#debug(predict_spat_reg_fun)
+#testd3_spat_mle <- predict_spat_reg_fun(3,list_param_spat_reg) #now working,checked on 02/10/2015...!!!
 
 list_param_spat_reg$estimator <- "gmm"
 #pred_spat_gmm <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 pred_spat_gmm <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+save(pred_spat_gmm,file=file.path(out_dir,paste("pred_spat_gmm_",out_suffix,".RData",sep="")))
 
 list_param_spat_reg$estimator <- "ols"
 #pred_spat_ols <-lapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg)
 pred_spat_ols <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_ols_",out_suffix,".RData",sep="")))
 
 #spat_pred_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_pred})) #get stack of predicted images
 #spat_res_rast <- stack(lapply(pred_spat_mle,FUN=function(x){x$raster_res})) #get stack of predicted images
@@ -397,14 +443,15 @@ levelplot(spat_pred_rast_gmm,col.regions=matlab.like(25))
 ## Extract spatial coefficients
 
 #pred_spat_mle
-#l_coef_mle <- lapply(pred_spat_mle,FUN=function(x){coef(x$spat_mod)})
+#pred_spat_mle
+l_coef_mle <- lapply(pred_spat_mle,FUN=function(x){coef(x$spat_mod)})
 #pred_spat_gmm
 l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
 #pred_spat_ols
 l_coef_ols <- lapply(pred_spat_ols,FUN=function(x){coef(x$spat_mod)})
 
-#tb_coef_mle <- as.data.frame(do.call(rbind,l_coef_mle))
-#tb_coef_mle  <- tb_coef_mle[,c(2,1)]
+tb_coef_mle <- as.data.frame(do.call(rbind,l_coef_mle))
+#tb_coef_mle  <- tb_coef_mle[,c(1,3,2)]
 #names(tb_coef_mle)<- c("(Intercept)","rho")
 #tb_coef_mle$v2<- NA
 #tb_coef_mle$time <- 2001:2012
@@ -421,12 +468,19 @@ tb_coef_ols$v2 <- NA
 tb_coef_ols$time <- 1:4                
 tb_coef_ols$method <- "ols"                
 
+tb_coef_mle <- as.data.frame(do.call(rbind,l_coef_mle))
+tb_coef_mle <- tb_coef_mle[,c(2,1)]
+names(tb_coef_mle)<- c("(Intercept)","rho")
+tb_coef_mle$v2 <- NA                
+tb_coef_mle$time <- 1:4                
+tb_coef_mle$method <- "mle"                
+
 tb_coef_sas_file <- file.path(in_dir,"EDGY_coeficients_SAS.csv")
 tb_coef_sas <- read.table(tb_coef_sas_file,sep=",",header=T)
 names(tb_coef_sas) <- names(tb_coef_gmm)
 
 #tb_coef_method <- rbind(tb_coef_mle,tb_coef_gmm,tb_coef_ols)
-tb_coef_method <- rbind(tb_coef_gmm,tb_coef_sas,tb_coef_ols)
+tb_coef_method <- rbind(tb_coef_gmm,tb_coef_sas,tb_coef_ols,tb_coef_mle)
 
 xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
                  auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
