@@ -3,9 +3,9 @@
 #This script functions to produce predictions for the dates following the Hurricane Dean event.       
 #The script uses spatial regression with weight matrix to predict NDVI values in the MOORE EDGY region. 
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
-#AUTHORS: Marco Millones and Benoit Parmentier                                             
+#AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/12/2015
+#DATE MODIFIED: 02/26/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -215,7 +215,8 @@ predict_spat_reg_fun <- function(i,list_param){
   out_suffix <- list_param$out_suffix[i]
   file_format <- list_param$file_format
   estimator <- list_param$estimator
-    
+  estimation_method <- list_param$estimation_method #currently used only for mle from errorsarlm
+  
   #### START SCRIPT
   
   #Formula option not in full use yet...
@@ -239,9 +240,12 @@ predict_spat_reg_fun <- function(i,list_param){
   
   ## Add options later to choose the model type: lagsar,esar,spreg,lm etc.
   ##Can also add a loop to use all of them and output table???
-  if(estimator=="mle"){ #maximum likelihood estimator is used for the 
+  if(estimator=="mle"){ #maximum likelihood estimator is used with eigen method as default, if not other method is used if not null
+    if(is.null(estimation_method)){
+      estimation_method <- "eigen"
+    }
     spat_mod <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,na.action=na.omit,zero.policy=TRUE,
+                               data=data_reg,method=estimation_method,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
   }
   #This might need to be changed!!!
