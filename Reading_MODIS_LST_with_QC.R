@@ -18,7 +18,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 07/07/2014
+#MODIFIED ON : 02/27/2015
 #PROJECT: NCEAS and general MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -61,29 +61,43 @@ create_dir_fun <- function(out_dir,out_suffix){
 #############################
 ### Parameters and arguments
 
-in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
-out_dir <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/" #ATLAS SERVER 
-
 #load additional function!!
-function_analyses_paper <-"MODIS_and_raster_processing_functions_04172014.R"
-script_path <- "/Data/Space_Time/R"  #path to script functions
+function_analyses_paper <-"MODIS_and_raster_processing_functions_02272015.R"
+script_path <- "~/Data/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
-#infile_reg_outline=""  #input region outline defined by polygon: none for Venezuela
+in_dir <-"~/Data/Space_beats_time/Case2_data"
+#data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
+out_dir <- "~/Data/Space_beats_time/Case2_data_NDVI"
+
+proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
+#CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+proj_str<- CRS_WGS84
+CRS_interp <- proj_modis_str
+
+file_format <- ".rst" #raster format used
+NA_value <- -9999
+NA_flag_val <- NA_value
+out_suffix <-"Katrina_02272015" #output suffix for the files that are masked for quality and for 
+create_out_dir_param=FALSE
+
+#in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
+#out_dir <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/" #ATLAS SERVER 
+
+
+infile_reg_outline=""  #input region outline defined by polygon: none Katrina
+infile_reg_outline=NULL
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
-#infile_reg_outline <- "/Volumes/Seagate Backup Plus Drive/Ecuador_Project/region_outlines_ref_files/OR83M_state_outline.shp"  #input region outline defined by polygon: Oregon
-infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
+#infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
-#ref_rast_name<-file.path(in_dir,"/reg_input_yucatan/gyrs_sin_mask_1km_windowed.rst")  #local raster name defining resolution, exent: oregon
+#local raster name defining resolution, exent: oregon
 
-ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
-infile_modis_grid <- "/data/project/layers/commons/modis/modis_sinusoidal/modis_sinusoidal_grid_world.shp")
+ref_rast_name <- "~/Data/Space_beats_time/Case2_data/reg_input_Katrina/r_FID_predictions_09252014.rst"
+#ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
+infile_modis_grid <- "~/Data/Space_beats_time/Case2_data/reg_input_Katrina/modis_sinusoidal_grid_world.shp"
 #infile_modis_grid <- file.path(in_dir,"/reg_input_yucatan/modis_sinusoidal_grid_world.shp")
-
-
-out_suffix <- "07072014" #output suffix for the files that are masked for quality and for 
-create_out_dir_param <- TRUE #create output directory using previously set out_dir and/or out_suffix
 
 ## Other specific parameters
 
@@ -97,9 +111,9 @@ end_date <- "2010.12.31"
 
 #list_tiles_modis<- c("h09v08,h09v09,h10v09,h10v08") 
 #list_tiles_modis<- c("h09v06,h09v07") 
-list_tiles_modis<- c("h08v04,h09v04") 
+#list_tiles_modis<- c("h08v04,h09v04") 
 
-#list_tiles_modis<- NULL
+list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file
 
 file_format_download <- "hdf"
 file_format <- ".rst" #output format
@@ -108,9 +122,9 @@ product_version <- 5
 temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly)
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 #scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
-#scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done 
+scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done 
 #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
 #modis_layer_str2 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get qc LST layer
 
@@ -118,14 +132,14 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 #CRS_interp <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
 CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 #CRS_interp <- proj_modis_str
-#product_type = c("NDVI") #can be LST, ALBEDO etc.
-product_type = c("LST") #can be LST, ALBEDO etc.
+product_type = c("NDVI") #can be LST, ALBEDO etc.
+#product_type = c("LST") #can be LST, ALBEDO etc.
 
 #run all processing steps
 #steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 #run specific processing steps
 #steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
-steps_to_run <- list(download=FALSE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
+steps_to_run <- list(download=TRUE,import=TRUE,apply_QC_flag=TRUE,moscaic=TRUE,reproject=TRUE)
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -143,11 +157,16 @@ if(create_out_dir_param==TRUE){
 #### STEP 1:  DOWNLOAD MODIS PRODUCT  ####
 
 #Note that files are downloaded in the ouput directory in subdirectory with tile_name (e.g. h08v04)
-
+if(is.null(infile_reg_outline))
+  reg_outline<- create_polygon_from_extent(ref_rast_name,out_suffix)
+  #debug(get_modis_tiles_list)
+  list_tiles_modis <- get_modis_tiles_list(modis_grid,reg_outline,CRS_interp)
+}
 list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
 
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
+  #debug(modis_product_download)
   download_modis_obj <- modis_product_download(MODIS_product,version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
