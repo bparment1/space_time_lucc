@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 10/20/2013
+#MODIFIED ON: 02/27/2015
 #PROJECT: None, general utility functions for raster (GIS) processing.     
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -427,6 +427,28 @@ create_idrisi_rgf <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",
   return(file.path(in_dir,list_raster_name))
 }
 
+#This function is very very slow not be used most likely
+create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
+  #This functions returns polygon sp from input rast
+  #Arguments: input ref rast
+  #Output: spatial polygon
+  if(is.null(outDir)){
+    outDir=getwd()
+  }
+  if(is.null(outSuffix)){
+    outSuffix=""
+  }
+  set1f <- function(x){rep(1, x)}
+  
+  tmp_rast <- init(reg_ref_rast, fun=set1f, overwrite=TRUE)
+  reg_outline_poly<-rasterToPolygons(tmp_rast,dissolve=T)
+  infile_reg_outline <- paste("reg_out_line_",out_suffix,".shp",sep="")
+  writeOGR(reg_outline_poly,dsn= outDir,layer= sub(".shp","",infile_reg_outline), 
+           driver="ESRI Shapefile",overwrite_layer="TRUE")
+
+  return(reg_outline_poly)
+}
+
 ### MODIS SPECIFIC FUNCTIONS
 
 create_modis_tiles_region<-function(modis_grid,tiles){
@@ -442,18 +464,37 @@ create_modis_tiles_region<-function(modis_grid,tiles){
   return(selected_tiles)
 }
 
-get_modis_tiles_list <-function(modis_grid,infile_reg_outline,CRS_interp){
+get_modis_tiles_list <-function(modis_grid,reg_outline,CRS_interp){
+  #Usage:This function finds the matching modis tiles given a vector polygon in shapefile format.
+  #Inputs:
+  #modis_grid: shapefiles of modis grid.
+  #reg_outline: file name or Spatial Polygons Data Frame of processing region with extent
+  #CRS_interp: projection system
+  #Outputs:
+  #list of modis tiles in the hxxvxx format eg h09v06
+  if(class(reg_outline)!="SpatialPolygonsDataFrame"){
+    filename<-sub(extension(basename(reg_outline)),"",basename(reg_outline))       #Removing path and the extension from file name.
+    reg_outline <- readOGR(dsn=dirname(reg_outline), filename)
+  }
   filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
   modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
-  filename<-sub(extension(basename(infile_reg_outline)),"",basename(infile_reg_outline))       #Removing path and the extension from file name.
-  reg_outline <- readOGR(dsn=dirname(infile_reg_outline), filename)
-  proj4string(reg_outline) <- CRS_interp
+  #proj4string(reg_outline) <- CRS_interp
   
   #modis_WGS84 <- spTransform(modis_grid,CRS_locs_WGS84) #get cooddinates of center of region in lat, lon
   reg_outline_sin <- spTransform(reg_outline,CRS(proj4string(modis_grid))) #get cooddinates of center of region in lat, lon
   reg_outline_dissolved <- gUnionCascaded(reg_outline_sin)  #dissolve polygons
-  tiles<-gIntersection(reg_outline_dissolved, modis_grid, byid=FALSE, id=NULL)
-  ##...continue here
+  
+  #tiles<-gIntersection(reg_outline_dissolved, modis_grid, byid=FALSE, id=NULL)
+  l_poly <- over(reg_outline_dissolved, modis_grid)
+  df_tmp <- as.data.frame(modis_grid[l_poly,])
+  #df_tmp <- as.data.frame(modis_grid[555:60,])
+
+  #now format...
+  #format()
+  tiles_modis <- paste(sprintf("h%02d", df_tmp$h),sprintf("v%02d", df_tmp$v),sep="")
+  tiles_modis <- paste(tiles_modis,collapse=",")
+  #h09v06
+  
   return(tiles_modis)
 }
 ## function to download modis product??
@@ -470,24 +511,27 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     return(ret[which(nchar(ret)>0)])
   }
   
-  extractFiles=function(urlString, selHV) {
+  #list_folders_files[[i]] <- extractFiles(url_folders_str[i], list_tiles)[file_format]
+  extractFiles=function(urlString, list_tiles_str) {
     #Slight modifications by Benoit
-    #selHV: tiles as character vectors
+    #list_tiles: modis tiles as character vectors eg c("h10v06","h09v07")
     #urlString: character vector with url folder to specific dates for product
     
     # get filename strings
     htmlString=getURL(urlString)
     #htmlString=getURL(urlString[2])
     allVec=gsub('\">', '', gsub('<a href=\"', "", str_extract_all(htmlString, paste('<a href=\"',"([^]]+)", '\">',sep=""))[[1]]))
-    #allVec=gsub('\">', '', gsub('<a href=\"', "", str_extract_all(htmlString, paste('<a href=\"',"([^]]+)", '\">',sep=""))))
+    #allVec: this contains list of all files! need to select the correct tiles...
+    #ret=c()
+    #for (currSel in list_tiles_str) {
+    #  ret=c(ret, grep(currSel, allVec, value=TRUE))
+    #}
+    #list_tiles_str <- c("h10v06","h11v07")
+    ret <- lapply(list_tiles_str,function(x){grep(x,allVec,value=T)})
     
-    ret=c()
-    for (currSel in selHV) {
-      ret=c(ret, grep(currSel, allVec, value=TRUE))
-    }
     # select specific files
-    ret <- paste(urlString,ret,sep="") #append the url of folder
-    
+    #ret <- paste(urlString,ret,sep="") #append the url of folder
+    ret <-file.path(urlString,unlist(ret))
     jpg=sapply(ret, FUN=endswith, char=".jpg")
     xml=sapply(ret, FUN=endswith, char=".xml")
     hdf=sapply(ret, FUN=endswith, char=".hdf")
@@ -548,15 +592,17 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   list_folders_files <- vector("list",length(url_folders_str))
   d_files <- vector("list",length(list_folders_files))
   file_format<-c("hdf","xml")
+  #can make this faster using parallelization...
   for (i in 1:length(url_folders_str)){
-    list_folders_files[[i]] <- extractFiles(url_folders_str[i], list_tiles)[file_format] 
+    #debug(extractFiles)
+    list_folders_files[[i]] <- try(extractFiles(url_folders_str[i], list_tiles)[file_format]) 
     #d_files[[i]] <- list_folders_files[[i]][[file_format]]                      
   }
-  
-  d_files <- as.character(unlist(list_folders_files)) #all hte files to download...
+  #list_folders_files <- lapply(url_folders_str,extractFiles,list_tiles_str=list_tiles)
+  d_files <- as.character(unlist(list_folders_files)) #all the files to download...
     
   #Step 3: download file to the directory 
-  
+  #browser()
   #prepare files and directories for download
   out_dir_tiles <- file.path(out_dir,list_tiles)
   list_files_tiles <- vector("list",length(list_tiles))
@@ -572,7 +618,9 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     file_items <- list_files_tiles[[j]]
     for (i in 1:length(file_items)){
       file_item <- file_items[i]
-      download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))      
+      download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))
+      download.file(file_item,destfile="test.hdf")
+      
     }
   }
   
