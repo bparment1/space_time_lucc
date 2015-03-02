@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/27/2015
+#MODIFIED ON: 03/02/2015
 #PROJECT: None, general utility functions for raster (GIS) processing.     
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -17,25 +17,32 @@
 #
 ###################################################################################################
 
-### List of functions currently available:
+### List of 21 functions currently available:
 # Add documentation later
-#
-#[1] assign_projection_crs      
-#[2] change_names_file_list  
-#[3] create_raster_list_from_file_pat
-#[4] create_idrisi_rgf
-#[5] create__m_raster_region"   
-#[6] create_MODIS_QC_table"
-#[7] create_modis_tiles_region"
-#[8] define_crs_from_extent_fun"
-#[9] extract_list_from_list_obj
-#[10] import_modis_layer_fun  
-#[11] import_list_modis_layers_fun" 
-#[12] load_obj  
-#[13] qc_valid_modis_fun        
-#[14]"screen_for_qc_valid_fun"
-#[15] screening_val_r_stack_fun 
-#[16] modis_product_download
+
+#[1] "assign_projection_crs"            
+#[2] "change_names_file_list"           
+#[3] "create_MODIS_QC_table"            
+#[4] "create__m_raster_region"         
+#[5] "create_dir_fun"                   
+#[6] "create_idrisi_rgf"                
+#[7] "create_modis_tiles_region"        
+#[8] "create_polygon_from_extent"      
+#[9] "create_raster_list_from_file_pat" 
+#[10] "define_crs_from_extent_fun"       
+#[11] "extract_list_from_list_obj"
+#[12] "extract_dates_from_raster_name"
+#[13] "get_modis_tiles_list"             
+#[14] "import_list_modis_layers_fun"     
+#[15] "import_modis_layer_fun"           
+#[16] "load_obj" 
+#[17] "merge_multiple_df"
+#[18] "modis_product_download"           
+#[19] "mosaic_m_raster_list"             
+#[20] "remove_from_list_fun"             
+#[21] "screen_for_qc_valid_fun"         
+#[22] "screening_val_r_stack_fun" 
+
    
 ###Loading R library and packages                                                      
 #library(gtools)    # loading some useful tools 
@@ -310,6 +317,22 @@ extract_list_from_list_obj<-function(obj_list,list_name){
   return(list_tmp) #this is  a data.frame
 }
 
+remove_from_list_fun <- function(l_x,condition_class ="try-error"){
+  index <- vector("list",length(l_x))
+  for (i in 1:length(l_x)){
+    if (inherits(l_x[[i]],condition_class)){
+      index[[i]] <- FALSE #remove from list
+    }else{
+      index[[i]] <- TRUE
+    }
+  }
+  l_x<-l_x[unlist(index)] #remove from list all elements using subset
+  
+  obj <- list(l_x,index)
+  names(obj) <- c("list","valid")
+  return(obj)
+}
+
 screen_for_qc_valid_fun <-function(i,list_param){
   ##Function to assign NA given qc flag values from MODIS or other raster
   #Author: Benoit Parmentier
@@ -449,6 +472,34 @@ create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
   return(reg_outline_poly)
 }
 
+create_dir_fun <- function(out_dir,out_suffix){
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    out_dir <- file.path(out_dir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
+  return(out_dir)
+}
+
+#merge a list of data.frame 
+#function created since merge_all requires ordering from most to least 
+merge_multiple_df<-function(df_list,by_name){
+  for (i in 1:(length(df_list)-1)){
+    if (i==1){
+      df1=df_list[[i]]
+    }
+    if (i!=1){
+      df1=df_m
+    }
+    df2<-df_list[[i+1]]
+    df_m<-merge(df1,df2,by=by_name,all=T)
+  }
+  return(df_m)
+}
+
 ### MODIS SPECIFIC FUNCTIONS
 
 create_modis_tiles_region<-function(modis_grid,tiles){
@@ -472,6 +523,9 @@ get_modis_tiles_list <-function(modis_grid,reg_outline,CRS_interp){
   #CRS_interp: projection system
   #Outputs:
   #list of modis tiles in the hxxvxx format eg h09v06
+  
+  ## SCRIPT BEGIN ##
+  
   if(class(reg_outline)!="SpatialPolygonsDataFrame"){
     filename<-sub(extension(basename(reg_outline)),"",basename(reg_outline))       #Removing path and the extension from file name.
     reg_outline <- readOGR(dsn=dirname(reg_outline), filename)
@@ -546,28 +600,10 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     return(FALSE)
   }
   
-  #Generate dates and names for files...?
+  ########## BEGIN SCRIPT #######
   
   #step 1: parse input elements
   
-  #MODIS_product <- list_param$MODIS_product 
-  #start_date <- list_param$start_date 
-  #end_date <- list_param$end_date
-  #list_tiles<- list_param$list_tiles
-  #out_dir<- list_param$out_dir
-  
-  #MODIS_product <- "MOD11A1.005"
-  #start_date <- "2001.01.01"
-  #end_date <- "2001.01.05"
-  #list_tiles<- c("h08v04","h09v04")
-  #out_dir<- "/Users/benoitparmentier/Dropbox/Data/NCEAS/MODIS_processing"
-  
-  #if daily...,if monthly...,if yearly...
-  ## find all 7th of the month between two dates, the last being a 7th.
-  #if(temporal_granularity=="Daily"){
-  #  d
-  #}
-
   st <- as.Date(start_date,format="%Y.%m.%d")
   en <- as.Date(end_date,format="%Y.%m.%d")
   ll <- seq.Date(st, en, by="1 day")
@@ -599,8 +635,10 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     #d_files[[i]] <- list_folders_files[[i]][[file_format]]                      
   }
   #list_folders_files <- lapply(url_folders_str,extractFiles,list_tiles_str=list_tiles)
-  d_files <- as.character(unlist(list_folders_files)) #all the files to download...
-    
+  #Now remove error objects...
+  d_files_tmp <-remove_from_list_fun(l_x=list_folders_files,condition_class ="try-error")
+  d_files <- as.character(unlist(d_files_tmp$list)) #all the files to download...
+
   #Step 3: download file to the directory 
   #browser()
   #prepare files and directories for download
@@ -613,21 +651,22 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     list_files_tiles[[j]] <- grep(pattern=list_tiles[j],x=d_files,value=TRUE) 
   }
     
-  #Now download per tiles
+  #Now download per tiles: can be parallelized
   for (j in 1:length(list_files_tiles)){ #loop around tils
     file_items <- list_files_tiles[[j]]
     for (i in 1:length(file_items)){
       file_item <- file_items[i]
       download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))
-      download.file(file_item,destfile="test.hdf")
-      
+      #download.file(file_item,destfile="test.hdf")
     }
   }
   
   #Prepare return object: list of files downloaded with http and list downloaded of files in tiles directories
   
-  list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,pattern="*.hdf$",path=out_dir_tiles,full.names=T) #Use mapply to pass multiple arguments
-  colnames(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
+  list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles))) #Use mapply to pass multiple arguments
+  #list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T)) #Use mapply to pass multiple arguments
+  
+  names(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
   download_modis_obj <- list(list_files_tiles,list_files_by_tiles)
   names(download_modis_obj) <- c("downloaded_files","list_files_by_tiles")
   return(download_modis_obj)
@@ -843,6 +882,23 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
   
   return(list_QC_Data)
 }
+
+#This function extract dates from MODIS exported raster files, used in the mosaics stage... 
+extract_dates_from_raster_name <- function(i,list_files){
+  #Prepare list of modis tiles to mosaic
+  raster_name <- list_files[i]
+  #raster_name <- list_m_var[[1]][1]
+  names_part_raster <- as.character(unlist(strsplit(x=basename(raster_name), split="[_]")))
+  
+  char_nb<-length(names_part_raster)-2
+  #names_hdf <- names_hdf[1:char_nb]
+
+  date_raster <- names_part_raster[2]
+  date_raster <- strsplit(date_raster,"A")[[1]][[2]]
+  df_raster_name <- data.frame(raster_name=raster_name,date=date_raster)
+  return(df_raster_name)
+}
+
 
 #Screen data: use only : # level 1: LST Produced good quality, LST Produced other Quality Check QA, 
                          # level 2: good data , Other quality 
