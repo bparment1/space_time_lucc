@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 03/02/2015
+#MODIFIED ON: 03/05/2015
 #PROJECT: None, general utility functions for raster (GIS) processing.     
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -17,7 +17,7 @@
 #
 ###################################################################################################
 
-### List of 21 functions currently available:
+### List of 22 functions currently available:
 # Add documentation later
 
 #[1] "assign_projection_crs"            
@@ -666,7 +666,7 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles))) #Use mapply to pass multiple arguments
   #list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T)) #Use mapply to pass multiple arguments
   
-  names(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
+  colnames(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
   download_modis_obj <- list(list_files_tiles,list_files_by_tiles)
   names(download_modis_obj) <- c("downloaded_files","list_files_by_tiles")
   return(download_modis_obj)
