@@ -18,7 +18,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 03/02/2015
+#MODIFIED ON : 03/05/2015
 #PROJECT: NCEAS and general MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -158,12 +158,12 @@ if(steps_to_run$download==TRUE){
   download_modis_obj <- modis_product_download(MODIS_product,version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
-  names(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
+  colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
 }else{
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   #list_files_by_tiles <- mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T),SIMPLIFY=T) #Use mapply to pass multiple arguments 
   list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles)),SIMPLIFY=T) #Use mapply to pass multiple arguments
-  names(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
+  colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
 }
 
 ####################################
@@ -201,9 +201,10 @@ qc_modis_name <- gsub(" ","_",qc_modis_name)
 if(steps_to_run$import==TRUE){
   for(j in 1:length(list_tiles_modis)){
     #infile_var <- download_modis_obj$list_files_by_tiles[,j] 
-    #infile_var <-list_files_by_tiles[,j] #note can be any variable even thought LST presented  here
-    infile_var <- list_files_by_tiles[[j]]
+    infile_var <-list_files_by_tiles[,j] #note can be any variable even thought LST presented  here
+    #infile_var <- list_files_by_tiles[[j]]
     out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    
     out_suffix_s <- var_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
