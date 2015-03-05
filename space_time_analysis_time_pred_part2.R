@@ -186,10 +186,15 @@ extract_arima_mod_info <- function(i,list_param){
 
 ## Location on Benoit's laptop (Dropbox)
 #in_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
-in_dir<- "/home/parmentier/Data/Space_Time/"
+#in_dir<- "/home/parmentier/Data/Space_Time/"
 #out_dir<- "/Users/benoitparmentier/Dropbox/Data/Space_Time"
-out_dir<- "/home/parmentier/Data/Space_Time"
-out_suffix <-"04212014" #output suffix for the files that are masked for quality and for 
+#out_dir<- "/home/parmentier/Data/Space_Time"
+in_dir<-"~/Data/Space_beats_time/Case1a_data"
+#in_dir <- "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
+#out_dir <-  "/Users/benoitparmentier/Google Drive/R_Workshop_April2014"
+in_dir_NDVI <- file.path(in_dir,"moore_NDVI_wgs84") #contains NDVI 
+
+out_suffix <-"02272015" #output suffix for the files that are masked for quality and for 
 
 moore_window <- file.path(in_dir,"moore_window.rst")
 
@@ -199,7 +204,16 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84
 CRS_interp <- proj_modis_str
 
+###### Functions used in this script
+
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02262015_functions.R"
 function_analyses_paper <- "MODIS_and_raster_processing_functions_04172014.R"
+
+script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script
+
+#script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
+source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+
 #script_path <- "~/Dropbox/Data/NCEAS/git_space_time_lucc/scripts_queue" #path to script functions
 script_path <- file.path(in_dir,"R") #path to script functions
 
