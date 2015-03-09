@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/26/2015
+#DATE MODIFIED: 03/09/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -250,6 +250,10 @@ predict_spat_reg_fun <- function(i,list_param){
   }
   #This might need to be changed!!!
   if(estimator=="gmm"){ #generalized method of moments: this is not available old packages...
+    if(is.null(estimation_method)){
+      estimation_method <- "gs2slshac"
+    }
+
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
     v2 <- rnorm(nrow(data_reg))  #see if this work...
     data_reg$v2 <- v2 - mean(v2)
@@ -263,6 +267,10 @@ predict_spat_reg_fun <- function(i,list_param){
   #ordinary least square, this estimator should not be used for spatial reg but is  here for didactic purposes (course):
   #ie. values of standard errors can be compared with other...
   if(estimator=="ols"){  
+    if(is.null(estimation_method)){
+      estimation_method <- "ols"
+    }
+
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
     v2 <- lag.listw(reg_listw_w,var=data_reg$v2) #creating a lag variable...#maybe this should be in the cleaning out function?
     data_reg$v3 <- data_reg$v2 #this is the lag variable...
@@ -285,19 +293,19 @@ predict_spat_reg_fun <- function(i,list_param){
   
   r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name <- paste("r_spat_pred_",estimator,"_",out_suffix,file_format,sep="")
+  raster_name <- paste("r_spat_pred_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
   r_spat_res <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_res") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name2 <- paste("r_spat_res_",estimator,"_",out_suffix,file_format,sep="")
+  raster_name2 <- paste("r_spat_res_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
   
   #Return object contains model fitted, input and output rasters
   spat_reg_obj <- list(spat_mod,r_poly_name,reg_listw_w,raster_name,raster_name2)
   names(spat_reg_obj) <- c("spat_mod","r_poly_name","reg_listw_w","raster_pred","raster_res")
-  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",out_suffix,".RData",sep="")))
+  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
   
   return(spat_reg_obj)
 }
