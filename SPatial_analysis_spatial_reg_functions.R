@@ -27,7 +27,8 @@
 #[6] "predict_spat_reg_fun" : function to perform spatial regresssion prediction
 #[7] "predict_temp_reg_fun : function to preform temporal  predictions       
 #[8] "rasterize_df_fun" : create raster from textfile with location information
-
+#
+#Add arima functions
 
 ###Loading R library and packages                                                      
 
@@ -39,13 +40,15 @@ library(maptools)
 library(parallel)
 library(rasterVis)
 library(raster)
-#library(forecast) #ARIMA forecasting
-#library(xts)
-#library(zoo)
-#library(lubridate)
+library(forecast) #ARIMA forecasting
+library(xts)
+library(zoo)
+library(lubridate)
 library(colorRamps) #contains matlab.like color palette
 library(rgeos)
 library(sphet) #contains spreg
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
 
 ###### Functions used in this script
 
@@ -145,17 +148,168 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   return(nb_obj)
   
 }
+
+###ARIMA RELATED FUNCTIONS...need to be improved a lot!!
+
+raster_ts_arima<-function(pixel,na.rm=T,arima_order){
+  arima_obj<-arima(pixel,order=arima_order)
+  a<-as.numeric(coef(arima_obj)[1]) 
+  return(a)
+}
+
+#This takes a pixel time series ... extracted from a stack
+
+raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
+  if(is.null(arima_order)){
+    arima_mod <- auto.arima(pixel)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
+  }else{
+    arima_mod<-arima(pixel,order=arima_order)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
+  }
+  if (!inherits(p_arima,"try-error")){
+    y<- t(as.data.frame(p_arima$pred))
+    y_error <- rep(0,n_ahead)
+  }
+  if (inherits(p_arima,"try-error")){
+    y<- rep(NA,n_ahead)
+    y_error <- rep(1,n_ahead)
+  }
+  pred_obj <- list(y,y_error)
+  names(pred_obj)<-c("pred","error")
+                                  
+  return(pred_obj)
+}
+
+#This is the main function!!!
+
+pixel_ts_arima_predict <- function(i,list_param){
+  
+  #extract parameters                                  
+  pixel <-list_param$pix_val[i]
+  arima_order <-list_param$arima_order
+  n_ahead <- list_param$n_ahead
+  out_suffix <- list_param$out_suffix
+  na.rm=T
+
+  #Start
+
+  if(is.null(arima_order)){
+    arima_mod <- auto.arima(pixel)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
+  }else{
+    arima_mod<-arima(pixel,order=arima_order)
+    p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
+  }
+  if (!inherits(p_arima,"try-error")){
+    y<- t(as.data.frame(p_arima$pred))
+    y_error <- rep(0,n_ahead)
+  }
+  if (inherits(p_arima,"try-error")){
+    y<- rep(NA,n_ahead)
+    y_error <- rep(1,n_ahead)
+  }
+  pred_obj <- list(y,y_error)
+  names(pred_obj)<-c("pred","error")
+  save(arima_mod,file=paste("arima_mod_",i,out_suffix,".RData",sep=""))             
+  
+  return(pred_obj)
+}
+
+raster_NA_image <- function(r_stack){
+  list_r_NA <- vector("list",length=nlayers(r_stack))
+  for (i in 1:nlayers(r_stack)){
+    r <- subset(r_stack,i)
+    r_NA <- is.na(r)
+    list_r_NA[[i]] <- r_NA
+  }
+  return(list_r_NA)
+}
+
+convert_arima_pred_to_raster <- function(i,list_param){
+  #This function produces a raster image from ariam pred obj
+  #Read in the parameters...
+  r_ref <-list_param$r_ref
+  ttx <- list_param$ttx
+  file_format <- list_param$file_format
+  out_dir <-list_param$out_dir
+  out_suffix <- list_param$out_suffix
+  out_rastname <-list_param$out_rastnames[i]
+  file_format <- list_param$file_format
+  NA_flag_val <- list_param$NA_flag_val
+  
+  #start script
+  #pred_t <- lapply(ttx,FUN=function(x){x$pred[i]})
+  #error_t <- lapply(ttx,FUN=function(x){x$error[i]})
+  
+  l_r <-vector("list", length=2)
+  l_r[[1]]<-lapply(ttx,FUN=function(x){x$pred[i]})
+  l_r[[2]] <- lapply(ttx,FUN=function(x){x$error[i]})
+  
+  for (j in 1:2){
+    tt_dat <- do.call(rbind,l_r[[j]])
+    tt_dat <- as.data.frame(tt_dat)
+    pred_t <-as(r_ref,"SpatialPointsDataFrame")
+    pred_t <- as.data.frame(pred_t)
+    pred_t <- cbind(pred_t,tt_dat)
+    coordinates(pred_t) <- cbind(pred_t$x,pred_t$y)
+    raster_pred <- rasterize(pred_t,r_ref,"V1",fun=mean)
+    l_r[[j]] <- raster_pred
+  }
+  
+  #tmp_name <- extension(out_rastname)
+  #modify output name to for error image
+  tmp_name <- unlist(strsplit(out_rastname,"_"))
+  nb<- length(tmp_name)
+  tmp_name <-paste(paste(tmp_name[1:(nb-1)],collapse="_"),
+             "error",tmp_name[nb],sep="_")
+  writeRaster( l_r[[2]],NAflag=NA_flag_val,
+              filename=file.path(out_dir,tmp_name),
+              overwrite=TRUE)  
+  writeRaster( l_r[[1]],NAflag=NA_flag_val,
+              filename=file.path(out_dir,out_rastname),
+              overwrite=TRUE)  
+  return(list(out_rastname,tmp_name))
+}
+
+extract_arima_mod_info <- function(i,list_param){
+  fname <- list_param$arima_mod_name[i]
+  arima_mod <- load_obj(fname)
+  #summary(arima_mod)
+  #coef(arima_mod)
+  arima_specification <- arima_mod$arma
+  arima_coef <-  coef(arima_mod)
+  #http://stackoverflow.com/questions/19483952/how-to-extract-integration-order-d-from-auto-arima
+  #a$arma[length(a$arma)-1] is the order d
+  #[1] 2 0 0 0 1 0 0
+  #A compact form of the specification, as a vector giving the number of AR (1), MA (2), 
+  #seasonal AR (3) and seasonal MA coefficients (4), 
+  #plus the period (5) and the number of non-seasonal (6) and seasonal differences (7).
+  
+  return(list(arima_specification,arima_coef))
+} 
+
+
 #Predict using the previous date and OLS
 predict_temp_reg_fun <-function(i,list_param){
   #Extract parameters/arguments
   #test_shp_fname <- list_param$list_shp[i]
   out_dir  <- list_param$out_dir
-  r_ref_s    <- list_param$r_var #if NULL, no image is created
+  r_ref_s    <- list_param$r_var #if NULL, no image is created, this is the reference image
   r_clip     <- list_param$r_clip
   proj_str <- list_param$proj_str
   list_models <- list_param$list_models
   out_suffix <- list_param$out_suffix[i]
   file_format <- list_param$file_format
+  estimator <- list_param$estimator
+  estimation_method <- list_param$estimation_method #currently used only for mle from errorsarlm
+  
+  #ARIMA specific
+  num_cores <- list_param$number_cores
+  time_step <- list_param$time_step #this is the time step for which to start the arima model with
+  n_pred_ahead <- list_param$n_pred_ahead
+  r_stack <- list_param$r_stack
+  arima_order <- list_param$arima_order
   
   #### START SCRIPT
   
@@ -169,31 +323,112 @@ predict_temp_reg_fun <-function(i,list_param){
   r_var2 <- subset(r_ref_s,i:n_pred)
   r_ref_s <- crop(r_var2,r_clip)
   
-  data_reg2_spdf <- as(r_ref_s,"SpatialPointsDataFrame")
-  names(data_reg2_spdf) <- c("t1","t2")
-  data_reg2 <- as.data.frame(data_reg2_spdf)
-  data_reg2 <- na.omit(data_reg2) #remove NA...this reduces the number of observations
-  lm_mod <- lm(t2 ~ t1, data=data_reg2)
-  #summary(lm_mod)
+  if(estimation_method=="ols"){
+    
+    data_reg2_spdf <- as(r_ref_s,"SpatialPointsDataFrame")
+    names(data_reg2_spdf) <- c("t1","t2")
+    data_reg2 <- as.data.frame(data_reg2_spdf)
+    data_reg2 <- na.omit(data_reg2) #remove NA...this reduces the number of observations
+    temp_mod <-try(lm(t2 ~ t1, data=data_reg2))
+    #summary(lm_mod)
   
-  #Predicted values and
-  data_reg2$lm_temp_pred <- lm_mod$fitted.values
-  data_reg2$lm_temp_res <- lm_mod$residuals
+    #Predicted values and
+    data_reg2$temp_pred <- temp_mod$fitted.values
+    data_reg2$temp_res <- temp_mod$residuals
   
-  coordinates(data_reg2) <- c("x","y")
-  proj4string(data_reg2) <- projection(r_ref_s)
+    coordinates(data_reg2) <- c("x","y")
+    proj4string(data_reg2) <- projection(r_ref_s)
   
-  r_temp_pred <- rasterize(data_reg2,r_ref_s,field="lm_temp_pred") #this is the prediction from lm model
-  #file_format <- ".rst"
-  raster_name <- paste("r_temp_pred","_",out_suffix,file_format,sep="")
+    r_temp_pred <- rasterize(data_reg2,r_ref_s,field="temp_pred") #this is the prediction from lm model
+    r_temp_res <- rasterize(data_reg2,r_ref_s,field="temp_res") #this is the prediction from lm model
+
+  }
+ 
+  if(estimation_method=="arima"){
+    
+    #pix_val <- as(r_stack_w,"SpatialPointsDataFrame")
+    pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
+
+    #pix_val <- as.data.frame(r_stack_w)
+    #moore_dat <- as(moore_w,"SpatialPointsDataFrame")
+    #r_huric_w <- subset(r_stack_w,152:156) #date before hurricane and  after
+
+    #pix_val <- extract(r_stack,moore_dat,df=TRUE)
+    #pix_val <- t(pix_val[,1:153])
+    pix_val2 <- as.data.frame(pix_val)
+    pix_val2 <-  pix_val2[,1:time_step] #152
+    pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))#dim 152x26,616
+
+    ### Should add a window option to subset the pixels time series
+    #
+    #ttx2 <- lapply(pix_val,FUN=raster_ts_arima_predict,na.rm=T,arima_order=NULL,n_ahead=2)
+    # <- mclapply(pix_val,,)
+
+    #n_pred_ahead <- 4 #number of temporal ARIMA predictions ahead..
+
+    ## Now prepare predictions: should this a be a function?
+
+   list_param_predict_arima_2 <- list(pix_val=pix_val2,na.rm=T,arima_order=NULL,n_ahead=n_pred_ahead)
+   #undebug(pixel_ts_arima_predict)
+   tmp_val <- raster_ts_arima_predict(1,list_param_predict_arima_2)
+   #started at 6.34 on Sat 14
+   arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 11) 
+   save(arima_pixel_pred_obj,file=paste("arima_pixel_pred_obj",out_suffix,".RData",sep=""))
+   ##Finished at
+   #ttx3 <- load_obj("raster_ts_arima_predict_obj04212014.RData")
+   #ttx2 <- mclapply(1:length(pix_val), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = 12) #This is the end bracket from mclapply(...) statement
+   #ttx2 <- lapply(1:length(pix_val2), FUN=raster_ts_arima_predict,list_param=list_param_predict_arima_2) #This is the end bracket from mclapply(...) statement
+
+   #file_format <- ".rst"
+   #NA_flag_val <- -9999
+   #rast_ref <- rast_ref != NA_flag_val
+   #pix_id_r <- rast_ref
+   #values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
+   #pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
+   
+   #r_ref_s <- rast_ref
+   #r_ref_s
+   
+   #### Now convert predictions to raster images
+   
+   #out_rastnames <- paste(paste("NDVI_pred_mooore_auto",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
+   out_rastnames <- paste(paste("temp_pred_arima_",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
+
+   list_param_arima_convert <- list(r_ref_s,arima_pixel_pred_obj,file_format,out_dir,out_rastnames,file_format,NA_flag_val)
+   
+   names(list_param_arima_convert) <- c("r_ref","ttx","file_format","out_dir","out_rastnames","file_format","NA_flag_val")
+
+   #debug(convert_arima_pred_to_raster)
+   ## Convert predicted values to raster...
+
+   pred_t_l<-lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
+   #pred_t_l<-mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
+
+   #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+
+   pred_t_l <-unlist(pred_t_l)
+   r_pred  <- stack(pred_t_l[-c(grep(pattern="error",pred_t_l))])
+   r_error <- stack(pred_t_l[c(grep(pattern="error",pred_t_l))])
+
+   #r_huric_w <- subset(r_stack,153:156)
+   #r_huric_w <- crop(r_huric_w,moore_w)
+
+   r_t0_pred <- stack(subset(r_huric_w,1),r_pred_t1,r_pred_t2)
+   names(r_t0_pred) <- c("NDVI_t_0","NDVI_pred_t_1","NDVI_pred_t_2")
+
+  }
+  
+   #### PREPARE OBJECT TO RETURN
+
+  raster_name <- paste("r_temp_pred","_",estimator_,estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
-  r_temp_res <- rasterize(data_reg2,r_ref_s,field="lm_temp_res") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name2 <- paste("r_temp_res","_",out_suffix,file_format,sep="")
+  raster_name2 <- paste("r_temp_res","_",estimator_,estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_temp_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
-  
+    
+   
   #Adding mod object, the ARIMA model will be different...function...most likely
   temp_reg_obj <- list(lm_mod,raster_name,raster_name2)
   names(temp_reg_obj) <- c("lm_mod","raster_pred","raster_res")
