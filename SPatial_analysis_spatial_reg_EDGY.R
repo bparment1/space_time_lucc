@@ -2,18 +2,21 @@
 ############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
 #This script produces a prediction for the dates following the Hurricane event.       
 #The script uses spatial neighbours to predict NDVI values in the MOORE EDGY region. 
-#Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
+#Temporal predictions use OLS with the image of the previous time or ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/09/2015
-#Version: 2
+#DATE MODIFIED: 03/18/2015
+#Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
+#PROJECT: AAG 2015 with Marco Millones
+#PROJECT: Geocomputation with Marco Millones
 #
 #COMMENTS: Testing alternative methods to eigen for spatial predictions: "Chebyshev" etc.
 #TO DO:
-# - add ARIMA function with parallelization
-# - add confidence interval around reg coef
+# - add ARIMA function with parallelization: in process, must be modified for increased efficiency
+# - add confidence interval around reg coef: this is important!!
+# - modify parallelization so that it works both on windows and linux/macos
 #
 #################################################################################################
 
@@ -22,26 +25,25 @@
 library(sp)
 library(rgdal)
 library(spdep)
-#library(BMS) #contains hex2bin and bin2hex
-#library(bitops)
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
 library(gtools)
 library(maptools)
 library(parallel)
 library(rasterVis)
 library(raster)
-library(forecast)
-library(xts)
-library(zoo)
-library(lubridate)
+library(zoo)  #original times series function functionalies and objects/classes
+library(xts)  #extension of time series objects and functionalities
+library(forecast) #arima and other time series methods
+library(lubridate) #date and time handling tools
 library(colorRamps) #contains matlab.like color palette
-library(rgeos)
-library(sphet) #contains spreg
+library(rgeos) #spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03092015_functions.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03182015_functions.R"
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script
-#script_path <- "/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/R_workshop_WM_04232014" #path to script
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
@@ -63,7 +65,7 @@ CRS_interp <- proj_modis_str
 file_format <- ".rst" #raster format used
 NA_value <- -9999
 NA_flag_val <- NA_value
-out_suffix <-"EDGY_predictions_03092015" #output suffix for the files that are masked for quality and for 
+out_suffix <-"EDGY_predictions_03182015" #output suffix for the files that are masked for quality and for 
 create_out_dir_param=TRUE
 
 ################# START SCRIPT ###############################
@@ -237,34 +239,16 @@ dim(data_reg) #18,842 points!!
 #This on works (on 02/12/2015)! Must investigates changes in data and Ubuntu R system.
 #This is using 18,842 observations.
 
-sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,na.action=na.omit,method="eigen",zero.policy=TRUE,
-                               tol.solve=1e-36)) #tol.solve use in matrix operations
+#sam.esar <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
+#                               data=data_reg,na.action=na.omit,method="eigen",zero.policy=TRUE,
+#                               tol.solve=1e-36)) #tol.solve use in matrix operations
 
-save(sam.esar,file="sam.esar_eigen.RData")
+#save(sam.esar,file="sam.esar_eigen.RData")
 #test with chebyshev
 #
 sam.esar_chebyshev <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
                                data=data_reg,na.action=na.omit,method="Chebyshev",zero.policy=TRUE,
                                tol.solve=1e-36)) #tol.solve use in matrix operations
-#keep track for warning?
-sam.esar_LU <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,na.action=na.omit,method="LU",zero.policy=TRUE,
-                               tol.solve=1e-36)) #tol.solve use in matrix operations
-save(sam.esar_LU,file="sam.esar_LU.RData")
-
-#Using 
-sam.esar_MC <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,na.action=na.omit,method="MC",zero.policy=TRUE,
-                               tol.solve=1e-36)) #tol.solve use in matrix operations
-save(sam.esar_MC,file="sam.esar_MC.RData")
-
-#Using the Matrix method based on updating of the Choleksky decomposition
-sam.esar_Matrix <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,na.action=na.omit,method="Matrix",zero.policy=TRUE,
-                               tol.solve=1e-36)) #tol.solve use in matrix operations
-save(sam.esar_Matrix,file="sam.esar_Matrix.RData")
-
 
 #Using the Smirnov/Anselin (2009) trace approximation
 #sam.esar_moments <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
@@ -277,19 +261,6 @@ save(sam.esar_Matrix,file="sam.esar_Matrix.RData")
 ###Use the generalized methods of momments
 #with spreg function
 #This function because it requires covariates so we create a random variable for use as a "fake" covariate 
-v5 <- rnorm(nrow(data_reg))
-data_reg$v5 <- v5 - mean(v5) #v5 is the random "fake" covariate
-
-spat_mod_spreg3 <- try(spreg(v1 ~ v5,data=data_reg, listw= reg_listw_w, model="error",   
-                     het = TRUE, verbose=TRUE))
-data_reg_spdf$spat_reg_pred <- data_reg$v1 + spat_mod_spreg3$residuals
-data_reg_spdf$spat_reg_res <- spat_mod_spreg3$residuals
-
-save(spat_mod_spreg3,file="spat_mod_reg_test.RData")
-
-#lm_mod <- try(lm(v1 ~ v5,data=data_reg))
-#mean(data_reg$v5)
-#all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this work...
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
 
@@ -313,7 +284,7 @@ coordinates(data_reg2) <- c("x","y")
 proj4string(data_reg2) <- CRS_WGS84
 
 ### Need to add ARIMA here...
-
+##run ARIMA!
 
 ###########################################
 ############## PART IV: Produce images from the individual predictions using time and space ####
@@ -335,7 +306,7 @@ r_pred <- stack(r_spat_pred,r_temp_pred) #stack of predictions
 names(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names when using R 3.0 or above
 plot(r_pred)
 
-levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="Var predictions after hurricane")
+levelplot(r_pred,col.regions=rev(terrain.colors(255)),main="Var predictions after hurricane")
 levelplot(r_pred,col.regions=matlab.like(25),main="Var predictions after hurricane")
 
 #### Examining difference between predictions
@@ -348,13 +319,20 @@ hist(r_dif,main="Difference between spatial and temporal models")
 
 ##This times will we use an automated function to generate predictions over 4 dates
 
+
+##########################
+#### RUN FOR FOUR DATES and the three methods..
+
+###########SPATIAL METHODS
+## Now predict for four dates using "mle": this does not work for such large area such as EDGY!!
+
 ### Predict using spatial regression
 #r_spat_var <- subset(r_stack,139:161) #predict before (step 152) and three dates after (step 153)
 r_spat_var <- subset(r_stack,153:156) #predict before (step 152) and three dates after (step 153)
 
 list_models <- NULL
 proj_str <- NULL #if null the raster images are not reprojected
-out_suffix_s <- paste("t_",153:156,out_suffix,sep="") #use mle estimation, name "mle" is included in the output automatically?
+out_suffix_s <- paste("t_",153:156,"_",out_suffix,sep="") #note that we set the time step in the output suffix!!!
 #estimator <- "mle"
 estimator <- "mle"
 estimation_method <- "Chebyshev"
@@ -364,115 +342,118 @@ estimation_method <- "Chebyshev"
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
 n_pred <- nlayers(r_spat_var)
-## First predict for one date for testing and comparison
-#debug(predict_spat_reg_fun)
-#use mle estimator  
-#testd1_spat_mle <- try(predict_spat_reg_fun(1,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
-#testd4_spat_mle_chebyshev <- try(predict_spat_reg_fun(4,list_param_spat_reg)) #now working,checked on 02/10/2015...!!!
 
-#use generalized methods of moment as estimator: won't work with version of 2.14 and old sphet package from Feb 2012
-
-#list_param_spat_reg$estimator <- "gmm"
-#list_param_spat_reg$estimation_method <- NULL
-
-#use ols as estimator...this is added as a dictatic form for teaching, not to be used for research
-#debug(predict_spat_reg_fun)
-#testd1_spat_gmm <- predict_spat_reg_fun(1,list_param_spat_reg)
-
-#list_param_spat_reg$estimator <- "ols"
-#list_param_spat_reg$estimation_method <- NULL
-
-#testd1_spat_ols <- predict_spat_reg_fun(1,list_param_spat_reg)
-
-##########################
-#### RUN FOR FOUR DATES and the three methods..
-
-##list of methods and models to run
-
-l_df_method<- list( 
-      data.frame(estimator="mle",estimation_method="eigen"),
-      data.frame(estimator="mle",estimation_method="Chebyshev"),
-      data.frame(estimator="mle",estimation_method="LU"),
-      data.frame(estimator="mle",estimation_method="MC"),
-      data.frame(estimator="mle",estimation_method="Matrix"),
-      data.frame(estimator="gmm",estimation_method=NA),
-      data.frame(estimator="ols",estimation_method=NA))
-df_method <- do.call(rbind,l_df_method)
-
-#for(i in l_df_method){
-#  d
-#}
-## Now predict for four dates using "mle": this does not work for such large area such as EDGY!!
-list_param_spat_reg$estimator <- "mle"
-list_param_spat_reg$estimation_method <- "Chebyshev"
 pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
 save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_mle_chebyshev_",out_suffix,".RData",sep="")))
 
-list_param_spat_reg$estimator <- "mle"
-list_param_spat_reg$estimation_method <- "LU"
-pred_spat_mle_LU <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
-save(pred_spat_mle_LU,file=file.path(out_dir,paste("pred_spat_mle_LU_",out_suffix,".RData",sep="")))
+#pred_spat_mle_chebyshev: extract raster images from object
+spat_pred_rast_mle <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_mle <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_mle,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_mle,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
-list_param_spat_reg$estimator <- "mle"
-list_param_spat_reg$estimation_method <- "MC"
-pred_spat_mle_LU <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
-save(pred_spat_mle_LU,file=file.path(out_dir,paste("pred_spat_mle_MC_",out_suffix,".RData",sep="")))
 
-list_param_spat_reg$estimator <- "mle"
-list_param_spat_reg$estimation_method <- "Matrix"
-pred_spat_mle_LU <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
-save(pred_spat_mle_LU,file=file.path(out_dir,paste("pred_spat_mle_Matrix_",out_suffix,".RData",sep="")))
+### OLS for didictive purpose
+
+list_param_spat_reg$estimator <- "ols"
+list_param_spat_reg$estimation_method <- "ols"
+
+pred_spat_ols <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_ols_",out_suffix,".RData",sep="")))
+
+#pred_spat_mle_chebyshev: extract raster images from object
+spat_pred_rast_ols <- stack(lapply(pred_spat_ols,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_ols <- stack(lapply(pred_spat_ols,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_ols,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_ols,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+
+## Alternative gmm etc.
 
 #list_param_spat_reg$estimator <- "mle"
 #list_param_spat_reg$estimation_method <- "eigen"
 #pred_spat_mle_eigen <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
 #save(pred_spat_mle_eigen,file=file.path(out_dir,paste("pred_spat_mle_eigen_",out_suffix,".RData",sep="")))
 
-## Alternative
-list_param_spat_reg$estimator <- "gmm"
-list_param_spat_reg$estimation_method <- NULL
-pred_spat_gmm <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
-save(pred_spat_gmm,file=file.path(out_dir,paste("pred_spat_gmm_",out_suffix,".RData",sep="")))
-
-list_param_spat_reg$estimator <- "ols"
-list_param_spat_reg$estimation_method <- NULL
-pred_spat_ols <-mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
-save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_ols_",out_suffix,".RData",sep="")))
-
-spat_pred_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_gmm <- stack(lapply(pred_spat_gmm,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast_gmm) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_gmm,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-
+###########TEMPORAL METHODS
 ## Predict using temporal info: time steps 152..156
 
-r_temp_var <- subset(r_stack,152:156) #need date 151 because it relies on the previous date in contrast to spat reg
+### Use ols with time before
+
+#out_dir
+#r_clip
+#proj_str
+#file_format
+r_temp_var <- subset(r_stack,152:156) #need date 152 because it relies on the previous date in contrast to spat reg, this is r_var param
 list_models <-NULL
-out_suffix_s <- paste("t_",152:156,out_suffix,sep="")
-list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format)
-names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format")
+#the ouput suffix was wrong, needs to be 153!!!
+out_suffix_s <- paste("t_",153:156,"_",out_suffix,sep="")#this should really be automated!!!
+estimator <- "lm"
+estimation_method <-"ols"
+
+#ARIMA specific
+
+num_cores_tmp <- 11
+time_step <- 152 #this is the time step for which to start the arima model with
+n_pred_ahead <- 4
+rast_ref <- subset(s_raster,1) #first image ID
+r_stack_arima <- mask(r_stack,rast_ref)
+
+#r_stack <- r_stack_arima
+arima_order <- NULL
+
+list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+                            num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order)
+names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order")
 n_pred <- nlayers(r_temp_var) -1
-#debug(predict_temp_reg_fun)
-#test_temp <- predict_temp_reg_fun(1,lis  t_param_temp_reg)
+#undebug(predict_temp_reg_fun)
+#test_temp <- predict_temp_reg_fun(1,list_param_temp_reg)
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
-temp_pred_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
-temp_res_rast <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
-levelplot(temp_pred_rast,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-projection(temp_pred_rast) <- CRS_WGS84
-#projection(spat_pred_rast) <- CRS_WGS84
-#projection(spat_pred_rast_gmm) <- CRS_WGS84
-#levelplot(spat_pred_rast_gmm,col.regions=matlab.like(25))
+r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
+r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
+levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
 
+projection(temp_pred_rast_lm) <- CRS_WGS84
+
+##ARIMA
+
+estimator <- "arima"
+estimation_method <-"arima"
+r_clip_tmp <- NULL
+num_cores_tmp <- 11
+
+list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+                            num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order)
+names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order")
+n_pred <- nlayers(r_temp_var) -1
+#debug(predict_temp_reg_fun)
+pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+
+#pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
+
+pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
+
+r_temp_pred_rast_arima <- stack(pred_temp_arima$raster_pred)
+r_temp_res_rast_arima <- stack(pred_temp_arima$raster_res)
+
+#r_temp_pred_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_pred}))
+#r_temp_res_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_res}))
+levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(r_temp_res_rast_arima,col.regions=matlab.like(255),main="Var residuals after hurricane")
+
+projection(r_temp_pred_rast_arima) <- CRS_WGS84
+
+##########COMPARISON OF SPATIAL COEFFICIENTS
 ## Extract spatial coefficients
 
-#pred_spat_mle
-#pred_spat_mle
-spat_reg_obj_ols_ols_t_156EDGY_predictions_03092015.RData
-pred_spat_ols_EDGY_predictions_03092015
-list.files(pattern="spat_reg_obj.*.EDGY_predictions_03092015.RData")
-list.files(pattern="pred_spat_.*._EDGY_predictions_03092015")
+#list.files(pattern="spat_reg_obj.*.EDGY_predictions_03092015.RData")
+#list.files(pattern="pred_spat_.*._EDGY_predictions_03092015")
 #> list.files(pattern="pred_spat_.*._EDGY_predictions_03092015")
 #[1] "pred_spat_gmm_EDGY_predictions_03092015.RData"           "pred_spat_mle_LU_EDGY_predictions_03092015.RData"       
 #[3] "pred_spat_mle_MC_EDGY_predictions_03092015.RData"        "pred_spat_mle_Matrix_EDGY_predictions_03092015.RData"   
@@ -481,27 +462,20 @@ list.files(pattern="pred_spat_.*._EDGY_predictions_03092015")
 #Need the estimation_method appended!!! does not work for now
 #lapply(df_method$estimator,function(x){list.files(pattern=paste("pred_spat_",x,"_EDGY_predictions_03092015.RData")})
 
-pred_spat_mle_Chebyshev_test <-load_obj("pred_spat_mle_chebyshev_EDGY_predictions_03092015.RData")
-l_coef_mle_Chebyshev <- lapply(pred_spat_mle_Chebyshev_test,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_Chebyshev <- as.data.frame(do.call(rbind,l_coef_mle_Chebyshev))
-tb_coef_mle_Chebyshev$estimation_method <- "Chebyshev"
+#pred_spat_mle_Chebyshev_test <-load_obj("pred_spat_mle_chebyshev_EDGY_predictions_03092015.RData")
+l_coef_mle_chebyshev <- lapply(pred_spat_mle_chebyshev,FUN=function(x){coef(x$spat_mod)})
+tb_coef_mle_chebyshev <- as.data.frame(do.call(rbind,l_coef_mle_chebyshev))
+tb_coef_mle_chebyshev$estimation_method <- "Chebyshev"
 
-pred_spat_mle_LU_test <-load_obj("pred_spat_mle_LU_EDGY_predictions_03092015.RData")
-l_coef_mle_LU <- lapply(pred_spat_mle_LU_test,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_LU <- as.data.frame(do.call(rbind,l_coef_mle_LU))
-tb_coef_mle_LU$estimation_method <- "LU"
 
-pred_spat_mle_MC_test <-load_obj("pred_spat_mle_MC_EDGY_predictions_03092015.RData")
-l_coef_mle_MC <- lapply(pred_spat_mle_MC_test,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_MC <- as.data.frame(do.call(rbind,l_coef_mle_MC))
-tb_coef_mle_MC$ estimation_method <- "MC"
+#pred_spat_mle_Matrix_test <-load_obj("pred_spat_mle_Matrix_EDGY_predictions_03092015.RData")
+#l_coef_mle_Matrix <- lapply(pred_spat_mle_Matrix_test,FUN=function(x){coef(x$spat_mod)})
+#tb_coef_mle_Matrix <- as.data.frame(do.call(rbind,l_coef_mle_Matrix))
+#tb_coef_mle_Matrix$estimation_method <- "Matrix"
 
-pred_spat_mle_Matrix_test <-load_obj("pred_spat_mle_Matrix_EDGY_predictions_03092015.RData")
-l_coef_mle_Matrix <- lapply(pred_spat_mle_Matrix_test,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_Matrix <- as.data.frame(do.call(rbind,l_coef_mle_Matrix))
-tb_coef_mle_Matrix$estimation_method <- "Matrix"
+#tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_Chebyshev,tb_coef_mle_LU,tb_coef_mle_Matrix,tb_coef_mle_MC)))
+tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_chebyshev)))#,tb_coef_mle_LU,tb_coef_mle_Matrix,tb_coef_mle_MC)))
 
-tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_Chebyshev,tb_coef_mle_LU,tb_coef_mle_Matrix,tb_coef_mle_MC)))
 tb_coef_mle$v2 <- NA                
 tb_coef_mle <- tb_coef_mle[,c(2,1,4,3)]
 names(tb_coef_mle)<- c("(Intercept)","rho","v2","estimation_method")
@@ -513,15 +487,15 @@ tb_coef_mle$method <- paste(tb_coef_mle$estimator,tb_coef_mle$estimation_method,
 head(tb_coef_mle)
 
 #pred_spat_gmm
-pred_spat_gmm_test <-load_obj("pred_spat_gmm_EDGY_predictions_03092015.RData")
-l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
-tb_coef_gmm <- as.data.frame(t(do.call(cbind,(l_coef_gmm))))
-tb_coef_gmm <- tb_coef_gmm[,c(1,3,2)]
-names(tb_coef_gmm)<- c("(Intercept)","rho","v2")
-tb_coef_gmm$estimation_method <- "gmm"
-tb_coef_gmm$time <- 1:4                
-tb_coef_gmm$estimator <- "gmm"
-tb_coef_gmm$method <- "gmm"                
+#pred_spat_gmm_test <-load_obj("pred_spat_gmm_EDGY_predictions_03092015.RData")
+#l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
+#tb_coef_gmm <- as.data.frame(t(do.call(cbind,(l_coef_gmm))))
+#tb_coef_gmm <- tb_coef_gmm[,c(1,3,2)]
+#names(tb_coef_gmm)<- c("(Intercept)","rho","v2")
+#tb_coef_gmm$estimation_method <- "gmm"
+#tb_coef_gmm$time <- 1:4                
+#tb_coef_gmm$estimator <- "gmm"
+#tb_coef_gmm$method <- "gmm"                
 
 
 #tb_coef_mle  <- tb_coef_mle[,c(1,3,2)]
@@ -567,13 +541,18 @@ xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
 
 write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.names=F,col.names=T)                
 
-#pred_spat_mle_chebyshev
-spat_pred_rast_mle <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_mle <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast_mle) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ############ PART V COMPARE MODELS IN TERM OF PREDICTION ACCURACY #################
+
+projection(spat_pred_rast_mle) <- CRS_WGS84
+projection(r_temp_pred_rast_arima) <- CRS_WGS84
+r_temp_s <- r_temp_pred_rast_arima #Now temporal predicitons based on ARIMA!!!
+temp_pred_rast <- r_temp_s
+projection(temp_pred_rast) <- CRS_WGS84
+
+#projection(spat_pred_rast) <- CRS_WGS84
+#projection(spat_pred_rast_gmm) <- CRS_WGS84
+#levelplot(spat_pred_rast_gmm,col.regions=matlab.like(25))
 
 r_huric_w <- subset(r_stack,153:156)
 #r_huric_w <- crop(r_huric_w,rast_ref)
@@ -601,7 +580,7 @@ r_winds_m <- projectRaster(from=r_winds,res_temp_s,method="ngb") #Check that it 
 projection(s_raster) <- CRS_WGS84
 #r_results <- stack(s_raster,temp_pred_rast,spat_pred_rast_mle,spat_pred_rast_gmm,res_temp_s,res_spat_mle_s,res_spat_gmm_s)
 #r_results <- stack(s_raster,r_winds_m,temp_pred_rast,spat_pred_rast_gmm,res_temp_s,res_spat_gmm_s)
-r_results <- stack(s_raster,r_winds_m,temp_pred_rast,spat_pred_rast_s,res_temp_s,res_spat_s)
+r_results <- stack(s_raster,r_winds_m,r_temp_pred_rast_arima,spat_pred_rast_mle,res_temp_s,res_spat_s)
 
 dat_out <- as.data.frame(r_results)
 dat_out <- na.omit(dat_out)
@@ -612,8 +591,8 @@ write.table(dat_out,file=paste("dat_out_",out_suffix,".txt",sep=""),
 
 out_suffix_s <- paste("temp_",out_suffix,sep="_")
 #debug(calc_ac_stat_fun)
-projection(rast_ref) <- CRS_WGS84
-projection(spat_pred_rast_mle) <- CRS_WGS84
+#projection(rast_ref) <- CRS_WGS84
+#projection(spat_pred_rast_mle) <- CRS_WGS84
 projection(z_winds) <- CRS_WGS84 #making sure proj4 representation of projections are the same
 
 ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=z_winds,
@@ -635,11 +614,12 @@ row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp")
 mae_tot_tb$time <- 1:4
 
-plot(spat_reg ~ time, type="b",col="magenta",data=mae_tot_tb,ylim=c(0,1800))
-lines(temp ~ time, type="b",col="cyan",data=mae_tot_tb)
+
+plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=c(0,1800))
+lines(temp ~ time, type="b",col="magenta",data=mae_tot_tb)
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
-legend("topleft",legend=c("spat","temp"),col=c("magenta","cyan"),lty=1)
-title("Overall MAE for spatial and temporal models for GMM") #Note that the results are different than for ARIMA!!!
+legend("topleft",legend=c("spat","temp"),col=c("cyan","magenta"),lty=1)
+title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
 
 #### BY ZONES ASSESSMENT
 
