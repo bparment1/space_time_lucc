@@ -410,7 +410,7 @@ list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_s
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
 n_pred <- nlayers(r_spat_var)
 
-pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
 save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
 
 #pred_spat_mle_chebyshev: extract raster images from object
@@ -442,7 +442,7 @@ levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(25)) #view the four pr
 list_param_spat_reg$estimator <- "ols"
 list_param_spat_reg$estimation_method <- "ols"
 
-pred_spat_ols <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = 4)
+pred_spat_ols <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
 save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
 
 #pred_spat_mle_chebyshev: extract raster images from object
@@ -483,29 +483,19 @@ r_stack_arima <- mask(r_stack,rast_ref)
 #r_stack <- r_stack_arima
 arima_order <- NULL
 
-list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                            num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
-names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
-                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-n_pred <- nlayers(r_temp_var) -1
+#list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+#                            num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
+#names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+#                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
+#n_pred <- nlayers(r_temp_var) -1
 #undebug(predict_temp_reg_fun)
 #test_temp <- predict_temp_reg_fun(14,list_param_temp_reg)
-plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
+#plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
 
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
-pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
+#pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
 
-r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
-r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
-levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
-
-levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-
-projection(r_temp_pred_rast_lm) <- CRS_reg
-projection(r_temp_res_rast_lm) <- CRS_reg
 
 ##ARIMA
 
@@ -524,24 +514,36 @@ names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_mode
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
 #n_pred <- nlayers(r_temp_var) -1
 n_pred <- 16
-debug(predict_temp_reg_fun)
+#debug(predict_temp_reg_fun)
 pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 #using 11 cores
-pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
+#pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
+pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_100_NDVI_Katrina_04102015.RData")
 
-#r_temp_pred_rast_arima <- stack(pred_temp_arima$raster_pred)
-#r_temp_res_rast_arima <- stack(pred_temp_arima$raster_res)
+r_temp_pred_rast_arima <- stack(pred_temp_arima$raster_pred)
+r_temp_res_rast_arima <- stack(pred_temp_arima$raster_res)
 
 #r_temp_pred_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_pred}))
 #r_temp_res_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_res}))
-#levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 #levelplot(r_temp_res_rast_arima,col.regions=matlab.like(255),main="Var residuals after hurricane")
 
-#projection(r_temp_pred_rast_arima) <- CRS_WGS84
+projection(r_temp_pred_rast_arima) <- CRS_WGS84
+
+#r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
+#r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
+#levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+#levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
+
+levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+
+projection(r_temp_pred_rast_lm) <- CRS_reg
+projection(r_temp_res_rast_lm) <- CRS_reg
 
 ####### Comparing coefficients
 
@@ -568,7 +570,7 @@ tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_chebyshev,tb_coef_ml
 tb_coef_mle$v2 <- NA                
 tb_coef_mle <- tb_coef_mle[,c(2,1,4,3)]
 names(tb_coef_mle)<- c("(Intercept)","rho","v2","estimation_method")
-tb_coef_mle$time <- 1:20               
+tb_coef_mle$time <- 1:n_pred             
 tb_coef_mle$estimator <- "mle"
 tb_coef_mle$method <- paste(tb_coef_mle$estimator,tb_coef_mle$estimation_method,sep="_")                
 
@@ -601,7 +603,7 @@ tb_coef_ols <- tb_coef_ols[,c(1,2)]
 names(tb_coef_ols)<- c("(Intercept)","rho")
 tb_coef_ols$v2 <- NA   
 tb_coef_ols$estimation_method <- "ols"
-tb_coef_ols$time <- 1:n_time #20 for this dataset                
+tb_coef_ols$time <- 1:n_pred #20 for this dataset                
 tb_coef_ols$estimator <- "ols"
 tb_coef_ols$method <- "ols"                
 
@@ -636,6 +638,7 @@ write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.
 #select specific model:
 spat_pred_rast <- subset(spat_pred_rast_mle_eigen,2:length(time_window_selected)) #spatial model prediction
 temp_pred_rast <- r_temp_pred_rast_lm #temporal model prediction
+temp_pred_rast <- r_temp_pred_rast_arima #temporal model prediction
 
 rast_zonal <- subset(s_raster,zonal_colnames)
 
