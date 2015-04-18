@@ -329,9 +329,10 @@ predict_temp_reg_fun <-function(i,list_param){
   estimation_method <- list_param$estimation_method #currently used only for mle from errorsarlm
   NA_flag_val <- list_param$NA_flag_val
   
-  out_suffix <- list_param$out_suffix[i]
   if(estimator== "arima"){
     out_suffix <- list_param$out_suffix[1]
+  }else{
+    out_suffix <- list_param$out_suffix[i]
   }
   #ARIMA specific
   num_cores <- list_param$num_cores #paraallelization in space.this should be done by row or til enot by pixel!!!!
