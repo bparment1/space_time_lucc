@@ -11,7 +11,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 04/20/2015
+#DATE MODIFIED: 04/21/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -163,7 +163,7 @@ for(i in 1:nlayers(r_var)){
                  main=paste(names_layers[i],"NDVI",sep=" "),
                  col.regions=palette_colors)
   
-  png(paste("Figure",fig_nb[i],"_paper_climatology_daily_deviation_daily_prediction_model7_levelplot_",out_suffix,".png", sep=""),
+  png(paste("Figure",fig_nb[i],"_observed_NDVI_paper_space_beats_time_",out_suffix,".png", sep=""),
     height=480*1.4,width=480*1.4)
   print(p) #to plot in a loop!!  
   dev.off()
@@ -177,7 +177,7 @@ p1 <- levelplot(r_var, margin=FALSE,
                  #main=paste(names_layers[i],"NDVI",sep=" "),
                  col.regions=palette_colors)
   
-png(paste("Figure","_1_","combined_152_155_paper_climatology_daily_deviation_daily_prediction_model7_levelplot_",out_suffix,".png", sep=""),
+png(paste("Figure","_1_","combined_observed_NDVI_152_155_paper_space_beats_time_",out_suffix,".png", sep=""),
     height=480*2.8,width=480*2.8)
 print(p1) #to plot in a loop!!  
 dev.off()
@@ -185,11 +185,95 @@ dev.off()
 ###############################
 ##### Figure 2
 
-r_spat_res_mle_Chebyshev_t_154EDGY_predictions_03182015.rst
+#r_spat_res_mle_Chebyshev_t_154EDGY_predictions_03182015.rst
+#r_temp_pred_lm_ols_t_153_EDGY_predictions_03182015.rst
 
-r_temp_pred_lm_ols_t_153_EDGY_predictions_03182015.rst
+spat_pred_rast <- stack(mixedsort(list.files(path=in_dir1,"r_spat_res_mle_Chebyshev_t_.*.EDGY_predictions_03182015.rst",full.names=T)))
+temp_pred_rast <- stack(mixedsort(list.files(path=in_dir1,"r_temp_pred_lm_ols_t_.*._EDGY_predictions_03182015.rst",full.names=T)))
 
-r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst",full.names=T)))
+##Fig 2a
+
+p_spat <- levelplot(spat_pred_rast, margin=FALSE,
+                 ylab=NULL,xlab=NULL,
+                 par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                              par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),par.strip.text=list(font=2,cex=2),
+                 #main=paste(names_layers[i],"NDVI",sep=" "),
+                 col.regions=palette_colors)
+
+png(paste("Figure","_2b_","combined_spat_pred_153_156_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*2.8,width=480*2.8)
+print(p_spat) #to plot in a loop!!  
+dev.off()
+
+##Fig 2b
+
+p_temp <- levelplot(temp_pred_rast, margin=FALSE,
+                 ylab=NULL,xlab=NULL,
+                 par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                              par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),par.strip.text=list(font=2,cex=2),
+                 #main=paste(names_layers[i],"NDVI",sep=" "),
+                 col.regions=palette_colors)
+  
+png(paste("Figure","_2_","combined_temp_pred_153_156_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*2.8,width=480*2.8)
+print(p_temp) #to plot in a loop!!  
+dev.off()
+
+###############################
+##### Figure 3
+
+
+
+###############################
+##### Figure 4
+
+mae_zones_tb <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
+
+mydata<- mae_zones_tb
+dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+#dd$lag <- mydata$lag 
+dd$zones <- mydata$zones
+dd$method <- mydata$method
+#drop first four rows
+dd <- dd[7:nrow(dd),]
+
+xyplot(data~which |zones,group=method,data=dd,type="b",xlab="year",ylab="NDVI",
+       strip = strip.custom(factor.levels=c("z3","z4","z5")),
+      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+                     border = FALSE, lines = TRUE,cex=1.2)
+)
+
+layout_m <- c(1.4,1.4)
+png(paste("Figure_4_accuracy_","mae","_EDGY_","by_winds_zones","_",out_suffix,".png", sep=""),
+    height=480*layout_m[1],width=480*layout_m[2])
+
+p <- xyplot(data~zones |which,group=method,data=dd,type="b",xlab="year",ylab="NDVI",
+      strip = strip.custom(factor.levels=as.character(unique(dd$which))),
+      #auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+      auto.key=list(columns=1,space="right",title="Model",cex=1),
+      border = FALSE, lines = TRUE,cex=1.2
+)
+
+print(p)
+dev.off()
+
+# p <- xyplot(ac_val~zones|time, # |set up pannels using method_interp
+#             group=method,data=avg_ac_tb, #group by model (covariates)
+#             main="Average MAE by winds zones and time step ",
+#             type="b",as.table=TRUE,
+#             #strip = strip.custom(factor.levels=c("time -1","time +1","time +2","time +3")),
+#             strip=strip.custom(factor.levels=names_panel_plot),
+#             index.cond=list(c(1,2,3,4)),    #this provides the order of the panels)
+#             pch=1:length(avg_ac_tb$method),
+#             par.settings=list(superpose.symbol = list(
+#             pch=1:length(avg_ac_tb$method))),
+#             auto.key=list(columns=1,space="right",title="Model",cex=1),
+#             #auto.key=list(columns=5),
+#             xlab="Winds zones",
+#             ylab="MAE for NDVI")
+# print(p)
+# dev.off()
+
 
 
 ################### END OF SCRIPT ##################
