@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/22/2015
+#DATE MODIFIED: 05/208/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -314,6 +314,41 @@ extract_arima_mod_info <- function(i,list_param){
   return(list(arima_specification,arima_coef))
 } 
 
+#Still in process, apply function pixel by pixel in a block read from disk for stack or brick raster
+#not used here because we loose the pixel id for the object for ARIMA, this needs to be work out at some point!!!
+
+#    readBloackRaster <- function(r_var,r_mask,bs_read=NULL,out_rast_fname=NULL,pixelFun=NULL,list_param=NULL){
+#      
+#      colNo <- ncol(r_var) #number of column
+#      rowNo <- nrow(r_var)
+#      #out <- raster(x,1)
+#      #bs <- blockSize(out)#
+#      if(is.null(bs_read)){
+#        bs <- blockSize(r_var)
+#        bsno <- bs$n #number of lbocks to read
+#      }
+#      #bs <- blockSize(r_var)
+#      if(!is.null(out_rast_fname)){
+#        out_rast <- writeStart(out_rast_fname, out_rast, overwrite=TRUE)
+#      }
+#      
+#      for (i in 1:bsno){
+#        v <- getValuesBlock(r_var, 
+#                           row=bs$row[i], #starting row
+#                           nrows=bs$nrows, 
+#                           col=1, 
+#                           ncols=colNo)#, 
+#                           #format='')
+#        v_out <- v
+#        if(!is.null(pixFun)){
+#          v_out <- lapply(1:nrow(v),FUN=pixelFun,list_param=list_param) #assumes that this is one value per pixel
+#          out_rast <- writeValues(out_rast, v_out, bs$row[i])
+#
+#          }
+#        }  
+#      return(v_out)
+#    }
+
 
 #Predict using the previous date and OLS
 predict_temp_reg_fun <-function(i,list_param){
@@ -332,7 +367,7 @@ predict_temp_reg_fun <-function(i,list_param){
   if(estimator== "arima"){
     out_suffix <- list_param$out_suffix[1]
   }else{
-    out_suffix <- list_param$out_suffix[i]
+    out_suffix <- list_param$out_suffix[1] #changed this for now...
   }
   #ARIMA specific
   num_cores <- list_param$num_cores #paraallelization in space.this should be done by row or til enot by pixel!!!!
@@ -373,12 +408,17 @@ predict_temp_reg_fun <-function(i,list_param){
     r_temp_pred <- rasterize(data_reg2,r_ref_s,field="temp_pred") #this is the prediction from lm model
     r_temp_res <- rasterize(data_reg2,r_ref_s,field="temp_res") #this is the prediction from lm model
     
-    raster_name_pred <- paste("r_temp_pred","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
+    #can change later to have t_step
+    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
+
+    
+    #raster_name_pred <- paste("r_temp_pred","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name_pred),overwrite=TRUE)
   
     #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
     #file_format <- ".rst"
-    raster_name_res <- paste("r_temp_res","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
+    #raster_name_res <- paste("r_temp_res","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),overwrite=TRUE)
 
   }
@@ -422,8 +462,8 @@ predict_temp_reg_fun <-function(i,list_param){
     r_stack <- mask(r_stack,r_clip)
     #rm(r1)
 
-    #Very inefficient, will be changed to avoid reading in memory
-    
+    #Very inefficient, will be changed to avoid reading in memory: problem to be sloved
+    #readBlockRaster() see earlier
     
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)
