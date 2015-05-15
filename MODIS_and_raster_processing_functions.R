@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 03/05/2015
+#MODIFIED ON: 04/08/2015
 #PROJECT: None, general utility functions for raster (GIS) processing.     
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -135,6 +135,7 @@ create__m_raster_region <-function(j,list_param){
     projection(layer_rast) <- input_proj_str #assign projection info
   }
   region_temp_projected<-projectExtent(reg_ref_rast,CRS(input_proj_str))     #Project from ref to current region coord. system
+  
   layer_crop_rast<-crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
   #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
   layer_projected_rast<-projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb")
@@ -421,7 +422,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
 create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",file_format=".rst"){
   #create a list of raster files to creater R raster stacks
   if(file_pat==""){
-    list_raster_name <- list.files(path=in_dir,pattern=paste(".*",out_suffix_s,file_format,"$",sep=""),full.names=T)
+    list_raster_name <- list.files(path=in_dir,pattern=paste(".*.",out_suffix_s,file_format,"$",sep=""),full.names=T)
   }else{
     list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=T)
   }
@@ -604,15 +605,15 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   
   #step 1: parse input elements
   
-  st <- as.Date(start_date,format="%Y.%m.%d")
-  en <- as.Date(end_date,format="%Y.%m.%d")
-  ll <- seq.Date(st, en, by="1 day")
-  dates_queried <- format(ll,"%Y.%m.%d")
+  st <- as.Date(start_date,format="%Y.%m.%d") #start date
+  en <- as.Date(end_date,format="%Y.%m.%d") #end date
+  ll <- seq.Date(st, en, by="1 day") #sequence of dates
+  dates_queried <- format(ll,"%Y.%m.%d") #formatting queried dates
   
   url_product <-paste("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product,"/",sep="") #URL is a constant...
   #url_product <- file.path("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product)
   
-  dates_available <- extractFolders(url_product)  #Get the list of available dates for the product
+  dates_available <- extractFolders(url_product)  #Get the list of available driectory dates for the product, from 2000 to now
   
   list_folder_dates <- intersect(as.character(dates_queried), as.character(dates_available)) #list of remote folders to access
   #list_folder_dates <-setdiff(as.character(dates_available), as.character(dates_queried))
@@ -638,6 +639,8 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   #Now remove error objects...
   d_files_tmp <-remove_from_list_fun(l_x=list_folders_files,condition_class ="try-error")
   d_files <- as.character(unlist(d_files_tmp$list)) #all the files to download...
+  n_dir_available <- length(d_files)
+  n_dir_requested <- length(list_folders_files)
 
   #Step 3: download file to the directory 
   #browser()
@@ -719,8 +722,8 @@ import_list_modis_layers_fun <-function(i,list_param){
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
   raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
-  
-  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)   
+  out_dir_str <-  dirname(hdf)
+  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir_str,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)   
   
   ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
   ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
@@ -738,7 +741,7 @@ import_list_modis_layers_fun <-function(i,list_param){
   #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   ## end of remove section
   
-  return(file.path(out_dir,raster_name)) 
+  return(file.path(out_dir_str,raster_name)) 
 }
 
 create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){

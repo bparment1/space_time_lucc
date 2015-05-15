@@ -462,8 +462,13 @@ predict_temp_reg_fun <-function(i,list_param){
     r_stack <- mask(r_stack,r_clip)
     #rm(r1)
 
+<<<<<<< HEAD
     #Very inefficient, will be changed to avoid reading in memory: problem to be sloved
     #readBlockRaster() see earlier
+=======
+    #Very inefficient, will be changed to avoid reading in memory
+    
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
     
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)

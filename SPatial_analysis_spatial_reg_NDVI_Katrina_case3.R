@@ -5,7 +5,11 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
+<<<<<<< HEAD
 #DATE MODIFIED: 05/02/2015
+=======
+#DATE MODIFIED: 04/14/2015
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -45,7 +49,11 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
+<<<<<<< HEAD
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_04182015_functions.R" #PARAM 1
+=======
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_04102015_functions.R" #PARAM 1
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -69,7 +77,11 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
+<<<<<<< HEAD
 out_suffix <-"NDVI_Katrina_04182015" #output suffix for the files and ouptu folder #PARAM 8
+=======
+out_suffix <-"NDVI_Katrina_04102015" #output suffix for the files and ouptu folder #PARAM 8
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -97,7 +109,11 @@ time_window_selected <- 100:116 #PARAM 16: use alll dates for now
 #r_dem <- raster("/data/project/layers/commons/data_workflow/inputs/dem-cgiar-srtm-1km-tif/srtm_1km.tif")
 #r_dem_Katrina<-crop(r_dem,r_stack)
 #writeRaster(r_dem_Katrina,file.path(in_dir,"r_srtm_Katrina.rst"))
+<<<<<<< HEAD
 #library(ggmap)
+=======
+library(ggmap)
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 ### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
 #set up the working directory
 #Create output directory
@@ -333,7 +349,11 @@ data_reg2$lm_temp_pred <- lm_mod$fitted.values
 data_reg2$lm_temp_res <- lm_mod$residuals
 
 coordinates(data_reg2) <- c("x","y")
+<<<<<<< HEAD
 proj4string(data_reg2) <- CRS_reg
+=======
+proj4string(data_reg2) <- CRS_WGS84
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 ########################################### 
 ############## PART IV:Produce images from the individual predictions using time and space ####
@@ -466,7 +486,10 @@ levelplot(spat_res_rast_ols,col.regions=matlab.like(25)) #view the four predicti
 
 r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
 list_models <-NULL
+<<<<<<< HEAD
 
+=======
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 #the ouput suffix was wrong, needs to be 153!!!
 #Use 100 to 116
 out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
@@ -502,6 +525,7 @@ arima_order <- NULL
 
 #not run here...
 
+<<<<<<< HEAD
 
 
 r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
@@ -524,6 +548,8 @@ r_stack_arima <- mask(r_stack,rast_ref)
 #r_stack <- r_stack_arima
 arima_order <- NULL
 
+=======
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 estimator <- "arima"
 estimation_method <-"arima"
 r_clip_tmp <- NULL
@@ -538,6 +564,7 @@ names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_mode
 #n_pred <- nlayers(r_temp_var) -1
 n_pred <- 16
 #debug(predict_temp_reg_fun)
+<<<<<<< HEAD
 
 if(re_initialize_arima==T){
    l_pred_temp_arima <- vector("list",length=length(time_window_selected))
@@ -582,12 +609,16 @@ if(re_initialize_arima==T){
   pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
 
 }
+=======
+pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 #using 11 cores
 #pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
+<<<<<<< HEAD
 #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_100_NDVI_Katrina_04102015.RData")
 
 #extract_files <- function(i,x){obj<-x[[i]];obj$raster_pred}
@@ -599,13 +630,23 @@ r_temp_res_rast_arima <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=fun
 #l_pred_temp_arima
 #r_temp_pred_rast_arima <- stack(pred_temp_arima$raster_pred)
 #r_temp_res_rast_arima <- stack(pred_temp_arima$raster_res)
+=======
+pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_100_NDVI_Katrina_04102015.RData")
+
+r_temp_pred_rast_arima <- stack(pred_temp_arima$raster_pred)
+r_temp_res_rast_arima <- stack(pred_temp_arima$raster_res)
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 #r_temp_pred_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_pred}))
 #r_temp_res_rast_arima <- stack(lapply(pred_temp_arima,FUN=function(x){x$raster_res}))
 levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 #levelplot(r_temp_res_rast_arima,col.regions=matlab.like(255),main="Var residuals after hurricane")
 
+<<<<<<< HEAD
 projection(r_temp_pred_rast_arima) <- CRS_reg
+=======
+projection(r_temp_pred_rast_arima) <- CRS_WGS84
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 #r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
 #r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
@@ -614,10 +655,16 @@ projection(r_temp_pred_rast_arima) <- CRS_reg
 
 levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+<<<<<<< HEAD
 levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
 
 projection(r_temp_pred_rast_arima) <- CRS_reg
 projection(r_temp_res_rast_arima) <- CRS_reg
+=======
+
+projection(r_temp_pred_rast_lm) <- CRS_reg
+projection(r_temp_res_rast_lm) <- CRS_reg
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 ####### Comparing coefficients
 
@@ -710,10 +757,16 @@ write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
 #select specific model:
+<<<<<<< HEAD
 spat_pred_rast <- subset(spat_pred_rast_mle_eigen,2:length(time_window_selected)) #spatial model prediction: 101 to 116
 #temp_pred_rast <- r_temp_pred_rast_lm #temporal model prediction
 time_selected <- length(time_window_selected)-1
 temp_pred_rast <- subset(r_temp_pred_rast_arima,1:time_selected) #temporal model prediction
+=======
+spat_pred_rast <- subset(spat_pred_rast_mle_eigen,2:length(time_window_selected)) #spatial model prediction
+temp_pred_rast <- r_temp_pred_rast_lm #temporal model prediction
+temp_pred_rast <- r_temp_pred_rast_arima #temporal model prediction
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 rast_zonal <- subset(s_raster,zonal_colnames)
 
@@ -724,7 +777,11 @@ projection(spat_pred_rast) <- CRS_reg #this should be CRS_interp
 projection(temp_pred_rast) <- CRS_reg
 projection(spat_pred_rast_mle_Chebyshev) <- CRS_reg
 projection(spat_pred_rast_mle_eigen) <- CRS_reg
+<<<<<<< HEAD
 projection(r_temp_pred_rast_arima) <- CRS_reg
+=======
+projection(r_temp_pred_rast_lm) <- CRS_reg
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 #r_temp_s <- r_temp_pred_rast_arima #Now temporal predicitons based on ARIMA!!!
 #temp_pred_rast <- r_temp_s
@@ -734,12 +791,17 @@ projection(r_temp_pred_rast_arima) <- CRS_reg
 #projection(spat_pred_rast_gmm) <- CRS_WGS84
 #levelplot(spat_pred_rast_gmm,col.regions=matlab.like(25))
 
+<<<<<<< HEAD
 #r_huric_w <- subset(s_raster,time_window_selected[-1])
 r_huric_w <- subset(s_raster,time_window_selected[-1])
 
 #r_huric_w <- crop(r_huric_w,rast_ref)
 levelplot(r_huric_w,col.regions=matlab.like(25))
 levelplot(temp_pred_rast,col.regions=matlab.like(25))
+=======
+r_huric_w <- subset(s_raster,time_window_selected[-1])
+#r_huric_w <- crop(r_huric_w,rast_ref)
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 #r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
 res_temp_s <- temp_pred_rast - r_huric_w
@@ -761,7 +823,11 @@ names(res_spat_s) <- sub("pred","res",names(res_spat_s))
 #r_in <-stack(l_rast)
 #r_results <- stack(s_raster,temp_pred_rast,spat_pred_rast_mle,spat_pred_rast_gmm,res_temp_s,res_spat_mle_s,res_spat_gmm_s)
 #r_results <- stack(s_raster,r_winds_m,temp_pred_rast,spat_pred_rast_gmm,res_temp_s,res_spat_gmm_s)
+<<<<<<< HEAD
 r_results <- stack(s_raster,rast_zonal,r_temp_pred_rast_arima,spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s,res_spat_s)
+=======
+r_results <- stack(s_raster,rast_zonal,r_temp_pred_rast_lm,spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s,res_spat_s)
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 dat_out <- as.data.frame(r_results)
 dat_out <- na.omit(dat_out)
@@ -776,7 +842,11 @@ out_suffix_s <- paste("temp_",out_suffix,sep="_")
 #projection(spat_pred_rast_mle) <- CRS_WGS84
 #projection(z_winds) <- CRS_WGS84 #making sure proj4 representation of projections are the same
 
+<<<<<<< HEAD
 #undebug(calc_ac_stat_fun)
+=======
+undebug(calc_ac_stat_fun)
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,r_var_s=r_huric_w,r_zones=rast_zonal,
                                 file_format=file_format,out_suffix=out_suffix_s)
 #out_suffix_s <- paste("spat_",out_suffix,sep="_")  
@@ -795,11 +865,16 @@ mae_tot_tb <- as.data.frame(mae_tot_tb)
 row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp")
 #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
+<<<<<<< HEAD
 #mae_tot_tb$time <- 2:n_pred
 mae_tot_tb$time <- 2:n_time
 
 #mae_tot_tb$time <- 2:17
 
+=======
+mae_tot_tb$time <- 2:n_time
+
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
 plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
 lines(temp ~ time, type="b",col="magenta",data=mae_tot_tb)
@@ -837,13 +912,21 @@ n_start <-n_zones*2 +1
 dd <- dd[n_start:nrow(dd),]
 dd$zones <- mydata$zone #use recycle rule
 
+<<<<<<< HEAD
 #Note that to get the title correct, one needs to add
 xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
       strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
+=======
+xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
+       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
       auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                      border = FALSE, lines = TRUE,cex=1.2)
 )
 
+<<<<<<< HEAD
 histogram(r_zonal)
+=======
+>>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
 
 ################### END OF SCRIPT ##################
