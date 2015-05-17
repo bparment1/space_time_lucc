@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/17/2015
+#DATE MODIFIED: 05/15/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -445,8 +445,8 @@ predict_temp_reg_fun <-function(i,list_param){
       r_ref_s <- crop(r_ref_s,r_clip)
     }
     
-    n_start <- c(time_step) +1
-    n_end   <- c(time_step)+n_pred_ahead
+    n_start <- c(time_step) +1 #151+1
+    n_end   <- c(time_step) + n_pred_ahead #151+n_pred_ahead
     r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers
     
     #r1 <- subset(r_obs_s,1)
@@ -466,7 +466,8 @@ predict_temp_reg_fun <-function(i,list_param){
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)
     df_xy <- pix_val2[,c("x","y")]
-    pix_val2 <-  pix_val2[,1:time_step] #152
+    pix_val2 <-  pix_val2[,1:time_step] #151
+    
     pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))#dim 152x26,616
 
     ### Should add a window option to subset the pixels time series
@@ -487,7 +488,7 @@ predict_temp_reg_fun <-function(i,list_param){
     #adde coordinates: df_xy
     list_param_predict_arima_2 <- list(pix_val=pix_val2,arima_order=arima_order,n_ahead=n_pred_ahead,out_dir=out_dir_arima,out_suffix=out_suffix,na.rm=T,df_xy=df_xy)
 
-    #undebug(pixel_ts_arima_predict)
+    #debug(pixel_ts_arima_predict)
     #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
     arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
    
