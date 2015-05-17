@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/208/2015
+#DATE MODIFIED: 05/17/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -416,8 +416,6 @@ predict_temp_reg_fun <-function(i,list_param){
     #raster_name_pred <- paste("r_temp_pred","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name_pred),overwrite=TRUE)
   
-    #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
-    #file_format <- ".rst"
     #raster_name_res <- paste("r_temp_res","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),overwrite=TRUE)
 
@@ -462,13 +460,8 @@ predict_temp_reg_fun <-function(i,list_param){
     r_stack <- mask(r_stack,r_clip)
     #rm(r1)
 
-<<<<<<< HEAD
     #Very inefficient, will be changed to avoid reading in memory: problem to be sloved
     #readBlockRaster() see earlier
-=======
-    #Very inefficient, will be changed to avoid reading in memory
-    
->>>>>>> 976db84ba0842bafd991171971cd76173e60cd19
     
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)
@@ -495,7 +488,7 @@ predict_temp_reg_fun <-function(i,list_param){
     list_param_predict_arima_2 <- list(pix_val=pix_val2,arima_order=arima_order,n_ahead=n_pred_ahead,out_dir=out_dir_arima,out_suffix=out_suffix,na.rm=T,df_xy=df_xy)
 
     #undebug(pixel_ts_arima_predict)
-    #test_pix_obj <- pixel_ts_arima_predict(1,list_param=list_param_predict_arima_2)
+    #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
     arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
    
     #save this in a separate folder!!!
@@ -550,7 +543,7 @@ predict_temp_reg_fun <-function(i,list_param){
   #Adding mod object, the ARIMA model will be different...function...most likely
   temp_reg_obj <- list(temp_mod,file.path(out_dir,raster_name_pred),file.path(out_dir,raster_name_res))
   names(temp_reg_obj) <- c("temp_mod","raster_pred","raster_res")
-  save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
+  save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",estimator,"_",estimation_method,"_t_",i,"_",out_suffix,".RData",sep="")))
   
   return(temp_reg_obj)
   
