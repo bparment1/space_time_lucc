@@ -11,7 +11,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 05/19/2015
+#DATE MODIFIED: 09/19/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -128,7 +128,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"geocomputation_figures_05192015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"geocomputation_figures_09132015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders...
@@ -248,10 +248,10 @@ lines(1:23,zones_avg_df[2,139:161],type="b",pch=3,col="green") #zone 5
 lines(1:23,zones_avg_df[3,139:161],type="b",pch=4,col="blue") #zone 6
 abline(v=15.5,lty="dashed")
 legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
-        cex=0.8, col=c("red","black","green","blue"),bty="n",
+        cex=1.2, col=c("red","black","green","blue"),bty="n",
         lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
-title("Average NDVI in the Dean study area and by zones",cex=1.6, font=2)
+legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
+title("Overall and zonal averages NDVI in the Dean study area",cex=1.8, font=2)
 
 dev.off()
 
@@ -283,6 +283,7 @@ names_layers <- c("T-1","T+1","T+2","T+3")
 names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
 names_layers_pred_spat <- c("Spatial predicted T-1","Spatial predicted T+1","Spatial predicted T+2","Spatial predicted T+3")
 names_layers_pred_temp <- c("Temporal predicted T-1","Temporal predicted T+1","Temporal predicted T+2","Temporal predicted T+3")
+names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_temp)
 
 fig_nb <- c("2_t153","2_t154","2_t155","2_t156")
 list_p <- vector("list",length=length(names_layers))
@@ -294,7 +295,7 @@ for(i in 1:nlayers(r_obs1)){
                  ylab=NULL,xlab=NULL,
                  par.settings = list(axis.text = list(font = 2, cex = 1.5),
                               par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),par.strip.text=list(font=2,cex=2),
-                 main=paste(names_layers_obs[i],"NDVI",sep=" "),
+                 main=paste(names_layers_obs[i],sep=" "),
                  col.regions=palette_colors)
   
   png(paste("Figure",fig_nb[i],"_observed_NDVI_paper_space_beats_time_","NDVI_Dean_",out_suffix,".png", sep=""),
@@ -363,7 +364,7 @@ p_temp <- levelplot(temp_pred_rast1, margin=FALSE,
                  layout= layout_m,
                  names.attr = names_layers_pred_temp,
                  col.regions=palette_colors,
-                 ,at=seq(-3000,10000,by=0.02))
+                 at=seq(-3000,10000,by=0.02))
   
 png(paste("Figure","_2_","combined_temp_paper_space_beats_time_NDVI_Dean_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
@@ -437,22 +438,32 @@ layout_m <- c(1,1.2)
 png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
     height=560*layout_m[1],width=560*layout_m[2])
 
-y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
+y_range <- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
+y_range <- c(y_range[1],y_range[2]+100)
 #xlab_tick <- mae_tot_tb$time
 xlab_tick <- c("T-1","T+1","T+2","T+3")
 x_tick_position <- mae_tot_tb$time
 
-plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",pch=16,cex.lab=1.2)
-lines(temp ~ time, type="b",col="magenta",pch=16,data=mae_tot_tb)
+plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
+points(spat_reg ~ time, col="cyan",data=mae_tot_tb,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
+lines(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb)
+points(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb,cex.pch=1.6)
 axis(1,at= x_tick_position,labels=xlab_tick)
 
-legend("topleft",legend=c("spat","temp"),col=c("cyan","magenta"),pch=16,lty=1,bty="n")
-title("Overall MAE for Spatial and Temporal models") #Note that the results are different than for ARIMA!!!
+abline(v=1.5,lty="dashed")
+#legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
+legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+#legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+
+legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
+title("Overall MAE for Spatial and Temporal models", cex.main=2) #Note that the results are different than for ARIMA!!!
+
 dev.off()
 
 ### mae by zones
-mydata<- mae_zones_tb
+mydata <- mae_zones_tb
 dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
 #dd$lag <- mydata$lag 
 dd$zones <- mydata$zones
@@ -498,6 +509,51 @@ p <- xyplot(data~zones |which,group=method,data=dd,type="b",xlab="zones",ylab="N
 
 print(p)
 dev.off()
+
+
+###
+layout_m <- c(1,3)
+
+#layout_m <- c(1,1.2)
+png(paste("Figure_3b_accuracy_","mae","_by_zone_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
+    height=560*layout_m[1],width=560*layout_m[2])
+
+input_data <- mae_zones_tb
+for ( i in 3:5){
+  col_names <- unique(input_data$method)
+  input_data <- subset(input_data,zones==3)
+  input_data <- subset(input_data,select=c(names(input_data)!="zones"))
+  input_data <- subset(input_data,select=c(names(input_data)!="method"))
+  
+  names(input_data) <- col_names
+  
+  y_range <- range(cbind(input_data$spat_reg,input_data$temp))
+  y_range <- c(y_range[1],y_range[2]+100)
+  #xlab_tick <- mae_tot_tb$time
+  xlab_tick <- c("T-1","T+1","T+2","T+3")
+  x_tick_position <- mae_tot_tb$time
+
+  plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
+  points(spat_reg ~ time, col="cyan",data=mae_tot_tb,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
+  lines(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb)
+  points(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb,cex.pch=1.6)
+  axis(1,at= x_tick_position,labels=xlab_tick)
+
+  abline(v=1.5,lty="dashed")
+  #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
+  legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+  #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+
+  legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
+  title("Overall MAE for Spatial and Temporal models", cex.main=2) #Note that the results are different than for ARIMA!!!
+
+}
+
+dev.off()
+
+
 
 ######################################
 ########## Case 2: light data Katrina
