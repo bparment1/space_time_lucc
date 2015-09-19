@@ -11,12 +11,12 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 09/14/2015
+#DATE MODIFIED: 09/19/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
 #PROJECT: Chicago AAG 2015 with Marco Millones
-#PROJECT: Dallas Geocomputation 2015 with Marco Millones
+#PROJECT: Dallas Geocomputation 2015 with Marco Millones, Springer book
 #
 #COMMENTS: - 
 #         - 
@@ -128,7 +128,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_09152015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_09192015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders...
@@ -248,16 +248,17 @@ lines(1:23,zones_avg_df[2,139:161],type="b",pch=3,col="green") #zone 5
 lines(1:23,zones_avg_df[3,139:161],type="b",pch=4,col="blue") #zone 6
 abline(v=15.5,lty="dashed")
 legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
-        cex=0.8, col=c("red","black","green","blue"),bty="n",
+        cex=1.2, col=c("red","black","green","blue"),bty="n",
         lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
-title("Average NDVI in the Dean study area and by zones",cex=1.6, font=2)
+legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
+title("Overall and zonal averages NDVI in the Dean study area",cex=1.8, font=2)
 
 dev.off()
 
 ###############################
 ##### Figure 2: Comparisons of observed, predicted temp, predicted spat: EDGY case study
 
+#input raster images for the study area (276 images)
 r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst$",full.names=T)))
 
 spat_pred_rast1 <- stack(mixedsort(list.files(path=in_dir1,"r_spat_pred_mle_Chebyshev_t_.*.EDGY_predictions_03182015.rst$",full.names=T)))
@@ -289,13 +290,14 @@ fig_nb <- c("2_t153","2_t154","2_t155","2_t156")
 list_p <- vector("list",length=length(names_layers))
 i<-1 # for testing
 
+#First plot the indidividual time steps: before, after (T+1), after (T+2), after (T+3)
 for(i in 1:nlayers(r_obs1)){
   
   p <- levelplot(r_obs1,layers=i, margin=FALSE,
                  ylab=NULL,xlab=NULL,
                  par.settings = list(axis.text = list(font = 2, cex = 1.5),
                               par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),par.strip.text=list(font=2,cex=2),
-                 main=paste(names_layers_obs[i],"NDVI",sep=" "),
+                 main=paste(names_layers_obs[i],sep=" "),
                  col.regions=palette_colors)
   
   png(paste("Figure",fig_nb[i],"_observed_NDVI_paper_space_beats_time_","NDVI_Dean_",out_suffix,".png", sep=""),
@@ -306,11 +308,6 @@ for(i in 1:nlayers(r_obs1)){
 }
 
 ##### Combined figures EDGY
-
-#levelplot(meot_rast_m,main=title_plot, ylab=NULL,xlab=NULL,,par.settings = list(axis.text = list(font = 2, cex = 1.5),
-#                      par.main.text=list(font=2,cex=2.2),strip.background=list(col="white")),
-#                      par.strip.text=list(font=2,cex=1.5),
-#                      col.regions=temp.colors,at=seq(-1,1,by=0.02))
 
 layout_m <- c(4,1)
 no_brks <- 255
@@ -445,6 +442,7 @@ png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Dean_",ou
     height=560*layout_m[1],width=560*layout_m[2])
 
 y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
+y_range <- c(y_range[1],y_range[2]+100)
 #xlab_tick <- mae_tot_tb$time
 xlab_tick <- c("T-1","T+1","T+2","T+3")
 x_tick_position <- mae_tot_tb$time
