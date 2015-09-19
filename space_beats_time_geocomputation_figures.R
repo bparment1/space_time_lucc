@@ -513,10 +513,23 @@ dev.off()
 
 ###
 layout_m <- c(1,3)
+res_pix<-960
+col_mfrow<-2
+row_mfrow<-1
+
+##Figure 7a: change 500 with insect polygons???
+#Insect_2001_2009_mask_alaska.shp
+infile_insect<-sub(".shp","","insect_bool2.shp")             #Removing the extension from file.
+insect_pol <- readOGR(".",infile_insect)
+
+png(filename=paste("Figure7_paper1_change_Alaska_insect_fire_perimeters",out_prefix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+par(mfrow=c(row_mfrow,col_mfrow))
 
 #layout_m <- c(1,1.2)
 png(paste("Figure_3b_accuracy_","mae","_by_zone_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
     height=560*layout_m[1],width=560*layout_m[2])
+par(mfrow=c(layout_m[1],layout_m[2]))
 
 input_data <- mae_zones_tb
 for ( i in 3:5){
@@ -524,14 +537,15 @@ for ( i in 3:5){
   input_data <- subset(input_data,zones==3)
   input_data <- subset(input_data,select=c(names(input_data)!="zones"))
   input_data <- subset(input_data,select=c(names(input_data)!="method"))
-  
+  input_data <- as.data.frame(t(input_data))
   names(input_data) <- col_names
+  input_data$time <- 1:nrow(input_data)
   
   y_range <- range(cbind(input_data$spat_reg,input_data$temp))
   y_range <- c(y_range[1],y_range[2]+100)
   #xlab_tick <- mae_tot_tb$time
   xlab_tick <- c("T-1","T+1","T+2","T+3")
-  x_tick_position <- mae_tot_tb$time
+  x_tick_position <- input_data$time
 
   plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
      ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
@@ -547,7 +561,7 @@ for ( i in 3:5){
   #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
 
   legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
-  title("Overall MAE for Spatial and Temporal models", cex.main=2) #Note that the results are different than for ARIMA!!!
+  title(paste("Zone ",i,sep=""), cex.main=2) #Note that the results are different than for ARIMA!!!
 
 }
 
