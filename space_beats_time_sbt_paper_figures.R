@@ -5,13 +5,12 @@
 #Current case studies include:
 
 #-raster NDVI MODIS data in the Yucatan after hurricane Dean
-#-raster population data in New Orleans after hurricane Katrina
 #-raster DSMP ligth data in New Orleans after hurricane Katrina
 #-raster NDVI MODIS data in New Orleans after hurricane Katrina
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 09/19/2015
+#DATE MODIFIED: 09/21/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -96,28 +95,11 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-#debug(generate_dates_modis)
-#test_dates <-generate_dates_modis(start_date="2001-01-01",end_date="2010-12-31",step_date="16 day")
-#start_date<-"2001.01.01"
-#end_date <- "2012.12.31"
-#end_date <- "2002.12.31"
-
-#st <- as.Date(start_date,format="%Y.%m.%d")
-#en <- as.Date(end_date,format="%Y.%m.%d")
-#ll <- seq.Date(st, en, by="1 day")
-#ll <- seq.Date(st, en, by="16 day")
-#dates_queried <- format(ll,"%Y.%m.%d")
 
 #####  Parameters and argument set up ###########
 
-#in_dir <- "~/Data/Space_beats_time/case3data/" #lights/table" #PARAM3
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time"
-#in_dir <- "~/Data/Space_beats_time/case3data/lights/table"
-#in_dir <- "~/Data/Space_beats_time/Case1a_data"
-#in_dir_NDVI <- file.path(in_dir,"moore_NDVI_wgs84") #contains NDVI 
 
-#moore_window <- file.path(in_dir,"window_test4.rst")
-#winds_zones_fname <- file.path(in_dir,"00_windzones_moore_sin.rst")
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time"
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -128,22 +110,20 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_09192015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_09212015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
-#Latest relevant folders...
+#Latest relevant folders, bpy50 laptop
 in_dir1 <- "/home/bparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_03182015" #EDGY Dean
-#in_dir2 <- "/home/parmentier/Data/Space_beats_time/output__predictions_09252014" #pop Katrina
 in_dir2 <- "/home/bparmentier/Google Drive/Space_beats_time/output_light_Katrina_03222015" #light Katrina
 in_dir3 <- "/home/bparmentier/Google Drive/Space_beats_time/output_NDVI_Katrina_04182015" #NDVI Katrina
+#Latest relevant folders, atlas server 
 
 data_fname1 <- file.path(in_dir1,"dat_out_EDGY_predictions_03182015.txt")
-#data_fname2 <- file.path(in_dir2,"dat_out__predictions_09252014")
 data_fname2 <- file.path(in_dir2,"dat_out_light_Katrina_03222015.txt")
 data_fname3 <- file.path(in_dir3,"dat_out_NDVI_Katrina_04182015.txt")
 
 data_tb1 <- read.table(data_fname1,sep=",",header=T) #EDGY DEAN
-#data_tb2 <- read.table(data_fname,sep=",",header=T) #pop Katrina landscan
 data_tb2 <- read.table(data_fname2,sep=",",header=T) #light Katrina
 data_tb3 <- read.table(data_fname3,sep=",",header=T) #NDVI Katrina
 
@@ -151,7 +131,6 @@ data_tb3 <- read.table(data_fname3,sep=",",header=T) #NDVI Katrina
 
 #coord_names <- c("Long","Lat") #PARAM 11
 #coord_names <- c("x","y") #PARAM 11
-
 #coord_names <- c("XCoord","YCoord")
 #coord_names <- c("POINT_X1","POINT_Y1")
 
@@ -179,17 +158,100 @@ if(create_out_dir_param==TRUE){
 
 ############### START OF SCRIPT ##########
 
-#########################################
-########### Case 1: NDVI EDGY data
+###Figure 1:  Concept for SBT (outside R)
+###Figure 2:  Study areas (outside R)
+###Figure 3:  Strata: Zonal areas maps
+###Figure 4:  Average Temporal profiles overall and by zones
+###Figure 5:   
+###Figure 6:
+###Figure 7:
 
-###############################
-##### Figure 1: zonal contrast based on average of observed values: EDGY area
+
 
 r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst$",full.names=T)))
-r_zonal <- raster(list.files(path=in_dir1,pattern="r_z_winds_EDGY_.*.rst$",full.names=T))
-#zonal stat proffile...
+r_var2 <- stack(mixedsort(list.files(path=in_dir2,"r_F.*.light_Katrina_03222015.rst$",full.names=T)))
+r_var3 <- stack(mixedsort(list.files(path=in_dir3,"r_reg2_NDVI.*.rst$",full.names=T)))
 
-zones_tb_avg<- zonal(r_var1,r_zonal,fun='mean')
+r_zonal1 <- raster(list.files(path=in_dir1,pattern="r_z_winds_EDGY_.*.rst$",full.names=T))
+r_zonal2 <- raster(file.path(in_dir2,"r_high1_lowminus1_light_Katrina_03222015.rst"))
+r_zonal3 <- raster(file.path(in_dir3,"r_r_srtm_Katrina_rec2_NDVI_Katrina_04182015.rst"))
+#r_zonal3 <- raster(list.files(path=in_dir3,pattern="r_r_srtm_.*._rec2_NDVI_Katrina_04182015.rst$",full.names=T))
+
+
+######################################
+########## Figure 3:  Strata: Zonal areas maps
+
+col_pal_all <- c("red","blue","green") #used in all the areas
+
+############
+##Figure 3a: Dean case zonal stat
+
+layout_m <- c(1,1)
+png(paste("Figure","_3a_","zonal_variable_","Dean_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+
+cat_name <- rev(c("Zone 3","Zone 4","Zone 5"))
+par(xpd = FALSE)
+col_pal <- col_pal_all
+plot(r_zonal1,col=col_pal,legend=F)
+#plot(r_zonal2,col=c("red","green"))EDG
+
+par(xpd = TRUE)
+legend(x = -87.4, y = 19.2, legend = cat_name, fill = rev(col_pal), 
+       title="Zones",
+       cex = 0.9, inset = 0.9,bty="n")
+
+dev.off()
+
+
+############
+##Figure 3b: Katrina case zonal map 
+
+layout_m <- c(1,1)
+png(paste("Figure","_cb_","zonal_variable_","light_Katrina_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+
+col_pal <- col_pal_all[2]
+cat_name <- rev(c("high","low"))
+par(xpd = FALSE)
+plot(r_zonal2,col=c("red","brown"),legend=F)
+#plot(r_zonal2,col=c("red","green"))
+
+par(xpd = TRUE)
+legend(x = -89.88, y = 30, legend = cat_name, fill = rev(col_pal), 
+       title="Zones",
+       cex = 0.9, inset = 0.9,bty="n")
+
+dev.off()
+
+
+############
+##Figure 3c: Katrina case zonal map 
+
+r_zonal3 <- raster(file.path(in_dir3,"r_r_srtm_Katrina_rec2_NDVI_Katrina_04182015.rst"))
+#r_r_srtm_Katrina_NDVI_Katrina_04182015.rst
+
+col_pal <- col_pal_all
+layout_m <- c(1,1)
+png(paste("Figure","_3c_","zonal_variable_","NDVI_Katrina_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+
+cat_name <- rev(c("high","medium","low"))
+par(xpd = FALSE)
+plot(r_zonal3,col=col_pal,legend=F)
+#plot(r_zonal2,col=c("red","green"))
+
+par(xpd = TRUE)
+legend(x = -89.72, y = 30.10, legend = cat_name, fill = rev(col_pal), 
+       title="Zones",
+       cex = 0.9, inset = 0.9,bty="n")
+
+dev.off()
+
+##################################
+###Figure 4:  Average Temporal profiles overall and by zones
+
+zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
 
 zones_avg_df <- as.data.frame(zones_tb_avg)
 n_zones <- length(unique(zones_avg_df$zone))
@@ -197,66 +259,99 @@ n_zones <- length(unique(zones_avg_df$zone))
 n_time <- ncol(zones_avg_df) -1
 #pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
 
-mydata<- zones_avg_df
-#dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-dd <- do.call(make.groups, mydata) 
-#dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-#dd$method <- mydata$method
-#drop first few rows that contain no data but zones...
-n_start <-n_zones +1
-dd <- dd[n_start:nrow(dd),]
-tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
-dd$time  <- tmp_time
-dd$zones <- mydata$zone #use recycle rule
 
-layout_m <- c(1.8,1)
-
-p_zones_avg <- xyplot(data~time ,group=zones,
-               data=dd,type="b",xlab="Time step",ylab="NDVI",
-               auto.key=list(columns=1,space="right",title="Zones",cex=1,pch=16),
-               main="Average NDVI in the Dean study area and by zones",
-               border = FALSE, lines = TRUE,cex=0.6,lwd=0.6,pch=16
-)
-
-png(paste("Figure","_1a_","average_temporal_profiles_by_zones_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=550*layout_m[2],width=550*layout_m[1])
-print(p_zones_avg)
-
-update(p_zones_avg,panel=function(...){ 
-        panel.xyplot(...) 
-        panel.abline(v=154) 
-} ) 
-
-dev.off()
-
-##Subset to a year...for clarity
-
-#zones_avg_df
+############
+##Figure 4a: Dean case zonal stat
 
 mean_vals <- colMeans(data_tb1[,6:281],na.rm=T)
-#pixval <- data_tb[800,var_names]
-#pix300 <- data_tb[300,var_names]
+col_pal <- c("black",col_pal_all)
+
 layout_m <- c(1.5,1.1)
 
-png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","NDVI_Dean_",out_suffix,".png", sep=""),
+png(paste("Figure","_4a_","average_temporal_profiles_by_zones_subset","NDVI_Dean_",out_suffix,".png", sep=""),
     height=520*layout_m[2],width=520*layout_m[1])
 
-plot(1:23,mean_vals[139:161],type="b",pch=1,col="red",ylim=c(3000,10000),ylab="NDVI",xlab="Time step (16 days)") #overall
-lines(1:23,zones_avg_df[1,139:161],type="b",pch=2,col="black") #zone 4
-lines(1:23,zones_avg_df[2,139:161],type="b",pch=3,col="green") #zone 5
-lines(1:23,zones_avg_df[3,139:161],type="b",pch=4,col="blue") #zone 6
+plot(1:23,mean_vals[139:161],type="b",pch=1,col=col_pal[1],ylim=c(3000,10000),ylab="NDVI",xlab="Time step (16 days)") #overall
+lines(1:23,zones_avg_df[1,139:161],type="b",pch=2,col=col_pal[2]) #zone 3
+lines(1:23,zones_avg_df[2,139:161],type="b",pch=3,col=col_pal[3]) #zone 4
+lines(1:23,zones_avg_df[3,139:161],type="b",pch=4,col=col_pal[4]) #zone 5
 abline(v=15.5,lty="dashed")
 legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
-        cex=1.2, col=c("red","black","green","blue"),bty="n",
+        cex=1.2, col=col_pal,bty="n",
         lty=1,pch=1:4)
 legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
 title("Overall and zonal averages NDVI in the Dean study area",cex=1.8, font=2)
 
 dev.off()
 
+############
+##Figure 4b: Light use
+
+zones_tb_avg2<- zonal(r_var2,r_zonal2,fun='mean')
+
+zones_avg_df2 <- as.data.frame(zones_tb_avg2)
+n_zones <- length(unique(zones_avg_df2$zone))
+
+n_time <- ncol(zones_avg_df2) -1
+#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
+
+##Subset to a year...for clarity
+
+#zones_avg_df
+
+mean_vals <- colMeans(data_tb2[,3:24],na.rm=T)
+#pixval <- data_tb[800,var_names]
+#pix300 <- data_tb[300,var_names]
+layout_m <- c(1.5,1)
+
+png(paste("Figure","_4b_","average_temporal_profiles_by_zones_subset","_light_data_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+
+plot(1:22,mean_vals[1:22],type="b",pch=1,col=col_pal[1],ylim=c(50,65),
+     ylab="Light Intensity",xlab="Time step (annual)") #overall
+lines(1:22,zones_avg_df2[1,2:23],type="b",pch=2,col=col_pal[2]) #zone 4
+lines(1:22,zones_avg_df2[2,2:23],type="b",pch=3,col=col_pal[3]) #zone 5
+#lines(1:22,zones_avg_df[3,2:23],type="b",pch=4,col="blue") #zone 6
+abline(v=13.5,lty="dashed")
+legend("topleft",legend=c("Overall","zone 1","zone 2"),
+       cex=0.8, col=col_pal,bty="n",
+       lty=1,pch=1:4)
+legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
+title("Average light in the Katrina study area and by zones",cex=1.6, font=2)
+
+dev.off()
+
+
+############
+##Figure 4c: Katrina case zonal temporal profiles
+
+zones_tb_avg3<- zonal(r_var3,r_zonal3,fun='mean')
+zones_avg_df3 <- as.data.frame(zones_tb_avg3)
+n_zones <- length(unique(zones_avg_df3$zone))
+
+mean_vals <- colMeans(data_tb3[,6:281],na.rm=T)
+col_pal <- c("black",col_pal_all)
+
+layout_m <- c(1.5,1.1)
+
+png(paste("Figure","_4c_","average_temporal_profiles_by_zones_subset_","NDVI_Katrina_",out_suffix,".png", sep=""),
+    height=520*layout_m[2],width=520*layout_m[1])
+
+plot(1:23,mean_vals[139:161],type="b",pch=1,col=col_pal[1],ylim=c(3000,10000),ylab="NDVI",xlab="Time step (16 days)") #overall
+lines(1:23,zones_avg_df3[1,139:161],type="b",pch=2,col=col_pal[2]) #zone 3
+lines(1:23,zones_avg_df3[2,139:161],type="b",pch=3,col=col_pal[3]) #zone 4
+lines(1:23,zones_avg_df3[3,139:161],type="b",pch=4,col=col_pal[4]) #zone 5
+abline(v=15.5,lty="dashed")
+legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
+       cex=1.2, col=col_pal,bty="n",
+       lty=1,pch=1:4)
+legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
+title("Overall and zonal averages NDVI in the Katrina Study area")
+dev.off()
+
+
 ###############################
-##### Figure 2: Comparisons of observed, predicted temp, predicted spat: EDGY case study
+##### Figure 5: Comparisons of observed, predicted temp, predicted spat: EDGY case study
 
 #input raster images for the study area (276 images)
 r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst$",full.names=T)))
@@ -465,18 +560,6 @@ dd$method <- mydata$method
 #drop first four rows
 dd <- dd[7:nrow(dd),]
 
-
-#xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-#       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-#      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-#                     border = FALSE, lines = TRUE,cex=1.2)
-#)
-
-#xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-#+       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-#+      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-#+                     border = FALSE, lines = TRUE,cex=1.2)
-
 layout_m <- c(1,3)
 
 p<- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time Step",ylab="NDVI",
@@ -530,79 +613,6 @@ dev.off()
 ###############################
 ##### Figure 4: zonal contrast based on average of observed values: EDGY area
 
-r_var2 <- stack(mixedsort(list.files(path=in_dir2,"r_F.*.light_Katrina_03222015.rst",full.names=T)))
-#r_F101992_light_Katrina_03222015.rst
-
-
-#r_high1_lowminus1_light_Katrina_03222015
-#zonal stat proffile...
-
-zones_tb_avg2<- zonal(r_var2,r_zonal2,stat='mean')
-
-zones_avg_df <- as.data.frame(zones_tb_avg2)
-n_zones <- length(unique(zones_avg_df$zone))
-
-n_time <- ncol(zones_avg_df) -1
-#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-mydata<- zones_avg_df
-#dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-dd <- do.call(make.groups, mydata) 
-#dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-#dd$method <- mydata$method
-#drop first few rows that contain no data but zones...
-n_start <-n_zones +1
-dd <- dd[n_start:nrow(dd),]
-tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
-dd$time  <- tmp_time
-dd$zones <- mydata$zone #use recycle rule
-
-layout_m <- c(1.5,1)
-
-p_zones_avg <- xyplot(data~time ,group=zones,
-               data=dd,type="b",xlab="Time step",ylab="Light Intensity",
-               auto.key=list(columns=1,space="right",title="Zones",cex=1),
-               main="Average light in the Katrina study area and by zones",
-               border = FALSE, lines = TRUE,cex=1.2
-)
-
-png(paste("Figure","_1a_","average_temporal_profiles_by_zones_","light_Katrina_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p_zones_avg)
-
-update(p_zones_avg,panel=function(...){ 
-        panel.xyplot(...) 
-        panel.abline(v=154) 
-} ) 
-
-dev.off()
-
-##Subset to a year...for clarity
-
-#zones_avg_df
-
-mean_vals <- colMeans(data_tb2[,3:24],na.rm=T)
-#pixval <- data_tb[800,var_names]
-#pix300 <- data_tb[300,var_names]
-layout_m <- c(1.5,1)
-
-png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_light_data_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-
-plot(1:22,mean_vals[1:22],type="b",pch=1,col="red",ylim=c(50,65),
-     ylab="Light Intensity",xlab="Time step (annual)") #overall
-lines(1:22,zones_avg_df[1,2:23],type="b",pch=2,col="black") #zone 4
-lines(1:22,zones_avg_df[2,2:23],type="b",pch=3,col="green") #zone 5
-#lines(1:22,zones_avg_df[3,2:23],type="b",pch=4,col="blue") #zone 6
-abline(v=13.5,lty="dashed")
-legend("topleft",legend=c("Overall","zone 1","zone 2"),
-        cex=0.8, col=c("red","black","green"),bty="n",
-        lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
-title("Average light in the Katrina study area and by zones",cex=1.6, font=2)
-
-dev.off()
 
 
 ###############################
