@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 09/21/2015
+#DATE MODIFIED: 09/23/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -110,7 +110,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_09212015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_09232015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders, bpy50 laptop
@@ -158,15 +158,18 @@ if(create_out_dir_param==TRUE){
 
 ############### START OF SCRIPT ##########
 
-###Figure 1:  Concept for SBT (outside R)
-###Figure 2:  Study areas (outside R)
-###Figure 3:  Strata: Zonal areas maps
-###Figure 4:  Average Temporal profiles overall and by zones
-###Figure 5:   
-###Figure 6:
-###Figure 7:
+##Figure 1:  Concept for SBT (outside R)
+##Figure 2:  Study areas (outside R)
+##Figure 3:  Strata: Zonal areas maps
+##Figure 4:  Average Temporal profiles overall and by zones
+##Figure 5:  Spatial patterns Dean: Observed, predicted, residuals
+##Figure 6:  Spatial patterns Katrina NDVI: Observed, predicted, residuals
+##Figure 7:  Spatial patterns Katrina NLU: Observed, predicted, residuals
+##Figure 8:  Temporal MAE patterns Dean four dates
+##Figure 9:  Temporal MAE patterns Katrina NDVI four dates
+##Figure 10: Temporal MAE patterns Katrina NLU for four dates
 
-
+## PART 1: Read the datasets ####
 
 r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst$",full.names=T)))
 r_var2 <- stack(mixedsort(list.files(path=in_dir2,"r_F.*.light_Katrina_03222015.rst$",full.names=T)))
@@ -203,12 +206,11 @@ legend(x = -87.4, y = 19.2, legend = cat_name, fill = rev(col_pal),
 
 dev.off()
 
-
 ############
 ##Figure 3b: Katrina case zonal map 
 
 layout_m <- c(1,1)
-png(paste("Figure","_cb_","zonal_variable_","light_Katrina_",out_suffix,".png", sep=""),
+png(paste("Figure","_3c_","zonal_variable_","light_Katrina_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
 
 col_pal <- col_pal_all[2]
