@@ -5,55 +5,130 @@ Spyder Editor
 This temporary script file is located here:
 F:\Apps\WinPython-32bit-2.7.6.3\settings\.spyder2\.temp.py
 """
+#!/usr/bin/python
+#
+###################### GENERATE SPATIAL PREDICITONS  ########################
+#
+#Script to produce spatial predictions with sptial lag/error model.
+#
+## TODO:
+#  - Add paralelization...
+#  - get statistics for layers in tif
+#
+# Authors: Sean McFall, Benoit Parmentier 
+# Created on: 11/04/2014
+# Updated on: 01/10/2015
+# Project: WM Space Beats Time
+#
+############### LOAD LIBRARY/MODULES USED IN THE SCRIPT #####################
 
+#from pysal import pysal as ps
 import pysal as ps
+
 import numpy as np
+import os
+#import glob
 
+################ NOW FUNCTIONS  ###################
 
-#
-# below is the example provided for the spreg.ml_error model
-# NOTE: it should work wherever given the relative file paths
-#
+##------------------
+# Functions used in the script 
+##------------------
 
-#db = ps.open(ps.examples.get_path("south.dbf"), 'r')
-#ds_name = "south.dbf"
-#y_name = "HR90"
-#y = np.array(db.by_col(y_name))
-#y.shape = (len(y), 1)
-#x_names = ["RD90","PS90","UE90","DV90"]
-#x = np.array([db.by_col(var) for var in x_names]).T
-#ww = ps.open(ps.examples.get_path("south_q.gal"))
-#w = ww.read()
-#ww.close()
-#w_name = "south_q.gal"
-#w.transform = 'r'
-#mlerr = ps.spreg.ml_error.ML_Error(y,x,w,name_y=y_name,name_x=x_names,name_w=w_name,name_ds=ds_name)
+def create_dir_and_check_existence(path):
+    #Create a new directory
+    try:
+        os.makedirs(path)
+        
+    except:
+        print "directory already exists"
 
-#
-# below is my take on the code with the SBT data
-#
+#######################################################################
+######################### BEGIN SCRIPT  ###############################
+            
+#def main():
+    #
+########## READ AND PARSE PARAMETERS AND ARGUMENTS ######### 
 
-# converted the txt file to csv, pysal seems to like the file type more
-katPred = ps.open("F:\Research\spaceTime\output\slm_2014-10-30\dat_out__predictions2014-10-30.csv", 'r')
+np.random.seed(100)
 
 ds_name = "katrina2004"
-y_name = "LSPOP2004"
-x_name = y_name + "x"
+y_name = "v1"
+x_name = "something else"
+out_suffix = "_09252014"
 
-# y = np.array(katPred.by_col(y_name))
+#rootdir = '/home/sean/Documents/Research/space_time_lucc/output/'
+#srootdir = '/home/parmentier/Data/Space_beats_time/R_Workshop_April2014/output__predictions_09252014' #on Atlas
+#on Benoit's mac
+rootdir = '/Users/benoitparmentier/Google Drive/Space_beats_time/stu/Katrina/output__predictions_09252014' #on 
+outDir =   '/Users/benoitparmentier/Google Drive/Space_beats_time/pysal_test'
 
-# given that we do not want a covariate, I made the DV and IV the same
-# must be a nx1 array to work
-x = np.array([katPred.by_col(y_name)]).T
-y = x
+#out_dir = "output_data_"+out_suffix
+#out_dir = os.path.join(in_dir,out_dir)
+#create_dir_and_check_existence(out_dir)
+            
+#os.chdir(out_dir)        #set working directory
 
-# does not like number in the file name, though it's ok with the directory name???
-# I am guessing this is a windows problem
-ww = ps.open("F:\Research\pred.gal", 'r')
-w = ww.read()
-ww.close()
-w_name = "2004pred.gal"
-# not sure what the below line of code does, but it was in the example...
-w.transform = 'r'
 
-mlerr = ps.spreg.ml_error.ML_Error(y, x, w, name_y = y_name, name_x = x_name, name_w = w_name, name_ds = ds_name)
+mlerr_dict = {}
+# unique id column
+unique_id = np.linspace(1, 373, num = 373)
+
+for year in range(2001,2013):
+    
+    #in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions_09252014.dbf")
+    in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions"+ out_suffix +".dbf")
+    #r_poly_t_2004_predictions_09252014.dbf
+    #katPred = ps.open(rootdir + "r_poly_t_" + str(year) + "_predictions.dbf")
+    #r_poly_t_2004_predictions_09252014.dbf
+    katPred = ps.open(in_file)
+    
+    y = np.array([katPred.by_col(y_name)]).T
+    
+    # array of random numbers 
+    x = np.random.randn(len(y),1)
+    
+    # array of ones
+    #x = np.ones_like(y, dtype = np.int)
+    #r_poly_t_2004_predictions_09252014
+    in_file = os.path.join(rootdir, "r_poly_t_" + str(year) + "_predictions"+ out_suffix +".gal")
+    ww = ps.open(in_file, 'r')
+
+    #ww = ps.open(rootdir + "r_poly_t_" + str(year) + "_predictions" + out_suffix +".gal", 'r')
+    w = ww.read()
+    ww.close()
+    w_name = str(year) + "pred.gal"
+    w.transform = 'r'
+    
+    print year
+    
+    mlerr = ps.spreg.ml_error.ML_Error(y, x, w,method="ord")
+    #mlerr = ps.spreg.ml_error.ML_Error(y, x, w)
+    
+    mlerr_dict[year] = mlerr
+    
+    # output summary to individual text file
+    out_file = os.path.join(outDir,"mlerrSummary" + str(year) +out_suffix+ ".txt")
+    txt_file = open(out_file, "w")
+    txt_file.write(mlerr.summary)
+    txt_file.close()
+    
+    # output to array 
+    
+    # fourth column is the randomly generated numbers
+    all_data = np.column_stack((unique_id, mlerr.u, y[:,0], x[:,0], mlerr.predy))
+    
+    # why does the header insert a '#' symbol onto the front of the string? 
+    out_file = os.path.join(outDir,"pysal_res_" + str(year) + out_suffix + ".csv")
+    np.savetxt(out_file, all_data, delimiter = ',', 
+               header = "unique_ID," + str(year) + "_res,ObsValues,randomVals,predVals")
+    
+############################### END OF SCRIPT ###########################################
+
+#x_coords = np.genfromtxt(rootdir + "dat_out__predictions.txt", usecols = (1), delimiter = ',', dtype = None)
+#y_coords = np.genfromtxt(rootdir + "dat_out__predictions.txt", usecols = (2), delimiter = ',', dtype = None)
+#
+#x , y = np.loadtxt(rootdir + "dat_out__predictions.txt", delimiter = ',', usecols = (1,2), unpack = True, skiprows = 1)
+#
+
+# output dictionary to array file
