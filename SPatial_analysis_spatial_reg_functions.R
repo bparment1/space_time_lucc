@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/15/2015
+#DATE MODIFIED: 05/17/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -213,12 +213,12 @@ pixel_ts_arima_predict <- function(i,list_param){
     p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
   }
   if (!inherits(p_arima,"try-error")){
-    y<- t(as.data.frame(p_arima$pred)) #this makes a matrix...should probably be a data.frame
+    y <- t(as.data.frame(p_arima$pred)) #this makes a matrix...should probably be a data.frame
     y_error <- t(as.data.frame(p_arima$se)) #this contains the standard errrors related to the value predicted by arima
     #y_error <- rep(0,n_ahead)
   }
   if (inherits(p_arima,"try-error")){
-    y<- rep(NA,n_ahead)
+    y <- rep(NA,n_ahead)
     y_error <- rep(1,n_ahead)
   }
   
@@ -445,8 +445,8 @@ predict_temp_reg_fun <-function(i,list_param){
       r_ref_s <- crop(r_ref_s,r_clip)
     }
     
-    n_start <- c(time_step) +1 #151+1
-    n_end   <- c(time_step) + n_pred_ahead #151+n_pred_ahead
+    n_start <- c(time_step) +1
+    n_end   <- c(time_step)+n_pred_ahead
     r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers
     
     #r1 <- subset(r_obs_s,1)
@@ -466,8 +466,7 @@ predict_temp_reg_fun <-function(i,list_param){
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)
     df_xy <- pix_val2[,c("x","y")]
-    pix_val2 <-  pix_val2[,1:time_step] #151
-    
+    pix_val2 <-  pix_val2[,1:time_step] #152 or 135 in this case, predictions starts at 136
     pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))#dim 152x26,616
 
     ### Should add a window option to subset the pixels time series
@@ -506,8 +505,9 @@ predict_temp_reg_fun <-function(i,list_param){
     #out_rastnames_res <- paste(paste("r_temp_res_arima_",1:n_pred_ahead,sep="_"),"_",out_suffix,file_format,sep="")
     
     #can change later to have t_step
-    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",1:n_pred_ahead,sep=""),"_",out_suffix,file_format,sep="")
-    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",1:n_pred_ahead,sep=""),"_",out_suffix,file_format,sep="")
+    #to avoid confusion on the time step, we now label raster images with the time step
+    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
 
     #list_param_arima_convert <- list(r_ref_s,arima_pixel_pred_obj,file_format,out_dir,raster_name_pred,file_format,NA_flag_val)
     list_param_arima_convert <- list(r_clip,arima_pixel_pred_obj,file_format,out_dir,raster_name_pred,file_format,NA_flag_val)
@@ -518,12 +518,12 @@ predict_temp_reg_fun <-function(i,list_param){
     ## Convert predicted values to raster...
     #pred_t_l<-lapply(1:1,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
 
-    pred_t_l<-lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
-    #pred_t_l<-mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
+    #pred_t_l <- lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
+    pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
 
     #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
-    pred_t_l <-unlist(pred_t_l)
+    pred_t_l <- unlist(pred_t_l)
     r_temp_pred  <- stack(pred_t_l[-c(grep(pattern="error",pred_t_l))])
     r_temp_error <- stack(pred_t_l[c(grep(pattern="error",pred_t_l))])
     r_temp_res <- r_temp_pred - r_obs_s
@@ -545,6 +545,7 @@ predict_temp_reg_fun <-function(i,list_param){
   temp_reg_obj <- list(temp_mod,file.path(out_dir,raster_name_pred),file.path(out_dir,raster_name_res))
   names(temp_reg_obj) <- c("temp_mod","raster_pred","raster_res")
   save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",estimator,"_",estimation_method,"_t_",i,"_",out_suffix,".RData",sep="")))
+  #write a log file with predictions parameters used at the time:
   
   return(temp_reg_obj)
   
