@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/18/2015
+#DATE MODIFIED: 11/03/2015
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -44,6 +44,18 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
+create_dir_fun <- function(out_dir,out_suffix){
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    out_dir <- file.path(out_dir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
+  return(out_dir)
+}
+
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -69,7 +81,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"EDGY_05172015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"EDGY_11032015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -90,9 +102,9 @@ var_names <- 6:281 #PARAM 13 #Data is stored in the columns 3 to 22
 num_cores <- 11 #PARAM 14
 n_time_event <- 153 #PARAM 15 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 time_window_selected <- var_names #PARAM 16: use alll dates for now
-time_window_selected <- 152:156 #PARAM 16: 5 dates
+time_window_selected <- 135:170 #PARAM 16: 5 dates, we are testing more dates here!!
 
-re_initialize_arima <- T #PARAM 17, use re-initialization ie apply arima model with one step forward at each time step
+re_initialize_arima <- F #PARAM 17, use re-initialization ie apply arima model with one step forward at each time step
   
 ################# START SCRIPT ###############################
 
@@ -267,7 +279,7 @@ data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
 #test a fake covariate
 #Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
 #This takes a bit less than 3minutes for the dataset containing 2858 polygons
-sam_esar_chebyshev <- errorsarlm(v1~ 1, listw=reg_listw_w,method="Chebyhev",
+sam_esar_chebyshev <- errorsarlm(v1~ 1, listw=reg_listw_w,method="Chebyshev",
                        data=data_reg,na.action=na.omit,zero.policy=TRUE,
                        tol.solve=1e-36) #tol.solve use in matrix operations
 # summary(sam_esar_eigen)
@@ -400,6 +412,8 @@ list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_s
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
 n_pred <- nlayers(r_spat_var)
 
+#pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
+
 pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
 save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
 
@@ -433,7 +447,8 @@ levelplot(spat_res_rast_mle_Chebyshev,col.regions=matlab.like(25)) #view the fou
 
 list_param_spat_reg$estimator <- "ols"
 list_param_spat_reg$estimation_method <- "ols"
-
+#undebug(predict_spat_reg_fun)
+#predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 pred_spat_ols <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
 save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
 
@@ -562,9 +577,12 @@ if(re_initialize_arima==T){
   save(l_pred_temp_arima,file= file.path(out_dir, paste("l_pred_temp_arima_",out_suffix,".RData",sep="")))
 
 }else{
-  time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+  l_pred_temp_arima <- vector("list",length=1) #only one needed for now...
+  #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+  time_step <- time_window_selected[1] #this is the time step for which to start the arima model with, start at 99
+
   #n_pred <- 16
-  n_pred <- length(time_window_selected) -1
+  n_pred <- length(time_window_selected) - 1
   n_pred_ahead <- n_pred
 
   #n_time_pred_start <- 100 
@@ -579,7 +597,7 @@ if(re_initialize_arima==T){
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
 
   #debug(predict_temp_reg_fun)
-  pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
+  l_pred_temp_arima[[1]] <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
 
 }
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -588,7 +606,7 @@ if(re_initialize_arima==T){
 #pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
-#pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_100_NDVI_Katrina_04102015.RData")
+#pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_1_t_135_EDGY_11032015.RData")
 
 #extract_files <- function(i,x){obj<-x[[i]];obj$raster_pred}
 #debug(extract_files)
@@ -613,9 +631,9 @@ projection(r_temp_pred_rast_arima) <- CRS_reg
 #levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 #levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
 
-levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+#levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+#levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+#levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
 
 projection(r_temp_pred_rast_arima) <- CRS_reg
 projection(r_temp_res_rast_arima) <- CRS_reg
@@ -724,7 +742,9 @@ spat_pred_rast <- subset(spat_pred_rast_mle_Chebyshev,1:length(time_window_selec
 
 #temp_pred_rast <- r_temp_pred_rast_lm #temporal model prediction
 time_selected <- length(time_window_selected)
-temp_pred_rast_arima <- subset(r_temp_pred_rast_arima,1:time_selected) #temporal model prediction
+#temp_pred_rast_arima <- subset(r_temp_pred_rast_arima,1:time_selected) #temporal model prediction
+temp_pred_rast_arima <- r_temp_pred_rast_arima #temporal model prediction
+
 temp_pred_rast_lm <- r_temp_pred_rast_lm #temporal model prediction, lm, from time step 2 to 17
 
 rast_zonal <- subset(s_raster,zonal_colnames)
@@ -737,7 +757,7 @@ projection(temp_pred_rast_arima) <- CRS_reg
 projection(temp_pred_rast_lm) <- CRS_reg
 
 #r_huric_obs <- subset(s_raster,time_window_selected[-1])
-r_huric_obs <- subset(r_stack,time_window_selected)
+r_huric_obs <- subset(r_stack,time_window_selected[-1])
 
 #r_huric_w <- crop(r_huric_w,rast_ref)
 levelplot(r_huric_obs,col.regions=matlab.like(25))
