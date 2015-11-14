@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/03/2015
+#DATE MODIFIED: 11/14/2015
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -56,7 +56,7 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11142015_functions.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -81,7 +81,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"EDGY_11032015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"EDGY_11142015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -282,38 +282,6 @@ data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
 sam_esar_chebyshev <- errorsarlm(v1~ 1, listw=reg_listw_w,method="Chebyshev",
                        data=data_reg,na.action=na.omit,zero.policy=TRUE,
                        tol.solve=1e-36) #tol.solve use in matrix operations
-# summary(sam_esar_eigen)
-# v5 <- rnorm(nrow(data_reg))
-# data_reg$v5 <- v5 - mean(v5) 
-# sam.esar2 <- errorsarlm(v1~ v5, listw=reg_listw_w, 
-#                        data=data_reg,na.action=na.omit,zero.policy=TRUE,
-#                        tol.solve=1e-36) #tol.solve use in matrix operations
-# summary(sam.esar2) #using randomfake variable as  covariate
-# 
-# print(coef(sam_esar_eigen))
-# print(coef(sam.esar2)) #almost equal could set the seed to make it reproducib
-# 
-# #Predicted values and
-# data_reg_spdf$spat_reg_pred <- sam_esar_eigen$fitted.values
-# data_reg_spdf$spat_reg_res <- sam_esar_eigen$residuals
-# 
-# spat_mod <- try(spautolm(v1 ~ 1,data=data_reg, listw= reg_listw_w,na.action=na.omit,zero.policy=TRUE,
-#                                tol.solve=1e-36))
-# spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-#                      het = TRUE, verbose=TRUE))
-# 
-# #res<-gstslshet(v1 ~ v2 , data=data_reg, listw=reg_listw_w)
-# #spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
-# #                     het = TRUE, verbose=TRUE))
-# 
-# lm_mod <- try(lm(v1 ~ v5,data=data_reg))
-# #lm_mod2 <- try(lm(v1 ~ v4,data=data_reg))
-# mean(data_reg$v2)
-# mean(data_reg$v5)
-# 
-# all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this work...
-#A work around may be to include a standar normal random variable!!
-
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
 
@@ -426,22 +394,6 @@ levelplot(spat_res_rast_mle_Chebyshev,col.regions=matlab.like(25)) #view the fou
 ### MLE eigen
 # estimator <- "mle"
 # estimation_method <- "eigen"
-# 
-# #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
-# list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
-# names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
-# n_pred <- nlayers(r_spat_var)
-# #debug(predict_spat_reg_fun)
-# #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
-# 
-# pred_spat_mle_eigen <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
-# save(pred_spat_mle_eigen,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
-# 
-# #pred_spat_mle_chebyshev: extract raster images from object
-# spat_pred_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen,FUN=function(x){x$raster_pred})) #get stack of predicted images
-# spat_res_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen,FUN=function(x){x$raster_res})) #get stack of predicted images
-# levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-# levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ### OLS for didactive purpose
 
@@ -507,10 +459,10 @@ n_pred <- nlayers(r_temp_var) -1
 #test_temp <- predict_temp_reg_fun(1,list_param_temp_reg_lm)
 #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
 
-#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-
 #only 5 predictions out of five in the case of lm!!!
-pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg_lm) 
+#pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg_lm) 
+pred_temp_lm <- mclapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg_lm,mc.preschedule=FALSE,mc.cores = num_cores) 
+#test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
 save(pred_temp_lm,file= file.path(out_dir, paste("pred_temp_lm_",out_suffix,".RData",sep="")))
 
@@ -526,7 +478,7 @@ list_models <-NULL
 
 num_cores_tmp <- 11
 #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-time_step <- time_window_selected[1]-1 #this is the time step for which to start the arima model with, start at 151
+time_step <- time_window_selected[1] #this is the time step for which to start the arima model with, start at 151
 n_pred_ahead <- length(time_window_selected)
 
 rast_ref <- subset(r_stack,1) #first image ID
@@ -593,7 +545,7 @@ if(re_initialize_arima==T){
   out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
   list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
                             num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
-   names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+  names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
 
   #debug(predict_temp_reg_fun)
@@ -606,8 +558,9 @@ if(re_initialize_arima==T){
 #pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
 
 #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
-#pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_1_t_135_EDGY_11032015.RData")
-
+#pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_1_t_135_EDGY_11142015.RData")
+#l_pred_temp_arima[[1]] <- pred_temp_arima
+  
 #extract_files <- function(i,x){obj<-x[[i]];obj$raster_pred}
 #debug(extract_files)
 #extract_files(1,l_pred_temp_arima)
@@ -738,7 +691,7 @@ projection(r_temp_pred_rast_lm) <- CRS_reg
 
 #select specific model:
 #spat_pred_rast <- subset(spat_pred_rast_mle_eigen,2:length(time_window_selected)) #spatial model prediction: 101 to 116
-spat_pred_rast <- subset(spat_pred_rast_mle_Chebyshev,1:length(time_window_selected)) #spatial model prediction: 101 to 116
+spat_pred_rast <- subset(spat_pred_rast_mle_Chebyshev,2:length(time_window_selected)) #spatial model prediction: 101 to 116
 
 #temp_pred_rast <- r_temp_pred_rast_lm #temporal model prediction
 time_selected <- length(time_window_selected)
@@ -757,7 +710,7 @@ projection(temp_pred_rast_arima) <- CRS_reg
 projection(temp_pred_rast_lm) <- CRS_reg
 
 #r_huric_obs <- subset(s_raster,time_window_selected[-1])
-r_huric_obs <- subset(r_stack,time_window_selected[-1])
+r_huric_obs <- subset(r_stack,time_window_selected[-1]) #drop first item
 
 #r_huric_w <- crop(r_huric_w,rast_ref)
 levelplot(r_huric_obs,col.regions=matlab.like(25))
