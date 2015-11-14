@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/17/2015
+#DATE MODIFIED: 11/14/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -57,6 +57,40 @@ library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 
 ###### Functions used in this script
+
+#log_file_create_list_param_fun <- function(list_param,function_name,out_file=TRUE){
+#  num_parameters <- length(list_param)
+#  df_list_param <- as.data.frame(name)
+#  for(i in 1:length(list_param)){
+#    df_list_param$argument <- names(list_param[[i]])
+#   df_list_param$class <- class(list_param[[i]])
+#    if(class(list_param[[i]])==char){
+#     df_list_param$value <- list_param[[i]]
+#    }else{
+#      df_list_param$value <- NA
+#    }
+#      
+#    out_dir  <- list_param$out_dir
+#    r_ref_s    <- list_param$r_var #if NULL, no image is created, this is the reference image
+#    #list_param$ <- rast_ref
+#    r_clip     <- list_param$r_clip
+#    proj_str <- list_param$proj_str
+#    list_models <- list_param$list_models
+#    file_format <- list_param$file_format
+#    estimator <- list_param$estimator
+#    estimation_method <- list_param$estimation_method #currently used only for mle from errorsarlm
+#    NA_flag_val <- list_param$NA_flag_val
+#    #ARIMA specific
+#    num_cores <- list_param$num_cores #paraallelization in space.this should be done by row or til enot by pixel!!!!
+#    time_step <- list_param$time_step #this is the time step for which to start the arima model with
+#    n_pred_ahead <- list_param$n_pred_ahead
+#    r_stack <- list_param$r_stack
+#    arima_order <- list_param$arima_order
+#
+#}
+#    return()
+#  }
+#}
 
 ### Make a function to uniformize NA accros given dates!!!
 
@@ -447,7 +481,7 @@ predict_temp_reg_fun <-function(i,list_param){
     
     n_start <- c(time_step) +1
     n_end   <- c(time_step)+n_pred_ahead
-    r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers
+    r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
     
     #r1 <- subset(r_obs_s,1)
     #xy <-coordinates(r_obs_s)  #get x and y projected coordinates...
@@ -460,6 +494,7 @@ predict_temp_reg_fun <-function(i,list_param){
     r_stack <- mask(r_stack,r_clip)
     #rm(r1)
 
+    ## 11/15/2015 Still needs to be changed here
     #Very inefficient, will be changed to avoid reading in memory: problem to be sloved
     #readBlockRaster() see earlier
     
@@ -489,7 +524,10 @@ predict_temp_reg_fun <-function(i,list_param){
 
     #debug(pixel_ts_arima_predict)
     #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
+    #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+
     arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+    #pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
    
     #save this in a separate folder!!!
    
@@ -545,7 +583,10 @@ predict_temp_reg_fun <-function(i,list_param){
   temp_reg_obj <- list(temp_mod,file.path(out_dir,raster_name_pred),file.path(out_dir,raster_name_res))
   names(temp_reg_obj) <- c("temp_mod","raster_pred","raster_res")
   save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",estimator,"_",estimation_method,"_t_",i,"_",out_suffix,".RData",sep="")))
+  
   #write a log file with predictions parameters used at the time:
+  #Extract parameters/arguments
+  
   
   return(temp_reg_obj)
   
