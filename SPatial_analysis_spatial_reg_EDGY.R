@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/14/2015
+#DATE MODIFIED: 11/19/2015
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -56,7 +56,7 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11142015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11162015_functions.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -426,13 +426,13 @@ levelplot(spat_res_rast_ols,col.regions=matlab.like(25)) #view the four predicti
 r_clip <- rast_ref #this is the image defining the study area
 
 #note that included here are 5 timestep starting at 151
-range_time_step <- (time_window_selected[1]-1):(time_window_selected[length(time_window_selected)])
+range_time_step <- (time_window_selected[1]):(time_window_selected[length(time_window_selected)])
 r_temp_var <- subset(r_stack,range_time_step) # relies on the previous date in contrast to spat reg, this is r_var param
-list_models <-NULL
+list_models <- NULL
 
 #the ouput suffix was wrong, needs to be 153!!!
 #Use 100 to 116
-n_start <- time_window_selected[1]
+n_start <- time_window_selected[1]+1
 n_end <- time_window_selected[length(time_window_selected)]
 out_suffix_s <- paste("t_",n_start:n_end,"_",out_suffix,sep="")#this should really be automated!!!
 estimator <- "lm"
@@ -441,8 +441,10 @@ estimation_method <-"ols"
 #ARIMA specific
 
 num_cores_tmp <- 11
-time_step <- time_window_selected[1]-1 #this is the time step for which to start the arima model with, start at 99
-n_pred_ahead <- length(time_window_selected)
+time_step <- time_window_selected[1] #this is the time step for which to start the oks model with, start at 99
+
+#time_step <- time_window_selected[1]-1 #this is the time step for which to start the arima model with, start at 99
+n_pred_ahead <- length(time_window_selected) - 1 #otherwise this predicts outside 
 rast_ref <- subset(s_raster,1) #first image ID
 r_stack_arima <- mask(r_stack,rast_ref)
 
@@ -453,10 +455,11 @@ list_param_temp_reg_lm <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,ou
                             num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
 names(list_param_temp_reg_lm) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-n_pred <- nlayers(r_temp_var) -1
+n_pred <- nlayers(r_temp_var) - 1
+#n_pred_ahead <- length(time_window_selected) - 1 #otherwise this predicts outside 
 
-#undebug(predict_temp_reg_fun)
-#test_temp <- predict_temp_reg_fun(1,list_param_temp_reg_lm)
+#debug(predict_temp_reg_fun)
+test_temp <- predict_temp_reg_fun(1,list_param_temp_reg_lm)
 #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
 
 #only 5 predictions out of five in the case of lm!!!
@@ -626,18 +629,6 @@ tb_coef_mle$method <- paste(tb_coef_mle$estimator,tb_coef_mle$estimation_method,
 #View(tb_coef_mle)
 head(tb_coef_mle)
 
-#pred_spat_gmm
-#pred_spat_gmm_test <-load_obj("pred_spat_gmm_EDGY_predictions_03092015.RData")
-#l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
-#tb_coef_gmm <- as.data.frame(t(do.call(cbind,(l_coef_gmm))))
-#tb_coef_gmm <- tb_coef_gmm[,c(1,3,2)]
-#names(tb_coef_gmm)<- c("(Intercept)","rho","v2")
-#tb_coef_gmm$estimation_method <- "gmm"
-#tb_coef_gmm$time <- 1:4                
-#tb_coef_gmm$estimator <- "gmm"
-#tb_coef_gmm$method <- "gmm"                
-
-
 #tb_coef_mle  <- tb_coef_mle[,c(1,3,2)]
 #names(tb_coef_mle)<- c("(Intercept)","rho")
 #tb_coef_mle$v2<- NA
@@ -645,6 +636,7 @@ head(tb_coef_mle)
 #tb_coef_mle$method <- "mle"
 #pred_spat_ols <-load_obj("pred_spat_ols_EDGY_predictions_03092015.RData")
 #pred_spat_ols
+
 l_coef_ols <- lapply(pred_spat_ols,FUN=function(x){coef(x$spat_mod)})
 
 tb_coef_ols <- as.data.frame(do.call(rbind,l_coef_ols))
