@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/14/2015
+#DATE MODIFIED: 11/16/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -13,7 +13,7 @@
 #PROJECT: Geocomputation and AAG 2015
 #TO DO:
 # modify the rasterize_df_fun function to allow ref image
-# add the ARIMA method...in the temporal pred?
+# add the ARIMA method to run more efficiently
 #
 #################################################################################################
 
@@ -421,7 +421,17 @@ predict_temp_reg_fun <-function(i,list_param){
   
   if(estimation_method=="ols"){
     
-    n_pred<- i+1
+    #this should be a function of its own!!!
+    if(!is.null(r_clip)){
+      #r_stack2<-r_stack #this is should not be in memoor!!!
+      r_stack <- crop(r_stack,r_clip)
+      r_ref_s <- crop(r_ref_s,r_clip)
+    }
+    
+    n_pred <- i+1 #if step 20 then prediction is step 21!
+    n_start <- c(time_step) +1
+    n_end   <- c(time_step)+n_pred_ahead
+    r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
     r_var2 <- subset(r_ref_s,i:n_pred)
     r_ref_s <- crop(r_var2,r_clip)
     
@@ -429,7 +439,11 @@ predict_temp_reg_fun <-function(i,list_param){
     names(data_reg2_spdf) <- c("t1","t2")
     data_reg2 <- as.data.frame(data_reg2_spdf)
     data_reg2 <- na.omit(data_reg2) #remove NA...this reduces the number of observations
-    temp_mod <-try(lm(t2 ~ t1, data=data_reg2))
+    ols_temp_mod_pred_obj <-try(lm(t2 ~ t1, data=data_reg2))
+    #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+
+    save(ols_temp_mod_pred_obj,file=paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep=""))
+    #temp_mod <- paste("ols_temp_pred_obj","_",out_suffix,".RData",sep="")
     #summary(lm_mod)
   
     #Predicted values and
@@ -443,8 +457,11 @@ predict_temp_reg_fun <-function(i,list_param){
     r_temp_res <- rasterize(data_reg2,r_ref_s,field="temp_res") #this is the prediction from lm model
     
     #can change later to have t_step
-    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
-    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
+
+    #raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
+    #raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
 
     
     #raster_name_pred <- paste("r_temp_pred","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
@@ -452,7 +469,9 @@ predict_temp_reg_fun <-function(i,list_param){
   
     #raster_name_res <- paste("r_temp_res","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),overwrite=TRUE)
-
+    #temp_mod <- NA #?
+    temp_mod <- paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep="")
+ 
   }
  
   if(estimation_method=="arima"){
@@ -573,7 +592,8 @@ predict_temp_reg_fun <-function(i,list_param){
     #writeRaster(r_temp_res,bylayer=T)
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),NAflag=NA_flag_val,bylayer=T,overwrite=TRUE)
    
-    temp_mod <- NA #too many to store?
+    #temp_mod <- NA #too many to store?
+    temp_mod <- paste("arima_pixel_pred_obj","_",out_suffix,".RData",sep="")
      
   }
   
