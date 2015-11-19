@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/16/2015
+#DATE MODIFIED: 11/19/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -401,7 +401,7 @@ predict_temp_reg_fun <-function(i,list_param){
   if(estimator== "arima"){
     out_suffix <- list_param$out_suffix[1]
   }else{
-    out_suffix <- list_param$out_suffix[1] #changed this for now...
+    out_suffix <- list_param$out_suffix[i] #changed this for now...
   }
   #ARIMA specific
   num_cores <- list_param$num_cores #paraallelization in space.this should be done by row or til enot by pixel!!!!
@@ -429,7 +429,7 @@ predict_temp_reg_fun <-function(i,list_param){
     }
     
     n_pred <- i+1 #if step 20 then prediction is step 21!
-    n_start <- c(time_step) +1
+    n_start <- c(time_step) 
     n_end   <- c(time_step)+n_pred_ahead
     r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
     r_var2 <- subset(r_ref_s,i:n_pred)
@@ -442,14 +442,15 @@ predict_temp_reg_fun <-function(i,list_param){
     ols_temp_mod_pred_obj <-try(lm(t2 ~ t1, data=data_reg2))
     #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
-    save(ols_temp_mod_pred_obj,file=paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep=""))
+    save(ols_temp_mod_pred_obj,file=file.path(out_dir,paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep="")))
     #temp_mod <- paste("ols_temp_pred_obj","_",out_suffix,".RData",sep="")
     #summary(lm_mod)
   
     #Predicted values and
-    data_reg2$temp_pred <- temp_mod$fitted.values
-    data_reg2$temp_res <- temp_mod$residuals
-  
+    data_reg2$temp_pred <- ols_temp_mod_pred_obj$fitted.values
+    #data_reg2$temp_res <- ols_temp_mod_pred_obj$residuals
+    data_reg2$temp_res <- ols_temp_mod_pred_obj$fitted.values - data_reg2$t2 #values greater should be positive
+    
     coordinates(data_reg2) <- c("x","y")
     proj4string(data_reg2) <- projection(r_ref_s)
   
@@ -457,11 +458,11 @@ predict_temp_reg_fun <-function(i,list_param){
     r_temp_res <- rasterize(data_reg2,r_ref_s,field="temp_res") #this is the prediction from lm model
     
     #can change later to have t_step
-    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
-    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
+    #raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
+    #raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_start:n_end,sep=""),"_",out_suffix,file_format,sep="")
 
-    #raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
-    #raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",n_pred,sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_pred <- paste(paste("r_temp_pred","_",estimator,"_",estimation_method,"_",sep=""),"_",out_suffix,file_format,sep="")
+    raster_name_res <- paste(paste("r_temp_res","_",estimator,"_",estimation_method,"_",sep=""),"_",out_suffix,file_format,sep="")
 
     
     #raster_name_pred <- paste("r_temp_pred","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
@@ -470,7 +471,7 @@ predict_temp_reg_fun <-function(i,list_param){
     #raster_name_res <- paste("r_temp_res","_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),overwrite=TRUE)
     #temp_mod <- NA #?
-    temp_mod <- paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep="")
+    temp_mod <- file.path(out_dir,paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep=""))
  
   }
  
@@ -550,7 +551,7 @@ predict_temp_reg_fun <-function(i,list_param){
    
     #save this in a separate folder!!!
    
-    save(arima_pixel_pred_obj,file=paste("arima_pixel_pred_obj","_",out_suffix,".RData",sep=""))
+    save(arima_pixel_pred_obj,file=file.path(out_dir,paste("arima_pixel_pred_obj","_",out_suffix,".RData",sep="")))
 
     #r_ref_s
    
@@ -593,7 +594,7 @@ predict_temp_reg_fun <-function(i,list_param){
     writeRaster(r_temp_res,filename=file.path(out_dir,raster_name_res),NAflag=NA_flag_val,bylayer=T,overwrite=TRUE)
    
     #temp_mod <- NA #too many to store?
-    temp_mod <- paste("arima_pixel_pred_obj","_",out_suffix,".RData",sep="")
+    temp_mod <- file.path(out_dir,paste("arima_pixel_pred_obj","_",out_suffix,".RData",sep=""))
      
   }
   
@@ -606,7 +607,6 @@ predict_temp_reg_fun <-function(i,list_param){
   
   #write a log file with predictions parameters used at the time:
   #Extract parameters/arguments
-  
   
   return(temp_reg_obj)
   
@@ -748,11 +748,20 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   #r_pred_s: raster stack of layers predictions (for example predicted NDVI)
   #r_var_s: raster stack of layers actual values (for example observed NDVI)
   #r_zones: raster defining zones of relevance to accuracy (e.g.hurricane winds zones)
+  #Output:
+  #
+  #
   #
   
   ##Functions used
   rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
   mae_fun <-function(x){mean(abs(x),na.rm=TRUE)}
+  #rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}  
+  sd_rmse_fun <-function(x){(sd(x^2,na.rm=TRUE))}  
+  #mae_fun <-function(x){sd(abs(x),na.rm=TRUE)}
+  sd_mae_fun <- function(x){sd(abs(x))} #sd Absolute Error give a residuals vector
+  
+  ###
   
   ##Start script
   
@@ -761,6 +770,7 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="mean") #mean square error
   mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="mean") #absolute error
   sd_mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="sd") #absolute error
+  sd_rmse_tb <- zonal(r_res_s^2,r_zones,stat="sd") #
   #sd_mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="sd") #mean square error
   
   rmse_zones_tb <- cbind(mse_zones_tb[,1],sqrt(mse_zones_tb[,2:dim(mse_zones_tb)[2]])) #root mean square error
@@ -775,8 +785,8 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   #write out residuals rasters
   r_res_s <- writeRaster(r_res_s,filename=file.path(out_dir,"r_res_s.tif"),bylayer=TRUE,
                          suffix=paste(1:nlayers(r_res_s),out_suffix,sep="_"),overwrite=TRUE)
-  ac_obj <- list(mae_tb,rmse_tb,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb)
-  names(ac_obj) <- c("mae_tb","rmse_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb")
+  ac_obj <- list(mae_tb,rmse_tb,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
+  names(ac_obj) <- c("mae_tb","rmse_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
   
   return(ac_obj)
 }
