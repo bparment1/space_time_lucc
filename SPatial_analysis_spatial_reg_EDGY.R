@@ -56,7 +56,7 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11162015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11192015_functions.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -459,7 +459,7 @@ n_pred <- nlayers(r_temp_var) - 1
 #n_pred_ahead <- length(time_window_selected) - 1 #otherwise this predicts outside 
 
 #debug(predict_temp_reg_fun)
-test_temp <- predict_temp_reg_fun(1,list_param_temp_reg_lm)
+#test_temp <- predict_temp_reg_fun(1,list_param_temp_reg_lm)
 #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
 
 #only 5 predictions out of five in the case of lm!!!
@@ -578,19 +578,6 @@ levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255))) #view the fou
 levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 
-#levelplot(r_temp_res_rast_arima,col.regions=matlab.like(255),main="Var residuals after hurricane")
-
-projection(r_temp_pred_rast_arima) <- CRS_reg
-
-#r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
-#r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
-#levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-#levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
-
-#levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-#levelplot(spat_res_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-#levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
-
 projection(r_temp_pred_rast_arima) <- CRS_reg
 projection(r_temp_res_rast_arima) <- CRS_reg
 projection(r_temp_res_rast_lm) <- CRS_reg
@@ -702,7 +689,7 @@ projection(temp_pred_rast_arima) <- CRS_reg
 projection(temp_pred_rast_lm) <- CRS_reg
 
 #r_huric_obs <- subset(s_raster,time_window_selected[-1])
-r_huric_obs <- subset(r_stack,time_window_selected[-1]) #drop first item
+r_huric_obs <- subset(r_stack,time_window_selected[-1]) #drop first item, 136 to 170
 
 #r_huric_w <- crop(r_huric_w,rast_ref)
 levelplot(r_huric_obs,col.regions=matlab.like(25))
@@ -755,7 +742,8 @@ row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp_arima","temp_lm")
 #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
 #mae_tot_tb$time <- 2:n_pred
-mae_tot_tb$time <- 1:n_pred
+
+mae_tot_tb$time <- 2:n_pred
 
 #mae_tot_tb$time <- 2:17
 
@@ -766,6 +754,8 @@ lines(temp_lm ~ time, type="b",col="red",data=mae_tot_tb)
 
 legend("topleft",legend=c("spat","temp_arima","temp_lm"),col=c("cyan","magenta","red"),lty=1)
 title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
+abline(v=18.5)
+
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 
 #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
