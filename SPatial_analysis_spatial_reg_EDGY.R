@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/19/2015
+#DATE MODIFIED: 11/24/2015
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -56,7 +56,7 @@ create_dir_fun <- function(out_dir,out_suffix){
   return(out_dir)
 }
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11192015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -735,9 +735,13 @@ ac_spat_mle_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,r_var_s=r_huric_obs,
 
 #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
 #mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
-mae_tot_tb <- (cbind(ac_spat_mle_obj$mae_tb,ac_temp_arima_obj$mae_tb,ac_temp_lm_obj$mae_tb))
+mae_tot_mean_tb <- (cbind(ac_spat_mle_obj$mae_tb,ac_temp_arima_obj$mae_tb,ac_temp_lm_obj$mae_tb))
+#names(mae_tot_tb)
+mae_tot_sd_tb <- (cbind(ac_spat_mle_obj$sd_mae_tb,ac_temp_arima_obj$sd_mae_tb,ac_temp_lm_obj$sd_mae_tb))
+mae_tot_mean_tb <- as.data.frame(mae_tot_mean_tb)
+mae_tot_sd_tb <- as.data.frame(mae_tot_sd_tb)
 
-mae_tot_tb <- as.data.frame(mae_tot_tb)
+
 row.names(mae_tot_tb) <- NULL
 names(mae_tot_tb)<- c("spat_reg","temp_arima","temp_lm")
 #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
@@ -752,7 +756,8 @@ plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
 lines(temp_arima ~ time, type="b",col="magenta",data=mae_tot_tb)
 lines(temp_lm ~ time, type="b",col="red",data=mae_tot_tb)
 
-legend("topleft",legend=c("spat","temp_arima","temp_lm"),col=c("cyan","magenta","red"),lty=1)
+legend("topleft",legend=c("spat","temp_arima","temp_lm"),col=c("cyan","magenta","red"),
+       lty=1,bty="n")
 title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
 abline(v=18.5)
 
