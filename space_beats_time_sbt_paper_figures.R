@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/13/2015
+#DATE MODIFIED: 12/17/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -47,41 +47,15 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path to script #PARAM 2
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_12172015.R" #PARAM 1
+
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
 
-generate_dates_modis <-function(start_date,end_date,step_date){
-  #library(xts) declare out of this function
-  #library(zoo)
-  #library(lubridate)
-  
-  st <- as.Date(start_date,format="%Y.%m.%d")
-  en <- as.Date(end_date,format="%Y.%m.%d")
-  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
-  year_list <- seq(strftime(st,"%Y"),strftime(en,"%Y")) #extract year
-  
-  ll_list <- vector("list",length=length(year_list))
-  for (i in 1:length(year_list)){
-    if(i==1){
-      first_date <-st
-    }else{
-      first_date<-paste(year_list[[i]],"-01","-01",sep="")
-    }
-    if(i==length(year_list)){
-      last_date <-en
-    }else{
-      last_date<-paste(year_list[[i]],"-12","-31",sep="")
-    }
-    #ll <- seq.Date(st, en, by=step)
-    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
-    ll_list[[i]]<-as.character(ll)
-  }
-  
-  dates_modis <-as.Date(unlist((ll_list))) 
-  return(dates_modis)
-}
 
 create_dir_fun <- function(out_dir,out_suffix){
   if(!is.null(out_suffix)){
@@ -111,7 +85,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_12132015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_12172015" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders, bpy50 laptop
@@ -130,6 +104,15 @@ data_fname3 <- file.path(in_dir3,"dat_out_NDVI_Katrina_04182015.txt")
 data_tb1 <- read.table(data_fname1,sep=",",header=T) #EDGY DEAN
 data_tb2 <- read.table(data_fname2,sep=",",header=T) #light Katrina
 data_tb3 <- read.table(data_fname3,sep=",",header=T) #NDVI Katrina
+
+mae_zones_tb1 <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
+mae_tot_tb1 <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015.txt"))
+
+mae_zones_tb2 <- read.table(file.path(in_dir2,"mae_zones_tb_light_Katrina_03222015.txt"))
+mae_tot_tb2 <- read.table(file.path(in_dir2,"mae_tot_tb_light_Katrina_03222015.txt"))
+
+mae_zones_tb3 <- read.table(file.path(in_dir3,"mae_zones_tb_NDVI_Katrina_04182015.txt"))
+mae_tot_tb3 <- read.table(file.path(in_dir3,"mae_tot_tb_NDVI_Katrina_04182015.txt"))
 
 ## Parameters that vary from case studies to case studies...
 
@@ -162,16 +145,23 @@ if(create_out_dir_param==TRUE){
 
 ############### START OF SCRIPT ##########
 
-##Figure 1:  Concept for SBT (outside R)
-##Figure 2:  Study areas (outside R)
-##Figure 3:  Strata: Zonal areas maps
-##Figure 4:  Average Temporal profiles overall and by zones
-##Figure 5:  Spatial patterns Dean: Observed, predicted, residuals
-##Figure 6:  Spatial patterns Katrina NLU: Observed, predicted, residuals
-##Figure 7:  Spatial patterns Katrina NDVI: Observed, predicted, residuals
-##Figure 8:  Temporal MAE patterns Dean four dates
-##Figure 9: Temporal MAE patterns Katrina NLU for four dates
-##Figure 10:  Temporal MAE patterns Katrina NDVI four dates
+##Figure 1:    Concept for SBT (outside R) (Marco)
+##Figure 2:    Study areas (outside R) (Stu)
+##Figure 3:    Strata: Zonal areas maps (Stu)
+##Figure 4:    Average Temporal profiles overall to show impact of events on the variable
+##Figure 5:    Spatial patterns Dean: Maps of Observed, predicted, residuals
+##Figure 6:    Spatial patterns Katrina NLU: Maps of Observed, predicted, residuals
+##Figure 7:    Spatial patterns Katrina NDVI: Maps of Observed, predicted, residuals
+##Figure 8:    Temporal MAE patterns Dean four dates
+##Figure 9:    Temporal MAE patterns Katrina NLU for four dates
+##Figure 10:   Temporal MAE patterns Katrina NDVI four dates
+
+#Figure index
+#a: Dean NDVI
+#b: Katrina NLU
+#c: Katrina NDVI
+#
+# e.g. Figure 4a: temporal profiles for Dean NDVI
 
 #################################################
 ## PART 1: Read the datasets ####
@@ -252,7 +242,7 @@ legend(x = -87.4, y = 19.2, legend = cat_name, fill = rev(col_pal),
 dev.off()
 
 ############
-##Figure 3b: Katrina case zonal map 
+##Figure 3b: Katrina case zonal map , NLU
 
 layout_m <- c(1,1)
 png(paste("Figure","_3c_","zonal_variable_","light_Katrina_",out_suffix,".png", sep=""),
@@ -295,8 +285,10 @@ legend(x = -89.72, y = 30.10, legend = cat_name, fill = rev(col_pal),
 
 dev.off()
 
+############################# This is repeated?? 
 ############################################################
-###Figure 4:  Average Temporal profiles overall and by zones
+###Figure 4:  Average Temporal profiles overall for the time series under study
+## This illustrate the change (dip) directly after the Hurricane event
 
 zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
 
@@ -308,7 +300,7 @@ n_time <- ncol(zones_avg_df) -1
 
 
 ############
-##Figure 4a: Dean case zonal stat
+##Figure 4a: Dean case for a year?
 
 mean_vals <- colMeans(data_tb1[,6:281],na.rm=T)
 col_pal <- c("black",col_pal_all)
@@ -332,7 +324,7 @@ title("Overall and zonal averages NDVI in the Dean study area",cex=1.8, font=2)
 dev.off()
 
 ############
-##Figure 4b: Light use
+##Figure 4b: Light use NLU for Katrina the whole time series
 
 zones_tb_avg2<- zonal(r_var2,r_zonal2,fun='mean')
 
@@ -371,7 +363,7 @@ title("Average light in the Katrina study area and by zones",cex=1.6, font=2)
 dev.off()
 
 ############
-##Figure 4c: Katrina case zonal temporal profiles
+##Figure 4c: Katrina case  temporal profiles
 
 zones_tb_avg3<- zonal(r_var3,r_zonal3,fun='mean')
 zones_avg_df3 <- as.data.frame(zones_tb_avg3)
@@ -929,281 +921,112 @@ dev.off()
 ##### Figure 8:  Temporal MAE patterns Dean four dates
 ##### Accuracy assessment by MAE for Dean data
 
-mae_zones_tb <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
-mae_tot_tb <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015.txt"))
+#mae_zones_tb1 <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
+#mae_tot_tb1 <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015.txt"))
 
-### mae for total region
-layout_m <- c(1,1.2)
-png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=560*layout_m[1],width=560*layout_m[2])
-
-y_range <- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-y_range <- c(y_range[1],y_range[2]+100)
-#xlab_tick <- mae_tot_tb$time
-xlab_tick <- c("T-1","T+1","T+2","T+3")
-x_tick_position <- mae_tot_tb$time
-
-plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
-points(spat_reg ~ time, col="cyan",data=mae_tot_tb,ylim=y_range,
-       ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
-lines(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb)
-points(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb,cex.pch=1.6)
-axis(1,at= x_tick_position,labels=xlab_tick)
-
-abline(v=1.5,lty="dashed")
-#legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
-legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
-#legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
-
-legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
-title("Overall MAE for Spatial and Temporal models", cex.main=2) #Note that the results are different than for ARIMA!!!
-
-dev.off()
-
-### mae by zones
-mydata <- mae_zones_tb
-dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-#dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-dd$method <- mydata$method
-#drop first four rows
-dd <- dd[7:nrow(dd),]
-
-
-#xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-#       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-#      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-#                     border = FALSE, lines = TRUE,cex=1.2)
-#)
-
-#xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-#+       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-#+      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-#+                     border = FALSE, lines = TRUE,cex=1.2)
-
-layout_m <- c(1,3)
-
-p<- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time Step",ylab="NDVI",
-           strip = strip.custom(factor.levels=as.character(unique(dd$zones))),
-           #strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-           auto.key=list(columns=1,space="right",title="Model",cex=1),
-           border = FALSE, lines = TRUE,cex=1.2)
-
-png(paste("Figure_3b_accuracy_","mae","by_timestep_and_zones","_NDVI_Dean_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
-print(p)
-dev.off()
-
-layout_m <- c(1,3)
-png(paste("Figure_3b_accuracy_","mae","_by_zones_and_timestep","_NDVI_Dean_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
-
-p <- xyplot(data~zones |which,group=method,data=dd,type="b",xlab="zones",ylab="NDVI",
-            strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-            #auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-            auto.key=list(columns=1,space="right",title="Model",cex=1),
-            border = FALSE, lines = TRUE,cex=1.2
-)
-
-print(p)
-dev.off()
-
-
-###
-layout_m <- c(1,3)
-
+##Make this a function for any variable
 #layout_m <- c(1,1.2)
-png(paste("Figure_3b_accuracy_","mae","_by_zone_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
 
-#par(mfrow=layout_m)
-par(mfrow=c(layout_m[1],layout_m[2]))
-
-input_data_all <- mae_zones_tb
-#Get range, flatten first the data.frame
-zones_range <- range(input_data_all$zones)
-df_tmp <- subset(input_data_all,select=c(names(input_data_all)!=c("zones")))
-vect_tmp <- as.vector(unlist(subset(df_tmp,select=c(names(df_tmp)!="method"))))
-y_range_all <- range(vect_tmp)
+#Arguments
+plot_filename <- paste("Figure_8_accuracy_","mae","_by_zone_and_four_timesteps","_","NDVI_Dean_",out_suffix,".png", sep="")
 var_name <- "NDVI"
+event_timestep <- 1.5
+pix_res <- 480
+input_data_df <- mae_zones_tb1
+layout_m <- c(1,3)
 
-for ( i in zones_range[1]:zones_range[2]){
-    
-  col_names <- as.character(unique(input_data_all$method))
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
-  input_data <- subset(input_data_all,zones==i)
-  input_data <- subset(input_data,select=c(names(input_data)!="zones"))
-  input_data <- subset(input_data,select=c(names(input_data)!="method"))
-  input_data <- as.data.frame(t(input_data))
-  names(input_data) <- col_names #make spat, time column
-  input_data$time <- 1:nrow(input_data) #add a time colum
+#debug(plot_by_zones_and_timestep_fun)
+plot_zones_obj1 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
-  y_range<- c(y_range_all[1],y_range_all[2]+100)
-  #xlab_tick <- mae_tot_tb$time
-  xlab_tick <- c("T-1","T+1","T+2","T+3")
-  x_tick_position <- input_data$time
-  
-  plot(spat_reg ~ time, type="l",col="cyan",data=input_data,ylim=y_range,
-       ylab= var_name,xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
-  points(spat_reg ~ time, col="cyan",data=input_data,ylim=y_range,
-         ylab= var_name,xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
-  lines(temp ~ time, col="magenta",lwd=3,pch=16,data=input_data)
-  points(temp ~ time, col="magenta",lwd=3,pch=16,data=input_data,cex.pch=1.6)
-  axis(1,at= x_tick_position,labels=xlab_tick,cex=1.2)
-  
-  abline(v=1.5,lty="dashed")
-  #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
-  legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
-  #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
-  
-  #legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
-  #title("Overall MAE for Spatial and Temporal models", cex.main=2) #Note that the results are different than for ARIMA!!!
-  legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
-  title(paste("Zone ",i,sep=""), cex.main=2) #Note that the results are different than for ARIMA!!!
- 
-}
+## Now do the same for total...
+#Arguments
+plot_filename <- paste("Figure_8_accuracy_","mae","_by_total_and_four_timesteps","_","NDVI_Dean_",out_suffix,".png", sep="")
+var_name <- "NDVI"
+event_timestep <- 1.5
+pix_res <- 520
+input_data_df <- mae_tot_tb1
+layout_m <- c(1,1)
 
-dev.off()
+#debug(plot_by_tot_and_timestep_fun)
+plot_tot_obj1 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
+
 
 ##########################################################################
 ##### Figure 9:  Temporal MAE patterns Katrina light four dates
 ##### accuracy assessment by MAE for Katrina light data
 
-mae_zones_tb <- read.table(file.path(in_dir2,"mae_zones_tb_light_Katrina_03222015.txt"))
-mae_tot_tb <- read.table(file.path(in_dir2,"mae_tot_tb_light_Katrina_03222015.txt"))
 
-### mae for total region
-layout_m <- c(,1.2)
-png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","light_Katrina_",out_suffix,".png", sep=""),
-    height=520*layout_m[1],width=520*layout_m[2])
-
-#y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-#plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,ylab="MAE",xlab="Time step (annual)")
-#lines(temp ~ time, type="b",col="magenta",data=mae_tot_tb)
-
-y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-xlab_tick <- mae_tot_tb$time
-#xlab_tick <- c("T-1","T+1","T+2","T+3")
-x_tick_position <- mae_tot_tb$time
-
-plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "Light Intensity",xlab="Time step",xaxt="n",pch=16,cex.lab=1.2)
-lines(temp ~ time, type="b",col="magenta",pch=16,data=mae_tot_tb)
-axis(1,at= x_tick_position,labels=xlab_tick)
-legend("topleft",legend=c("spat","temp"),col=c("cyan","magenta"),lty=1,bty="n")
-title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
-
-#print(p)
-dev.off()
-
-### mae by zones
-#mydata<- mae_zones_tb
-#dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-#dd$lag <- mydata$lag 
-#dd$zones <- mydata$zones
-#dd$method <- mydata$method
-#drop first four rows
-#dd <- dd[7:nrow(dd),]
-
-n_zones <- length(unique(mae_zones_tb$zone))
-n_time <- ncol(mae_zones_tb) -1
-pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-mydata<- mae_zones_tb
-dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-dd$method <- mydata$method
-#drop first few rows that contain no data but zones...
-n_start <-n_zones*2 +1
-dd <- dd[n_start:nrow(dd),]
-dd$zones <- mydata$zone #use recycle rule
-
-xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time step (annual)",ylab="MAE for Light intensity",
-       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-       auto.key=list(columns=1,space="right",title="Model",cex=1),
-       border = FALSE, lines = TRUE,cex=1.2)
-
-#layout_m <- c(1.4,1.4)
+#Arguments
+plot_filename <- paste("Figure_9_accuracy_","mae","_by_zone_and_four_timesteps","_","NLU_Katrina_",out_suffix,".png", sep="")
+var_name <- "NLU"
+event_timestep <- 1.5
+pix_res <- 480
+#input_data_df <- mae_zones_tb3
 layout_m <- c(1,2)
 
+##Format the data first to zoom in the four relevant time steps +zones+method columns
+input_data_df <- mae_zones_tb2[,c(1,13:16,21)]
+names(input_data_df)[1] <- "zones"
+#replace temp_reg by temp!!
+input_data_df$method <- as.character(input_data_df$method)
+input_data_df$method[input_data_df$method=="temp_reg"]<- "temp"
+#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
-p<- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time step (annual)",ylab="MAE for Light intensity",
-       strip = strip.custom(factor.levels=as.character(unique(dd$zones))),
-       #strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-       auto.key=list(columns=1,space="right",title="Model",cex=1),
-                     border = FALSE, lines = TRUE,cex=1.2)
+#debug(plot_by_zones_and_timestep_fun)
 
-png(paste("Figure_3b_accuracy_","mae","by_timestep_and_zones","_light_Katrina_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
-print(p)
-dev.off()
+plot_zones_obj2 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
-layout_m <- c(1.4,1.4)
-png(paste("Figure_3b_accuracy_","mae","_by_zones_and_timestep","_light_Katrina_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
+## Now do the same for total...
+#Arguments
+plot_filename <- paste("Figure_9_accuracy_","mae","_by_total_and_four_timesteps","_","NLU_Katrina",out_suffix,".png", sep="")
+var_name <- "NLU"
+event_timestep <- 1.5
+pix_res <- 520
+input_data_df <- mae_tot_tb2
+layout_m <- c(1,1)
 
-p <- xyplot(data~zones |which,group=method,data=dd,type="b",xlab="Zones",ylab="MAE for Light intensity",
-      strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-      #auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-      auto.key=list(columns=1,space="right",title="Model",cex=1),
-      border = FALSE, lines = TRUE,cex=1.2
-)
+#debug(plot_by_tot_and_timestep_fun)
+plot_tot_obj2 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
-print(p)
-dev.off()
 
 #################################################################
 #### Figure 10:  Temporal MAE patterns Katrina NDVI four dates
 
-#r_var3 <- stack(mixedsort(list.files(path=in_dir3,"r_reg2_NDVI.*.rst",full.names=T)))
+#Arguments
+plot_filename <- paste("Figure_10_accuracy_","mae","_by_zone_and_four_timesteps","_","NDVI_Katrina_",out_suffix,".png", sep="")
+var_name <- "NDVI"
+event_timestep <- 1.5
+pix_res <- 480
+#input_data_df <- mae_zones_tb3
+layout_m <- c(1,3)
 
-#r_zonal3 <- raster(list.files(path=in_dir3,pattern="r_r_srtm_.*._rec2_NDVI_Katrina_04182015.rst$",full.names=T))
-#r_high1_lowminus1_light_Katrina_03222015
-#zonal stat proffile...
+##Format the data first to zoom in the four relevant time steps +zones+method columns
+input_data_df <- mae_zones_tb3[,c(1,8:11,18)]
+names(input_data_df)[1] <- "zones"
+#replace temp_reg by temp!!
+input_data_df$method <- as.character(input_data_df$method)
+input_data_df$method[input_data_df$method=="temp_reg"]<- "temp"
+#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
-zones_tb_avg3<- zonal(r_var3,r_zonal3,fun='mean')
-
-zones_avg_df <- as.data.frame(zones_tb_avg3)
-n_zones <- length(unique(zones_avg_df$zone))
-
-n_time <- ncol(zones_avg_df) -1
-#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-mydata<- zones_avg_df
-#dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-dd <- do.call(make.groups, mydata) 
-#dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-#dd$method <- mydata$method
-#drop first few rows that contain no data but zones...
-n_start <-n_zones +1
-dd <- dd[n_start:nrow(dd),]
-tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
-dd$time  <- tmp_time
-dd$zones <- mydata$zone #use recycle rule
-
-layout_m <- c(1.8,1)
-
-p_zones_avg <- xyplot(data~time ,group=zones,
-               data=dd,type="b",xlab="Time step",ylab="NDVI",
-               auto.key=list(columns=1,space="right",title="Zones",cex=1,pch=16),
-               main="Average NDVI in the Katrina study area and by zones",
-               border = FALSE, lines = TRUE,cex=0.6,lwd=0.6,pch=16
-)
+#debug(plot_by_zones_and_timestep_fun)
+plot_zones_obj3 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
 
-png(paste("Figure","_1a_","average_temporal_profiles_by_zones_","NDVI_Katrina_",out_suffix,".png", sep=""),
-    height=550*layout_m[2],width=550*layout_m[1])
-print(p_zones_avg)
+## Now do the same for total...
+#Arguments
+plot_filename <- paste("Figure_10_accuracy_","mae","_by_total_and_four_timesteps","_","NDVI_Katrina",out_suffix,".png", sep="")
+var_name <- "NDVI"
+event_timestep <- 1.5
+pix_res <- 520
+input_data_df <- mae_tot_tb3[c(6:9),]
+layout_m <- c(1,1)
 
-update(p_zones_avg,panel=function(...){ 
-        panel.xyplot(...) 
-        panel.abline(v=108) 
-} ) 
+#debug(plot_by_tot_and_timestep_fun)
+plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
-dev.off()
+###################################################
 
 ##Subset to a year...for clarity
 
@@ -1229,110 +1052,6 @@ legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
 legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
 title("Average NDVI in the Katrina study area and by zones",cex=1.6, font=2)
 
-dev.off()
-
-
-
-################################################################
-######## Figure 10: Temporal MAE patterns Katrina NDVI for four dates
-
-mae_zones_tb <- read.table(file.path(in_dir3,"mae_zones_tb_NDVI_Katrina_04182015.txt"))
-#mae_tot_tb_NDVI_Katrina_04182015
-mae_tot_tb <- read.table(file.path(in_dir3,"mae_tot_tb_NDVI_Katrina_04182015.txt"))
-
-### mae for total region
-layout_m <- c(1,1.2)
-png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Katrina_",out_suffix,".png", sep=""),
-    height=560*layout_m[1],width=560*layout_m[2])
-
-#y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-#plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,ylab="MAE",xlab="Time step (annual)")
-#lines(temp ~ time, type="b",col="magenta",data=mae_tot_tb)
-
-y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-xlab_tick <- mae_tot_tb$time
-#xlab_tick <- c("T-1","T+1","T+2","T+3")
-x_tick_position <- mae_tot_tb$time
-
-plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",pch=16,cex.lab=1.2)
-lines(temp ~ time, type="b",col="magenta",pch=16,data=mae_tot_tb)
-axis(1,at= x_tick_position,labels=xlab_tick)
-
-legend("topleft",legend=c("spat","temp"),col=c("cyan","magenta"),pch=16,lty=1,bty="n")
-title("Overall MAE for Spatial and Temporal models") #Note that the results are different than for ARIMA!!!
-
-#print(p)
-dev.off()
-
-### mae for total region
-layout_m <- c(1,1.2)
-png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=560*layout_m[1],width=560*layout_m[2])
-
-y_range<- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
-#xlab_tick <- mae_tot_tb$time
-xlab_tick <- c("T-1","T+1","T+2","T+3")
-x_tick_position <- mae_tot_tb$time
-
-plot(spat_reg ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",pch=16,cex.lab=1.2)
-lines(temp ~ time, type="b",col="magenta",pch=16,data=mae_tot_tb)
-axis(1,at= x_tick_position,labels=xlab_tick)
-
-legend("topleft",legend=c("spat","temp"),col=c("cyan","magenta"),pch=16,lty=1,bty="n")
-title("Overall MAE for Spatial and Temporal models") #Note that the results are different than for ARIMA!!!
-dev.off()
-
-### mae by zones
-
-n_zones <- length(unique(mae_zones_tb$zone))
-n_time <- ncol(mae_zones_tb) -1
-pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-mydata<- mae_zones_tb
-dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-dd$lag <- mydata$lag 
-dd$zones <- mydata$zones
-dd$method <- mydata$method
-#drop first few rows that contain no data but zones...
-n_start <-n_zones*2 +1
-dd <- dd[n_start:nrow(dd),]
-dd$zones <- mydata$zone #use recycle rule
-
-xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time step (16 day)",ylab="MAE for NDVI intensity",
-       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-       auto.key=list(columns=1,space="right",title="Model",cex=1),
-       border = FALSE, lines = TRUE,cex=1.2)
-
-layout_m <- c(1.4,1.4)
-layout_m <- c(1,3)
-
-p<- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time step (16 day)",ylab="MAE for NDVI intensity",
-       strip = strip.custom(factor.levels=as.character(unique(dd$zones))),
-       #strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-       auto.key=list(columns=1,space="right",title="Model",cex=1),
-                     border = FALSE, lines = TRUE,cex=1.2)
-
-png(paste("Figure_3b_accuracy_","mae","by_timestep_and_zones","_NDVI_Katrina_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
-print(p)
-dev.off()
-
-layout_m <- c(1.4,1.4)
-#layout_m <- c(1,3)
-
-png(paste("Figure_3b_accuracy_","mae","_by_zones_and_timestep","_NDVI_Katrina_",out_suffix,".png", sep=""),
-    height=480*layout_m[1],width=480*layout_m[2])
-
-p <- xyplot(data~zones |which,group=method,data=dd,type="b",xlab="Zones",ylab="MAE for NDVI",
-      strip = strip.custom(factor.levels=as.character(unique(dd$which))),
-      #auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-      auto.key=list(columns=1,space="right",title="Model",cex=1),
-      border = FALSE, lines = TRUE,cex=1.2
-)
-
-print(p)
 dev.off()
 
 #######
