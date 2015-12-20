@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/17/2015
+#DATE MODIFIED: 12/20/2015
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -49,8 +49,8 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_12172015.R" #PARAM 1
 
-#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
@@ -73,8 +73,8 @@ create_dir_fun <- function(out_dir,out_suffix){
 #####  Parameters and argument set up ###########
 
 
-#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time" #bpy50 laptop
-in_dir <- "/home/parmentier/Data/Space_beats_time"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time" #bpy50 laptop
+#in_dir <- "/home/parmentier/Data/Space_beats_time"
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -89,13 +89,13 @@ out_suffix <-"sbt_paper_figures_12172015" #output suffix for the files and ouptu
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders, bpy50 laptop
-#in_dir1 <- "/home/bparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_03182015" #EDGY Dean
-#in_dir2 <- "/home/bparmentier/Google Drive/Space_beats_time/output_light_Katrina_03222015" #light Katrina
-#in_dir3 <- "/home/bparmentier/Google Drive/Space_beats_time/output_NDVI_Katrina_04182015" #NDVI Katrina
+in_dir1 <- "/home/bparmentier/Google Drive/Space_beats_time/output_EDGY_predictions_03182015" #EDGY Dean
+in_dir2 <- "/home/bparmentier/Google Drive/Space_beats_time/output_light_Katrina_03222015" #light Katrina
+in_dir3 <- "/home/bparmentier/Google Drive/Space_beats_time/output_NDVI_Katrina_04182015" #NDVI Katrina
 #Latest relevant folders, atlas server 
-in_dir1 <- "/home/parmentier/Data/Space_beats_time/output_EDGY_predictions_03182015" #EDGY Dean
-in_dir2 <- "/home/parmentier/Data/Space_beats_time/output_light_Katrina_03222015" #light Katrina
-in_dir3 <- "//home/parmentier/Data/Space_beats_time/output_NDVI_Katrina_04182015" #NDVI Katrina
+#in_dir1 <- "/home/parmentier/Data/Space_beats_time/output_EDGY_predictions_03182015" #EDGY Dean
+#in_dir2 <- "/home/parmentier/Data/Space_beats_time/output_light_Katrina_03222015" #light Katrina
+#in_dir3 <- "//home/parmentier/Data/Space_beats_time/output_NDVI_Katrina_04182015" #NDVI Katrina
 
 data_fname1 <- file.path(in_dir1,"dat_out_EDGY_predictions_03182015.txt")
 data_fname2 <- file.path(in_dir2,"dat_out_light_Katrina_03222015.txt")
@@ -935,7 +935,7 @@ pix_res <- 480
 input_data_df <- mae_zones_tb1
 layout_m <- c(1,3)
 
-source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 
 #debug(plot_by_zones_and_timestep_fun)
 plot_zones_obj1 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
@@ -956,7 +956,6 @@ plot_tot_obj1 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_times
 ##########################################################################
 ##### Figure 9:  Temporal MAE patterns Katrina light four dates
 ##### accuracy assessment by MAE for Katrina light data
-
 
 #Arguments
 plot_filename <- paste("Figure_9_accuracy_","mae","_by_zone_and_four_timesteps","_","NLU_Katrina_",out_suffix,".png", sep="")
@@ -984,7 +983,7 @@ plot_filename <- paste("Figure_9_accuracy_","mae","_by_total_and_four_timesteps"
 var_name <- "NLU"
 event_timestep <- 1.5
 pix_res <- 520
-input_data_df <- mae_tot_tb2
+input_data_df <- mae_tot_tb2[12:15,]
 layout_m <- c(1,1)
 
 #debug(plot_by_tot_and_timestep_fun)
@@ -1020,7 +1019,7 @@ plot_filename <- paste("Figure_10_accuracy_","mae","_by_total_and_four_timesteps
 var_name <- "NDVI"
 event_timestep <- 1.5
 pix_res <- 520
-input_data_df <- mae_tot_tb3[c(6:9),]
+input_data_df <- mae_tot_tb3[c(7:10),]
 layout_m <- c(1,1)
 
 #debug(plot_by_tot_and_timestep_fun)
@@ -1031,7 +1030,7 @@ plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_times
 ##Subset to a year...for clarity
 
 #zones_avg_df
-
+#find out which date is 107!!!
 mean_vals <- colMeans(data_tb3[,1:230],na.rm=T)
 #pixval <- data_tb[800,var_names]
 #pix300 <- data_tb[300,var_names]
