@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/20/2015
+#DATE MODIFIED: 01/09/2016
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_12172015.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -85,7 +85,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_12172015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_01092016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders, bpy50 laptop
@@ -128,6 +128,25 @@ mae_tot_tb3 <- read.table(file.path(in_dir3,"mae_tot_tb_NDVI_Katrina_04182015.tx
 #n_time_event <- 108 #PARAM 15 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 #time_window_selected <- var_names #PARAM 16: use alll dates for now
 #time_window_selected <- 100:116 #PARAM 16: use alll dates for now
+
+#dates:
+#2010001 to 2010353 in Case2_data_NDVI
+#reg_mosaiced_MOD13A2_005_2001001_mosaic_NDVI_Katrina_04082015_Katrina_04082015.rst
+#reg_mosaiced_MOD13A2_005_2010353_mosaic_NDVI_Katrina_04082015_Katrina_04082015.rst
+#EDGY: 2001001 to 2012353 ?
+#moore_reg_mosaiced_MOD13A2_A2001145__005_1_km_16_days_NDVI_09242013_09242013_04062014.rst
+#moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.rdc
+
+date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
+date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
+date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
+
+#start_date<-"2001.01.01"
+#end_date <- "2012.12.31"
+#end_date <- "2002.12.31"
+dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
+dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
+dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates
 
 ################# START SCRIPT ###############################
 
