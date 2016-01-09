@@ -52,7 +52,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ##### Functions used in this script 
 
-generate_dates_modis <-function(start_date,end_date,step_date){
+generate_dates_by_step <-function(start_date,end_date,step_date){
   #library(xts) declare out of this function
   #library(zoo)
   #library(lubridate)
@@ -60,7 +60,7 @@ generate_dates_modis <-function(start_date,end_date,step_date){
   st <- as.Date(start_date,format="%Y.%m.%d")
   en <- as.Date(end_date,format="%Y.%m.%d")
   #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
-  year_list <- seq(strftime(st,"%Y"),strftime(en,"%Y")) #extract year
+  year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
   
   ll_list <- vector("list",length=length(year_list))
   for (i in 1:length(year_list)){
@@ -77,10 +77,16 @@ generate_dates_modis <-function(start_date,end_date,step_date){
     #ll <- seq.Date(st, en, by=step)
     ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
     ll_list[[i]]<-as.character(ll)
+    #paste(yday(ll,)
   }
   
+  #
   dates_modis <-as.Date(unlist((ll_list))) 
-  return(dates_modis)
+  #wiht 001
+  dates_DOY_modis <- paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep="")
+  dates_obj <- list(dates_modis,dates_DOY_modis)
+  names(dates_obj) <- c("dates","doy")  
+  return(dates_obj)
 }
 
 plot_by_zones_and_timestep_fun <- function(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m){
