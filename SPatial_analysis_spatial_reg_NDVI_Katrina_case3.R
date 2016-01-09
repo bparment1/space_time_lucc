@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/16/2015
+#DATE MODIFIED: 01/09/2016
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -44,7 +44,8 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05152015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
@@ -68,7 +69,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_05162015" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_01092016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -92,7 +93,19 @@ time_window_selected <- 100:116 #PARAM 16: use alll dates for now
 
 re_initialize_arima <- T #PARAM 17, use re-initialization ie apply arima model with one step forward at each time step
   
+#date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
+#date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
+date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
+
+#dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
+#dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
+dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
+
 ################# START SCRIPT ###############################
+
+### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
+#set up the working directory
+#Create output directory
 
 ##specific processing done for srm
 #r_dem <- raster("/data/project/layers/commons/data_workflow/inputs/dem-cgiar-srtm-1km-tif/srtm_1km.tif")
