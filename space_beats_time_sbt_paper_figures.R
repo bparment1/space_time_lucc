@@ -20,7 +20,7 @@
 #COMMENTS: - 
 #         - 
 #TO DO:
-#
+#produce jpegs with the tfw files...so that they can be opened in a transparency mode in a GIS directly overlaid.
 #
 #################################################################################################
 
@@ -107,13 +107,16 @@ data_tb3 <- read.table(data_fname3,sep=",",header=T) #NDVI Katrina
 
 mae_zones_tb1 <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
 mae_tot_tb1 <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015.txt"))
+#zones_avg_df1 <- read.table(file.path(in_dir3,"zones_avg_df_NDVI_Katrina_04182015.txt"))#not existent for dataset1
 
 mae_zones_tb2 <- read.table(file.path(in_dir2,"mae_zones_tb_light_Katrina_03222015.txt"))
 mae_tot_tb2 <- read.table(file.path(in_dir2,"mae_tot_tb_light_Katrina_03222015.txt"))
+#zones_avg_df2 <- read.table(file.path(in_dir3,"zones_avg_df_NDVI_Katrina_04182015.txt"))#not existent for dataset2
 
 mae_zones_tb3 <- read.table(file.path(in_dir3,"mae_zones_tb_NDVI_Katrina_04182015.txt"))
 mae_tot_tb3 <- read.table(file.path(in_dir3,"mae_tot_tb_NDVI_Katrina_04182015.txt"))
-
+zones_avg_df3 <- read.table(file.path(in_dir3,"zones_avg_df_NDVI_Katrina_04182015.txt"))#not existent for dataset3
+  
 ## Parameters that vary from case studies to case studies...
 
 #coord_names <- c("Long","Lat") #PARAM 11
@@ -136,17 +139,19 @@ mae_tot_tb3 <- read.table(file.path(in_dir3,"mae_tot_tb_NDVI_Katrina_04182015.tx
 #EDGY: 2001001 to 2012353 ?
 #moore_reg_mosaiced_MOD13A2_A2001145__005_1_km_16_days_NDVI_09242013_09242013_04062014.rst
 #moore_reg_mosaiced_MOD13A2_A2012353__005_1_km_16_days_NDVI_09242013_09242013_04062014.rdc
+#SPatial_analysis_spatial_reg_03222015_light_Katrina_case3.R #used for hurricane Katrina
 
 date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
 date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
 date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 
-#start_date<-"2001.01.01"
-#end_date <- "2012.12.31"
-#end_date <- "2002.12.31"
 dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
 dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
 dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates
+#Closest date to the even for each example:
+n_time_event1 <- 153 #PARAM 15 # #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orleans
+n_time_event2 <- 14 #PARAM 15 #timestep for Hurricane Katrina, year 2005 for NLU data
+n_time_event3<- 108 #PARAM 15 #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 
 ################# START SCRIPT ###############################
 
@@ -167,7 +172,7 @@ if(create_out_dir_param==TRUE){
 ##Figure 1:    Concept for SBT (outside R) (Marco)
 ##Figure 2:    Study areas (outside R) (Stu)
 ##Figure 3:    Strata: Zonal areas maps (Stu)
-##Figure 4:    Average Temporal profiles overall to show impact of events on the variable
+##Figure 4:    Average Temporal profiles in a year by zones and overall to show impact of events on the variable
 ##Figure 5:    Spatial patterns Dean: Maps of Observed, predicted, residuals
 ##Figure 6:    Spatial patterns Katrina NLU: Maps of Observed, predicted, residuals
 ##Figure 7:    Spatial patterns Katrina NDVI: Maps of Observed, predicted, residuals
@@ -971,7 +976,6 @@ layout_m <- c(1,1)
 #debug(plot_by_tot_and_timestep_fun)
 plot_tot_obj1 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
-
 ##########################################################################
 ##### Figure 9:  Temporal MAE patterns Katrina light four dates
 ##### accuracy assessment by MAE for Katrina light data
@@ -1047,31 +1051,63 @@ plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_times
 ###################################################
 
 ##Subset to a year...for clarity
+##
+index_dates_selected3 <- dates3 >= "2005-01-01" & dates3 <="2005-12-31"
+dates_selected3 <- dates3[index_dates_selected3]
+#dates3[n_time_event3]
+n_time_event_selected3 <- which(dates_selected3==dates3[n_time_event3]) #time of the event...
 
-#zones_avg_df
+out_suffix_str <- paste("NDVI_Katrina_",out_suffix,sep="")
+zonal_obj3 <- compute_avg_by_zones(r_stack=r_var3,r_zonal=r_zonal3,out_suffix_str=out_suffix_str,
+                     out_dir=out_dir)
+zones_avg_df <- zonal_obj3$zones_avg_df
 #find out which date is 107!!!
-mean_vals <- colMeans(data_tb3[,1:230],na.rm=T)
+mean_vals <- colMeans(data_tb3[,index_dates_selected3],na.rm=T)
 #pixval <- data_tb[800,var_names]
 #pix300 <- data_tb[300,var_names]
+n_step_selected <- length(mean_vals)
 layout_m <- c(1.5,1)
 
 png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_NDVI_data_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
+# Set margins to make room for x axis labels
+par(mar = c(7, 4, 4, 2) + 0.3)
+plot(1:length(mean_vals),mean_vals,type="b",pch=1,col="red",ylim=c(2000,8000),xaxt="n",
+     ylab="NDVI",
+     xlab="")
+     #xlab="Time step (16-day)"
+     #) #overall
+#axis(1, at=1:n_step_selected, labels=FALSE)
 
-plot(1:230,mean_vals[1:230],type="b",pch=1,col="red",ylim=c(2000,8000),
-     ylab="Light Intensity",xlab="Time step (annual)") #overall
-lines(1:230,zones_avg_df[1,2:231],type="b",pch=2,col="black") #zone 4
-lines(1:230,zones_avg_df[2,2:231],type="b",pch=3,col="green") #zone 5
-lines(1:230,zones_avg_df[3,2:231],type="b",pch=4,col="blue") #zone 6
-abline(v=107.5,lty="dashed")
+#text( 1:n_step_selected, par("usr")[1], labels = dates_selected3, srt = 45, pos = 2, xpd = TRUE)
+text(1:n_step_selected, par("usr")[3] - 0.5, srt = 88, 
+     adj = 1, labels = dates_selected3, xpd = TRUE,cex=0.9)
+mtext(1:n_step_selected, par("usr")[3] - 0.25, srt = 50, 
+     adj = 1, labels = dates_selected3, xpd = TRUE,cex=0.9)
+#plot(1:length(mean_vals),mean_vals,type="b",pch=1,col="red",ylim=c(2000,8000),
+#     ylab="Light Intensity",xlab="Time step (annual)") #overall
+lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
+lines(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green") #zone 5
+lines(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue")  #zone 6
+abline(v=n_time_event_selected3+0.5,lty="dashed")
 legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
         cex=0.8, col=c("red","black","green","blue"),bty="n",
         lty=1,pch=1:4)
 legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
 title("Average NDVI in the Katrina study area and by zones",cex=1.6, font=2)
+#axis(2, at=seq(0, 100, by=20), labels = FALSE)
+
+# plot x axis labels using:
+# par("usr")[3] - 0.25 as the vertical placement
+# srt = 45 as text rotation angle
+# adj = 1 to place right end of text at tick mark
+# xpd = TRUE to allow for text outside the plot region
+
 
 dev.off()
 
 #######
 
 ################### END OF SCRIPT ##################
+
+
