@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/17/2015
+#DATE MODIFIED: 01/13/2016
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -212,7 +212,112 @@ plot_by_tot_and_timestep_fun <- function(plot_filename,var_name,event_timestep,p
   return(plot_obj)
 }
 
+compute_avg_by_zones <- function(r_stack,r_zonal,out_suffix_str="",out_dir="."){
+  #Quick function to compute average by zone using a raster zone and a raster stack
+  #
+  #
+  library(raster)
+  zones_tb_avg<- raster::zonal(r_stack,r_zonal,fun='mean')
+  
+  zones_avg_df <- as.data.frame(zones_tb_avg)
+  n_zones <- length(unique(zones_avg_df$zone))
+  
+  n_time <- ncol(zones_avg_df) -1
+  #pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
+  
+  mydata<- zones_avg_df
+  #dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+  dd <- do.call(make.groups, mydata) 
+  #dd$lag <- mydata$lag 
+  dd$zones <- mydata$zones
+  #dd$method <- mydata$method
+  #drop first few rows that contain no data but zones...
+  n_start <-n_zones +1
+  dd <- dd[n_start:nrow(dd),]
+  tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
+  dd$time  <- tmp_time
+  dd$zones <- mydata$zone #use recycle rule
+  
+  #xyplot(data~time |zones,#group=method,
+  #       data=dd,type="b",xlab="time",ylab="VAR",
+  #       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
+  #       auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+  #                       border = FALSE, lines = TRUE,cex=1.2)
+  #)
+  
+  #xyplot(data~time,group=zones,
+  #       data=dd,type="b",xlab="time",ylab="VAR",
+  #       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
+  #       auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+  #                      border = FALSE, lines = TRUE,cex=1.2),
+  #       main="Average by zones for VAR"
+  #)
+  
+  outfile1 <- file.path(out_dir,paste("zones_avg_df","_",out_suffix_str,".txt",sep=""))
+  outfile2 <- file.path(out_dir,paste("zones_avg_df_long_table","_",out_suffix_str,".txt",sep=""))
+  write.table(zones_avg_df,file=outfile1)
+  write.table(dd,file=outfile2)
+  zones_obj <- list(zones_avg_df,dd)
+  names(zones_obj) <- c("zones_avg_df","zones_avg_df_long_table")
+  return(zones_obj)
+}
 
+plot_temporal_time_series_profile_by_zones <- function(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str){
+  ##This is assuming a maximum of three regions... change this later...
+  #
+  #
+  #
+  #
+  
+  index_dates_selected <- dates >= start_date & dates <= end_date
+  dates_selected <- dates[index_dates_selected]
+  #dates3[n_time_event3]
+  n_time_event_selected <- which(dates_selected==dates[n_time_event]) #time of the event...
+  
+  #debug(compute_avg_by_zones)
+  zonal_obj <- compute_avg_by_zones(r_stack=r_var,r_zonal=r_zonal,out_suffix_str=out_suffix_str,
+                                    out_dir=out_dir)
+  zones_avg_df <- zonal_obj$zones_avg_df
+  n_zones <- nrow(zones_avg_df)
+  #find out which date is 107!!!
+  df <- as.data.frame(t(zones_avg_df))
+  
+  #mean_vals <- colMeans(data_tb[,index_dates_selected],na.rm=T)
+  mean_vals <- cellStats(subset(r_var,which(index_dates_selected)),mean)
+  #df$mean_vals<-mean_vals
+  df_ts <- zoo(mean_vals,dates_selected)
+  #pixval <- data_tb[800,var_names]
+  #pix300 <- data_tb[300,var_names]
+  n_step_selected <- length(mean_vals)
+  layout_m <- c(1.5,1.1)
+  
+  png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset",var_name,"_data_",out_suffix_str,".png", sep=""),
+      height=480*layout_m[2],width=480*layout_m[1])
+  # Set margins to make room for x axis labels
+  #par(mar = c(7, 4, 4, 2) + 0.3)
+  plot(df_ts,type="b",col="red",ylim=y_range,ylab=var_name,
+       xlab=x_label)
+  col_pal <- c("red","black","green","blue")
+  pch_type <- c(1,2,3,4)
+  for(i in 1:n_zones){
+    par(new=TRUE)
+    #lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
+    if(ncol(zones_avg_df)>length(mean_vals)){
+      zones_avg_df <- zones_avg_df[,-1] #drop first column with zones
+    }
+    plot(1:n_step_selected,zones_avg_df[i,index_dates_selected],type="b",pch=pch_type[1+i],
+         col=col_pal[1+i],
+         ylim=y_range,ylab="",xlab="",axes=F) #zone 4
+  }
+  abline(v= n_time_event_selected+0.5,lty="dashed")
+  
+  legend("topleft",legend=c("Overall",paste("zone ",1:n_zones,sep="")),
+         cex=1, col=col_pal,bty="n",
+         lty=1,pch=1:4)
+  legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
+  title(title_str,cex=1.6, font=2)
+  dev.off()
+}
 
 ## Function for spatial patterns to come here...
 
