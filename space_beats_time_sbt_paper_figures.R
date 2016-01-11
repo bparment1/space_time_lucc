@@ -46,14 +46,14 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script sourced from other files
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_05172015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01102016.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-
+#zonal stratum for NLU
 ##### Functions used in this script 
 
 
@@ -149,9 +149,9 @@ dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
 dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
 dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates
 #Closest date to the even for each example:
-n_time_event1 <- 153 #PARAM 15 # #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orleans
+n_time_event1 <- 154 #PARAM 15 # #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orleans
 n_time_event2 <- 14 #PARAM 15 #timestep for Hurricane Katrina, year 2005 for NLU data
-n_time_event3<- 108 #PARAM 15 #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
+n_time_event3 <- 108 #PARAM 15 #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 
 ################# START SCRIPT ###############################
 
@@ -1050,8 +1050,7 @@ plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_times
 
 ###################################################
 
-##Subset to a year...for clarity
-##
+### Figure for Katrina
 index_dates_selected3 <- dates3 >= "2005-01-01" & dates3 <="2005-12-31"
 dates_selected3 <- dates3[index_dates_selected3]
 #dates3[n_time_event3]
@@ -1062,7 +1061,10 @@ zonal_obj3 <- compute_avg_by_zones(r_stack=r_var3,r_zonal=r_zonal3,out_suffix_st
                      out_dir=out_dir)
 zones_avg_df <- zonal_obj3$zones_avg_df
 #find out which date is 107!!!
+df <- as.data.frame(t(zones_avg_df))
+df$mean_vals<-mean_vals
 mean_vals <- colMeans(data_tb3[,index_dates_selected3],na.rm=T)
+df_ts <- zoo(mean_vals,dates_selected3)
 #pixval <- data_tb[800,var_names]
 #pix300 <- data_tb[300,var_names]
 n_step_selected <- length(mean_vals)
@@ -1071,30 +1073,77 @@ layout_m <- c(1.5,1)
 png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_NDVI_data_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
 # Set margins to make room for x axis labels
-par(mar = c(7, 4, 4, 2) + 0.3)
-plot(1:length(mean_vals),mean_vals,type="b",pch=1,col="red",ylim=c(2000,8000),xaxt="n",
-     ylab="NDVI",
-     xlab="")
-     #xlab="Time step (16-day)"
-     #) #overall
-#axis(1, at=1:n_step_selected, labels=FALSE)
-
-#text( 1:n_step_selected, par("usr")[1], labels = dates_selected3, srt = 45, pos = 2, xpd = TRUE)
-text(1:n_step_selected, par("usr")[3] - 0.5, srt = 88, 
-     adj = 1, labels = dates_selected3, xpd = TRUE,cex=0.9)
-mtext(1:n_step_selected, par("usr")[3] - 0.25, srt = 50, 
-     adj = 1, labels = dates_selected3, xpd = TRUE,cex=0.9)
-#plot(1:length(mean_vals),mean_vals,type="b",pch=1,col="red",ylim=c(2000,8000),
-#     ylab="Light Intensity",xlab="Time step (annual)") #overall
-lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
-lines(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green") #zone 5
-lines(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue")  #zone 6
+#par(mar = c(7, 4, 4, 2) + 0.3)
+plot(df_ts,type="b",col="red",ylim=c(2000,8000),ylab="NDVI",
+     xlab="Dates (16-day time step)")
+par(new=TRUE)
+#lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
+plot(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black",
+     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 4
+par(new=TRUE)
+plot(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green",
+     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 5
+par(new=TRUE)
+plot(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue",
+      ylim=c(2000,8000),ylab="",xlab="",axes=F)  #zone 6
 abline(v=n_time_event_selected3+0.5,lty="dashed")
 legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
-        cex=0.8, col=c("red","black","green","blue"),bty="n",
+        cex=1, col=c("red","black","green","blue"),bty="n",
         lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
-title("Average NDVI in the Katrina study area and by zones",cex=1.6, font=2)
+legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
+title("Average NDVI for year 2005 in the Katrina study area and by zones",cex=1.6, font=2)
+#axis(2, at=seq(0, 100, by=20), labels = FALSE)
+
+# plot x axis labels using:
+# par("usr")[3] - 0.25 as the vertical placement
+# srt = 45 as text rotation angle
+# adj = 1 to place right end of text at tick mark
+# xpd = TRUE to allow for text outside the plot region
+dev.off()
+
+####################################
+### Figure for EDGY
+index_dates_selected1 <- dates1 >= "2005-01-01" & date1 <="2005-12-31"
+dates_selected1 <- dates1[index_dates_selected3]
+#dates3[n_time_event3]
+n_time_event_selected1 <- which(dates_selected1==dates1[n_time_event1]) #time of the event...
+
+out_suffix_str <- paste("NDVI_Dean_",out_suffix,sep="")
+zonal_obj1 <- compute_avg_by_zones(r_stack=r_var1,r_zonal=r_zonal1,out_suffix_str=out_suffix_str,
+                                   out_dir=out_dir)
+zones_avg_df <- zonal_obj1$zones_avg_df
+#find out which date is 107!!!
+df <- as.data.frame(t(zones_avg_df))
+df$mean_vals<-mean_vals
+mean_vals <- colMeans(data_tb1[,index_dates_selected1],na.rm=T)
+df_ts <- zoo(mean_vals,dates_selected3)
+#pixval <- data_tb[800,var_names]
+#pix300 <- data_tb[300,var_names]
+n_step_selected <- length(mean_vals)
+layout_m <- c(1.5,1)
+
+png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_NDVI_Dean_data_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+# Set margins to make room for x axis labels
+#par(mar = c(7, 4, 4, 2) + 0.3)
+plot(df_ts,type="b",col="red",ylim=c(2000,8000),ylab="NDVI",
+     xlab="Dates (16-day time step)")
+par(new=TRUE)
+#lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
+plot(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black",
+     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 4
+par(new=TRUE)
+plot(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green",
+     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 5
+par(new=TRUE)
+plot(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue",
+     ylim=c(2000,8000),ylab="",xlab="",axes=F)  #zone 6
+abline(v=n_time_event_selected3+0.5,lty="dashed")
+legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
+       cex=1, col=c("red","black","green","blue"),bty="n",
+       lty=1,pch=1:4)
+legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
+title("Average NDVI for year 2005 in the Katrina study area and by zones",cex=1.6, font=2)
 #axis(2, at=seq(0, 100, by=20), labels = FALSE)
 
 # plot x axis labels using:
@@ -1103,10 +1152,32 @@ title("Average NDVI in the Katrina study area and by zones",cex=1.6, font=2)
 # adj = 1 to place right end of text at tick mark
 # xpd = TRUE to allow for text outside the plot region
 
-
-dev.off()
-
 #######
+
+#> dates[153]
+#[1] "2007-08-13"
+
+
+start_date <- "2007-01-01"
+end_date<- "2007-12-31"
+dates <- dates1
+n_time_event <- n_time_event1
+data_tb <- data_tb1
+r_var <- r_var1
+r_zonal <- r_zonal1
+var_name <- "NDVI"
+y_range <- c(3000,10000)
+x_label<- "Dates 16-day time step"
+title_str <- "Average NDVI for year 2007 in the Dean study area and by zones"
+out_suffix_str <- paste("NDVI_Dean_",out_suffix,sep="")
+out_dir
+
+
+#start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
+#debug(plot_temporal_time_series_profile_by_zones)
+
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+
 
 ################### END OF SCRIPT ##################
 
