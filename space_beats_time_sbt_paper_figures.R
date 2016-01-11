@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 01/09/2016
+#DATE MODIFIED: 01/11/2016
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -85,7 +85,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_paper_figures_01092016" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_paper_figures_01282016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #Latest relevant folders, bpy50 laptop
@@ -142,11 +142,12 @@ zones_avg_df3 <- read.table(file.path(in_dir3,"zones_avg_df_NDVI_Katrina_0418201
 #SPatial_analysis_spatial_reg_03222015_light_Katrina_case3.R #used for hurricane Katrina
 
 date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
-date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
+date_range2 <- c("1992/01/01","2013/01/01") #Light Katrina: annual, take start of the year, use standard date format "/"
 date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 
 dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
-dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
+#dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
+dates2 <- seq(as.Date(date_range2[1]), as.Date(date_range2[2]), by="years")
 dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates
 #Closest date to the even for each example:
 n_time_event1 <- 154 #PARAM 15 # #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orleans
@@ -1049,114 +1050,15 @@ layout_m <- c(1,1)
 plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
 
 ###################################################
+#FIGURE 1: temporal profiles for a specific time period (year here for NDVI)
 
 ### Figure for Katrina
-index_dates_selected3 <- dates3 >= "2005-01-01" & dates3 <="2005-12-31"
-dates_selected3 <- dates3[index_dates_selected3]
-#dates3[n_time_event3]
-n_time_event_selected3 <- which(dates_selected3==dates3[n_time_event3]) #time of the event...
-
-out_suffix_str <- paste("NDVI_Katrina_",out_suffix,sep="")
-zonal_obj3 <- compute_avg_by_zones(r_stack=r_var3,r_zonal=r_zonal3,out_suffix_str=out_suffix_str,
-                     out_dir=out_dir)
-zones_avg_df <- zonal_obj3$zones_avg_df
-#find out which date is 107!!!
-df <- as.data.frame(t(zones_avg_df))
-df$mean_vals<-mean_vals
-mean_vals <- colMeans(data_tb3[,index_dates_selected3],na.rm=T)
-df_ts <- zoo(mean_vals,dates_selected3)
-#pixval <- data_tb[800,var_names]
-#pix300 <- data_tb[300,var_names]
-n_step_selected <- length(mean_vals)
-layout_m <- c(1.5,1)
-
-png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_NDVI_data_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-# Set margins to make room for x axis labels
-#par(mar = c(7, 4, 4, 2) + 0.3)
-plot(df_ts,type="b",col="red",ylim=c(2000,8000),ylab="NDVI",
-     xlab="Dates (16-day time step)")
-par(new=TRUE)
-#lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
-plot(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black",
-     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 4
-par(new=TRUE)
-plot(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green",
-     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 5
-par(new=TRUE)
-plot(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue",
-      ylim=c(2000,8000),ylab="",xlab="",axes=F)  #zone 6
-abline(v=n_time_event_selected3+0.5,lty="dashed")
-legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
-        cex=1, col=c("red","black","green","blue"),bty="n",
-        lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
-title("Average NDVI for year 2005 in the Katrina study area and by zones",cex=1.6, font=2)
-#axis(2, at=seq(0, 100, by=20), labels = FALSE)
-
-# plot x axis labels using:
-# par("usr")[3] - 0.25 as the vertical placement
-# srt = 45 as text rotation angle
-# adj = 1 to place right end of text at tick mark
-# xpd = TRUE to allow for text outside the plot region
-dev.off()
 
 ####################################
 ### Figure for EDGY
-index_dates_selected1 <- dates1 >= "2005-01-01" & date1 <="2005-12-31"
-dates_selected1 <- dates1[index_dates_selected3]
-#dates3[n_time_event3]
-n_time_event_selected1 <- which(dates_selected1==dates1[n_time_event1]) #time of the event...
-
-out_suffix_str <- paste("NDVI_Dean_",out_suffix,sep="")
-zonal_obj1 <- compute_avg_by_zones(r_stack=r_var1,r_zonal=r_zonal1,out_suffix_str=out_suffix_str,
-                                   out_dir=out_dir)
-zones_avg_df <- zonal_obj1$zones_avg_df
-#find out which date is 107!!!
-df <- as.data.frame(t(zones_avg_df))
-df$mean_vals<-mean_vals
-mean_vals <- colMeans(data_tb1[,index_dates_selected1],na.rm=T)
-df_ts <- zoo(mean_vals,dates_selected3)
-#pixval <- data_tb[800,var_names]
-#pix300 <- data_tb[300,var_names]
-n_step_selected <- length(mean_vals)
-layout_m <- c(1.5,1)
-
-png(paste("Figure","_1b_","average_temporal_profiles_by_zones_subset","_NDVI_Dean_data_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-# Set margins to make room for x axis labels
-#par(mar = c(7, 4, 4, 2) + 0.3)
-plot(df_ts,type="b",col="red",ylim=c(2000,8000),ylab="NDVI",
-     xlab="Dates (16-day time step)")
-par(new=TRUE)
-#lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
-plot(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black",
-     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 4
-par(new=TRUE)
-plot(1:n_step_selected,zones_avg_df[2,index_dates_selected3],type="b",pch=3,col="green",
-     ylim=c(2000,8000),ylab="",xlab="",axes=F) #zone 5
-par(new=TRUE)
-plot(1:n_step_selected,zones_avg_df[3,index_dates_selected3],type="b",pch=4,col="blue",
-     ylim=c(2000,8000),ylab="",xlab="",axes=F)  #zone 6
-abline(v=n_time_event_selected3+0.5,lty="dashed")
-legend("topleft",legend=c("Overall","zone 1","zone 2","zone 3"),
-       cex=1, col=c("red","black","green","blue"),bty="n",
-       lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
-title("Average NDVI for year 2005 in the Katrina study area and by zones",cex=1.6, font=2)
-#axis(2, at=seq(0, 100, by=20), labels = FALSE)
-
-# plot x axis labels using:
-# par("usr")[3] - 0.25 as the vertical placement
-# srt = 45 as text rotation angle
-# adj = 1 to place right end of text at tick mark
-# xpd = TRUE to allow for text outside the plot region
-
-#######
 
 #> dates[153]
 #[1] "2007-08-13"
-
 
 start_date <- "2007-01-01"
 end_date<- "2007-12-31"
@@ -1166,12 +1068,55 @@ data_tb <- data_tb1
 r_var <- r_var1
 r_zonal <- r_zonal1
 var_name <- "NDVI"
-y_range <- c(3000,10000)
+y_range <- c(2200,10000)
 x_label<- "Dates 16-day time step"
 title_str <- "Average NDVI for year 2007 in the Dean study area and by zones"
 out_suffix_str <- paste("NDVI_Dean_",out_suffix,sep="")
 out_dir
 
+
+#start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
+#debug(plot_temporal_time_series_profile_by_zones)
+
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+
+######### NDVI NLU
+#date_range2
+start_date <- "1992-01-01"
+end_date<- "2013-12-31"
+dates <- dates2
+n_time_event <- n_time_event2
+data_tb <- data_tb2
+r_var <- r_var2
+r_zonal <- r_zonal2
+var_name <- "NLU"
+y_range <- c(50,65)
+x_label<- "Dates annual time step"
+title_str <- "Average NLU for year 1992-2013 in the Katrina study area and by zones"
+out_suffix_str <- paste("NLU_Katrina_",out_suffix,sep="")
+out_dir
+
+#start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
+#debug(plot_temporal_time_series_profile_by_zones)
+
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+
+#########################
+######### NDVI Katrina
+
+start_date <- "2005-01-01"
+end_date<- "2005-12-31"
+dates <- dates3
+n_time_event <- n_time_event3
+data_tb <- data_tb3
+r_var <- r_var3
+r_zonal <- r_zonal3
+var_name <- "NDVI"
+y_range <- c(2200,10000)
+x_label<- "Dates 16-day time step"
+title_str <- "Average NDVI for year 2005 in the Katrina study area and by zones"
+out_suffix_str <- paste("NDVI_Katrina_",out_suffix,sep="")
+out_dir
 
 #start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
 #debug(plot_temporal_time_series_profile_by_zones)
