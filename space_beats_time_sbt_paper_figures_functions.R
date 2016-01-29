@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 01/13/2016
+#DATE MODIFIED: 01/29/2016
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -221,6 +221,7 @@ compute_avg_by_zones <- function(r_stack,r_zonal,out_suffix_str="",out_dir="."){
   
   zones_avg_df <- as.data.frame(zones_tb_avg)
   n_zones <- length(unique(zones_avg_df$zone))
+  #unique(r_zonal)
   
   n_time <- ncol(zones_avg_df) -1
   #pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
@@ -262,13 +263,15 @@ compute_avg_by_zones <- function(r_stack,r_zonal,out_suffix_str="",out_dir="."){
   return(zones_obj)
 }
 
-plot_temporal_time_series_profile_by_zones <- function(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str){
+plot_temporal_time_series_profile_by_zones <- function(start_date,end_date,dates,date_event,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str){
   ##This is assuming a maximum of three regions... change this later...
   #
   #
   #
   #
-  
+  date_event <- as.Date(date_event)
+  start_date <- as.Date(start_date)
+  end_date <- as.Date(end_date)
   index_dates_selected <- dates >= start_date & dates <= end_date
   dates_selected <- dates[index_dates_selected]
   #dates3[n_time_event3]
@@ -281,7 +284,7 @@ plot_temporal_time_series_profile_by_zones <- function(start_date,end_date,dates
   n_zones <- nrow(zones_avg_df)
   #find out which date is 107!!!
   df <- as.data.frame(t(zones_avg_df))
-  
+  n_zones_labels <- zones_avg_df$zone
   #mean_vals <- colMeans(data_tb[,index_dates_selected],na.rm=T)
   mean_vals <- cellStats(subset(r_var,which(index_dates_selected)),mean)
   #df$mean_vals<-mean_vals
@@ -303,15 +306,35 @@ plot_temporal_time_series_profile_by_zones <- function(start_date,end_date,dates
     par(new=TRUE)
     #lines(1:n_step_selected,zones_avg_df[1,index_dates_selected3],type="b",pch=2,col="black") #zone 4
     if(ncol(zones_avg_df)>length(mean_vals)){
-      zones_avg_df <- zones_avg_df[,-1] #drop first column with zones
+      zones_avg_df_tmp <- zones_avg_df[,-1] #drop first column with zones
     }
-    plot(1:n_step_selected,zones_avg_df[i,index_dates_selected],type="b",pch=pch_type[1+i],
+    plot(1:n_step_selected,zones_avg_df_tmp[i,index_dates_selected],type="b",pch=pch_type[1+i],
          col=col_pal[1+i],
          ylim=y_range,ylab="",xlab="",axes=F) #zone 4
   }
-  abline(v= n_time_event_selected+0.5,lty="dashed")
+  ##Add doted vertical line at the time of the event
+  if(is.null(date_event)){
+    #abline(v= n_time_event_selected+0.5,lty="dashed")
+    abline(v= n_time_event_selected,lty="dashed")
+  }else{
+    n_time_event_selected_tmp <- dates_selected==date_event
+    
+    if(sum(n_time_event_selected_tmp)==1){ #if one, it means that there is a date matching!
+      n_time_event_selected <- which(dates_selected==date_event) #time of the event...
+      abline(v= n_time_event_selected,lty="dashed")
+    }
+    if(sum(n_time_event_selected_tmp)==0){ #if one, it means that there is no date matching!
+      #n_time_event_selected <- which(dates_selected==date_event) #time of the event...
+      diff_date_event <- dates_selected - date_event #find the closest matching date
+      diff_min_index <- which(diff_date_event==min(as.numeric(abs(diff_date_event)))) #min distance in date term
+     if(dates_selected[diff_min_index] > date_event){
+       n_time_event_selected <- diff_min_index - 0.5
+     }
+      abline(v= n_time_event_selected,lty="dashed")
+    }
+  }
   
-  legend("topleft",legend=c("Overall",paste("zone ",1:n_zones,sep="")),
+  legend("topleft",legend=c("Overall",paste("zone ",n_zones_labels,sep="")),
          cex=1, col=col_pal,bty="n",
          lty=1,pch=1:4)
   legend("topright",legend=c("hurricane event"),cex=1,lty="dashed",bty="n")
