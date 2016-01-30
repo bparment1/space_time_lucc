@@ -10,7 +10,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 01/11/2016
+#DATE MODIFIED: 01/30/2016
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01102016.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01292016.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -153,6 +153,10 @@ dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates
 n_time_event1 <- 154 #PARAM 15 # #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orleans
 n_time_event2 <- 14 #PARAM 15 #timestep for Hurricane Katrina, year 2005 for NLU data
 n_time_event3 <- 108 #PARAM 15 #timestep for Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
+
+date_event1 <- "2007-08-21" #Dean
+date_event2 <- "2005-01-01" #Katrina, just use 2005 for labeling for NLU
+date_event3 <- "2005-08-29" #use August 29 as Landfall for Katrina data
 
 ################# START SCRIPT ###############################
 
@@ -1063,7 +1067,11 @@ plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_times
 start_date <- "2007-01-01"
 end_date<- "2007-12-31"
 dates <- dates1
-n_time_event <- n_time_event1
+n_time_event <- n_time_event1 #the effect of the event on the data are not observed on the 
+                              #actual date of the event!!! So let's add another variable for
+                              #the exact event date itself.
+date_event1 <- "2007-08-21" #August 21, Hurrifcane Dean landfall in Yucatan
+date_event <- date_event1
 data_tb <- data_tb1
 r_var <- r_var1
 r_zonal <- r_zonal1
@@ -1074,17 +1082,17 @@ title_str <- "Average NDVI for year 2007 in the Dean study area and by zones"
 out_suffix_str <- paste("NDVI_Dean_",out_suffix,sep="")
 out_dir
 
-
 #start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
 #debug(plot_temporal_time_series_profile_by_zones)
 
-plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,date_event,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
 
 ######### NDVI NLU
 #date_range2
 start_date <- "1992-01-01"
 end_date<- "2013-12-31"
 dates <- dates2
+date_event <- date_event2
 n_time_event <- n_time_event2
 data_tb <- data_tb2
 r_var <- r_var2
@@ -1099,7 +1107,7 @@ out_dir
 #start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
 #debug(plot_temporal_time_series_profile_by_zones)
 
-plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,date_event,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
 
 #########################
 ######### NDVI Katrina
@@ -1107,6 +1115,7 @@ plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_even
 start_date <- "2005-01-01"
 end_date<- "2005-12-31"
 dates <- dates3
+date_event <- date_event3
 n_time_event <- n_time_event3
 data_tb <- data_tb3
 r_var <- r_var3
@@ -1121,7 +1130,7 @@ out_dir
 #start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
 #debug(plot_temporal_time_series_profile_by_zones)
 
-plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,date_event,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
 
 
 ################### END OF SCRIPT ##################
