@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/19/2015
+#DATE MODIFIED: 11/24/2015
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -135,17 +135,22 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   }
   #plot(r_var_dates)
   
-  r1 <- subset(r_var_w,1) #first date, i.e. DOY 209 (image 152)
-  r2 <- subset(r_var_w,2) #second date, i.e. DOY 225 (image 153)
-  
-  r_NA <-r1+r2 #this contains NA to mask values...
-  
-  r1 <- mask(r1,r_NA) #use r_NA to mask both alyer
-  r2 <- mask(r2,r_NA)
-  
-  r_s <- stack(r1,r2) #will contain the values for teh spatial model
-  #names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
-  names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+  if(nlayers(r_var_w)>1){
+    r1 <- subset(r_var_w,1) #first date, i.e. DOY 209 (image 152)
+    r2 <- subset(r_var_w,2) #second date, i.e. DOY 225 (image 153)
+    
+    r_NA <-r1+r2 #this contains NA to mask values...
+    
+    r1 <- mask(r1,r_NA) #use r_NA to mask both alyer
+    r2 <- mask(r2,r_NA)
+    
+    r_s <- stack(r1,r2) #will contain the values for teh spatial model
+    #names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+    names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+  }
+
+
+
   
   if(!is.null(proj_str)){
     r_s <- projectRaster(r_s,crs=CRS_WGS84) #project to latlong
@@ -614,11 +619,32 @@ predict_temp_reg_fun <-function(i,list_param){
 
 #Predict using lag or error model...
 predict_spat_reg_fun <- function(i,list_param){
+  #####This function gnerate a prediction based on spatial neighghbour.
+  ##Inputs are raster stack with different options for regression estimators.
+  #
+  #INPUTS:
+  #1) out_dir: path to output directory
+  #2) r_ref_s: raster stack containing data to predict
+  #3) r_clip: raster image to use for clipping raster stack
+  #4) proj_str: projection
+  #5) list_models: model formula, this is not currently in use
+  #6) out_suffix: output suffix 
+  #7) file_format: ouptut raste file format, default is .tif
+  #8) estimator: general type of estimator e.g. mle, ols etc.
+  #9) estimation_method: algorithm type or method used 
+  #10) previous_step: if true, use previous time step neighbour structure to predict instead of current one
+  #
+  #OUTPUTS
+  #
+  #
+  
+  
+  #### Begin script ###
   
   #Extract parameters/arguments
   #test_shp_fname <- list_param$list_shp[i]
   out_dir  <- list_param$out_dir
-  r_ref_s    <- list_param$r_var #if NULL, no image is created
+  r_var    <- list_param$r_var #if NULL, no image is created
   r_clip     <- list_param$r_clip
   proj_str <- list_param$proj_str
   list_models <- list_param$list_models
@@ -636,10 +662,14 @@ predict_spat_reg_fun <- function(i,list_param){
   }
   #else set formula to default??
   
-  r_ref_s <- subset(r_ref_s,i) #subset the relevant layer, i.e. date from i is the relevant timestep
+  r_ref_s <- subset(r_var,i) #subset the relevant layer, i.e. date from i is the relevant timestep
   #out_dir and out_suffix set earlier
+  time_step_predicted <- i +1 #the stack contains one more date
+  time_step_previous <- i
+  r_subset <- subset(r_var,time_step_previous:time_step_predicted)
   
-  nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_ref_s,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  debug(create_sp_poly_spatial_reg)
+  nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
   
   r_poly_name <- nb_obj_for_pred_t$r_poly_name
   reg_listw_w <- nb_obj_for_pred_t$r_listw
@@ -779,14 +809,14 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   
   mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
   rmse_tb <- sqrt(cellStats((r_res_s)^2,mean)) #calculate rmse overall
-  #sd_rmse_zones_tb <- zonal(abs(r_res_s),r_zones,stat="sd") #absolute error
+  sd_mae_tb <- sd(abs(cellStats(r_res_s),sd)) #sd for absolute error
 
   
   #write out residuals rasters
   r_res_s <- writeRaster(r_res_s,filename=file.path(out_dir,"r_res_s.tif"),bylayer=TRUE,
                          suffix=paste(1:nlayers(r_res_s),out_suffix,sep="_"),overwrite=TRUE)
-  ac_obj <- list(mae_tb,rmse_tb,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
-  names(ac_obj) <- c("mae_tb","rmse_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
+  ac_obj <- list(mae_tb,rmse_tb,sd_mae_b,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
+  names(ac_obj) <- c("mae_tb","rmse_tb","sd_mae_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
   
   return(ac_obj)
 }
