@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 01/09/2016
+#DATE MODIFIED: 02/25/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -48,6 +48,8 @@ function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_f
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+
 
 #####  Parameters and argument set up ###########
 
@@ -69,7 +71,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_01092016" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_02252017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -184,6 +186,10 @@ plot(r_stack,y=1:4)
 
 ## Figure 4: visualization of event in time series
 
+n_time_event #108
+dates3[108]
+#[1] "2005-08-29"
+
 ## plottting after and before event
 n_before <- n_time_event - 5
 n_after <- n_time_event + 5
@@ -212,7 +218,7 @@ abline(v=n_time_event,col="blue")
 ## By zone/strata
 
 r_zonal <- subset(s_raster,zonal_colnames)
-zones_tb_avg<- zonal(r_stack,r_zonal,stat='mean')
+zones_tb_avg<- zonal(r_stack,r_zonal,fun='mean')
 
 zones_avg_df <- as.data.frame(zones_tb_avg)
 n_zones <- length(unique(zones_avg_df$zone))
@@ -271,14 +277,16 @@ pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
 #Let's use our function we created to clean out neighbours
 #Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
 #this is for prediction t -1 
-r_var <- subset(r_stack,n_time_event) #this is the date we want to use to run the spatial regression
+#r_var <- subset(r_stack,n_time_event) #this is the date we want to use to run the spatial regression, need two layers here
 r_clip <- rast_ref #this is the image defining the study area
 
 proj_str<- NULL #SRS/CRS projection system
 out_suffix_s <- paste("d",n_time_event,out_suffix,sep="_")
 #out_dir and out_suffix set earlier
-
-nb_obj_for_pred_t_event <-create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
+#function(r_var,r_clip=NULL,proj_str=NULL,out_suffix,out_dir="."){
+  
+debug(create_sp_poly_spatial_reg)
+nb_obj_for_pred_t_event <- create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
 names(nb_obj_for_pred_t_event) #show the structure of object (which is made up of a list)
 r_poly_name <- nb_obj_for_pred_t_event$r_poly_name #name of the shapefile that has been cleaned out
 reg_listw_w <- nb_obj_for_pred_t_event$r_listw #list of weights for cleaned out shapefile
@@ -389,7 +397,18 @@ hist(r_dif,main="Difference between spatial and temporal models")
 
 ### Predict using spatial regression: this should be a master function...
 #r_spat_var <- subset(r_stack,139:161) #predict before (step 152) and three dates after (step 153)
+### Important:
+#As input!!
+#r_spat_var should contain one image before the on being predicted, i.e. to predict step 100, you need at least 
+#a stack of raster 99 and raster 100.
 
+#num_cores_tmp <- 11
+time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+time_step_end <- n_time_event + 8
+time_step_subset <- time_step -1 #use 99
+time_window_selected <- time_step_subset:time_step_end
+
+time_window_predicted <- time_step:time_step_end #100 to 116
 r_spat_var <- subset(s_raster,time_window_selected) #predict before and after event
 
 rast_ref <- subset(r_stack,1)
@@ -412,7 +431,11 @@ r_clip <- rast_ref #this is the image defining the study area
 
 list_models <- NULL
 proj_str <- NULL #if null the raster images are not reprojected
-out_suffix_s <- paste("t_",1:length(time_window_selected),"_",out_suffix,sep="") #note that we set the time step in the output suffix!!!
+#the ouput suffix was wrong, needs to be 153!!!
+#Use 100 to 116
+#out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
+
 #estimator <- "mle"
 estimator <- "mle"
 estimation_method <- "Chebyshev"
@@ -421,7 +444,10 @@ estimation_method <- "Chebyshev"
 #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
-n_pred <- nlayers(r_spat_var)
+n_pred <- nlayers(r_spat_var) - 1 #stack contains the layer previous to the date predicted
+
+debug(predict_spat_reg_fun)
+pred_spat_mle_chebyshev <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
 pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
 save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
@@ -492,7 +518,8 @@ estimation_method <-"ols"
 
 num_cores_tmp <- 11
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-n_pred_ahead <- 16
+time_step_subset <- time_step -1 #use 99
+
 rast_ref <- subset(s_raster,1) #first image ID
 r_stack_arima <- mask(r_stack,rast_ref)
 
