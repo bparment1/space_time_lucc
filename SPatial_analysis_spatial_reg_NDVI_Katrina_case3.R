@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/25/2017
+#DATE MODIFIED: 02/28/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -19,6 +19,9 @@
 # - add variance around the MAE values in the accuracy assessment
 # - modify parallelization so that it works both on windows and linux/macos
 # - automation to call from the terminal/shell
+#
+#
+#COMMIT: debugging changes to function to test previous step spatial structure
 #
 #################################################################################################
 
@@ -44,12 +47,12 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02282017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
+#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-
 
 #####  Parameters and argument set up ###########
 
@@ -57,7 +60,8 @@ source(file.path(script_path,function_paper_figures_analyses)) #source all funct
 in_dir <- "/home/parmentier/Data/Space_beats_time/Case2_data_NDVI/"
 #in_dir <- "~/Data/Space_beats_time/case3data/lights/table"
 #in_dir <- "~/Data/Space_beats_time/Case1a_data"
-#in_dir_NDVI <- file.path(in_dir,"moore_NDVI_wgs84") #contains NDVI 
+#out_dir <- "/home/parmentier/Data/Space_beats_time/outputs"
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs"
 
 #moore_window <- file.path(in_dir,"window_test4.rst")
 #winds_zones_fname <- file.path(in_dir,"00_windzones_moore_sin.rst")
@@ -71,7 +75,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_02252017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_02282017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -118,7 +122,10 @@ dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI K
 #set up the working directory
 #Create output directory
 
-out_dir <- dirname(in_dir) #output will be created in the input dir
+if(is.null(out_dir)){
+  out_dir <- dirname(in_dir) #output will be created in the input dir
+}
+
 out_suffix_s <- out_suffix #can modify name of output suffix
 if(create_out_dir_param==TRUE){
   out_dir <- create_dir_fun(out_dir,out_suffix_s)
