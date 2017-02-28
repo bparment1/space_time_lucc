@@ -5,15 +5,18 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/24/2015
+#DATE MODIFIED: 02/28/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
-#PROJECT: Space beats time paper
 #PROJECT: Geocomputation and AAG 2015
+#PROJECT: Space beats time paper
+
 #TO DO:
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
+#
+#COMMIT: adding to screening of neighbour and predicitons based on previous step spatial structure
 #
 #################################################################################################
 
@@ -113,7 +116,10 @@ create_uniform_mask_fun <- function(r_var,proj_str=NULL,r_clip=NULL){
 
 ##This function needs to be modified...it is still using two dates format...!!
 create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffix,out_dir="."){
-  #Function to remove NA accross two raster layers and create no empty neighbour list
+  #Function to remove NA accross one or two raster layers and create no empty neighbour list
+  #use a stack of two or more raster raster if you want a common mask  to be applied across the stack: this
+  #is because, the list of neighbour should match across time steps.
+  #
   #inputs: 
   #1)r_var: stack of two raster layer
   #2)r_clip: layer used to clip, if null there is no clipping
@@ -127,6 +133,7 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   #zero_nb: feature polygon with no neighbours that were removed
   
   ## START function
+  
   if(!is.null(r_clip)){
     r_var_w <- crop(r_var,r_clip) #clip (or "window") raster image to Moore subset area
     r_var_w <- mask(r_var_w,r_clip) #mask areas
@@ -145,12 +152,14 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
     r2 <- mask(r2,r_NA)
     
     r_s <- stack(r1,r2) #will contain the values for teh spatial model
-    #names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
+
     names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
   }
 
-
-
+  if(nlayers(r_var_1)==1){
+    names(r_var_w) <- c("v1")
+  }
+  
   
   if(!is.null(proj_str)){
     r_s <- projectRaster(r_s,crs=CRS_WGS84) #project to latlong
@@ -162,6 +171,7 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   
   #Now find polygons wiht no neighbours..
   r_poly$UNIQID <- 1:nrow(r_poly) #assign unique ID
+  ## THis is using queen contiguity definition
   r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
   
   ID_selected <- which(card(r_nb)==0)  #Find entities with zero neighbour i.e. cardinality==0
@@ -666,10 +676,25 @@ predict_spat_reg_fun <- function(i,list_param){
   #out_dir and out_suffix set earlier
   time_step_predicted <- i +1 #the stack contains one more date
   time_step_previous <- i
-  r_subset <- subset(r_var,time_step_previous:time_step_predicted)
+
   
-  debug(create_sp_poly_spatial_reg)
+  #debug(create_sp_poly_spatial_reg)
   nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  
+  if(previous_step==TRUE){
+    r_subset <- subset(r_var,time_step_previous)#use previous neighbour structure
+    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  }
+  
+  if(previous_step==FALSE){
+    r_subset <- subset(r_var,time_step_predicted) #use current neighbour structure
+    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  }
+  
+  if(is.null(previous_step)){
+    #use 2 layers
+    r_subset <- subset(r_var,time_step_previous:time_step_predicted) # screen for missing values in the predicted step
+  }
   
   r_poly_name <- nb_obj_for_pred_t$r_poly_name
   reg_listw_w <- nb_obj_for_pred_t$r_listw
@@ -687,6 +712,7 @@ predict_spat_reg_fun <- function(i,list_param){
     spat_mod <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
                                data=data_reg,method=estimation_method,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
+    #if use previous
   }
   #This might need to be changed!!!
   if(estimator=="gmm"){ #generalized method of moments: this is not available old packages...
