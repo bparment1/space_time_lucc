@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/28/2017
+#DATE MODIFIED: 03/01/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: adding to screening of neighbour and predicitons based on previous step spatial structure
+#COMMIT: modifying spatial prediction function to predict based on previous step spatial structure
 #
 #################################################################################################
 
@@ -156,8 +156,10 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
     names(r_s)<- c("v1","v2") #use layerNames(...) for earlier version of Raster
   }
 
-  if(nlayers(r_var_1)==1){
-    names(r_var_w) <- c("v1")
+  if(nlayers(r_var)==1){
+    r_s <- r_var_w
+    rm(r_var_w)
+    names(r_s) <- c("v1")
   }
   
   
@@ -176,7 +178,8 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   
   ID_selected <- which(card(r_nb)==0)  #Find entities with zero neighbour i.e. cardinality==0
   
-  if(length(ID_selected>0)){
+  #if(length(ID_selected>0)){
+  if(length(ID_selected)>0){
     r_nb_sub <- subset(r_nb, subset=card(r_nb) > 0)
     r_poly_sub <- r_poly[-ID_selected,] #these three poly that have no neighbours, remove them
     #note that this will change depending on input images
@@ -662,6 +665,7 @@ predict_spat_reg_fun <- function(i,list_param){
   file_format <- list_param$file_format
   estimator <- list_param$estimator
   estimation_method <- list_param$estimation_method #currently used only for mle from errorsarlm
+  previous_step <- list_param$previous_step
   
   #### START SCRIPT
   
@@ -679,7 +683,7 @@ predict_spat_reg_fun <- function(i,list_param){
 
   
   #debug(create_sp_poly_spatial_reg)
-  nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+  #nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
   
   if(previous_step==TRUE){
     r_subset <- subset(r_var,time_step_previous)#use previous neighbour structure
@@ -738,8 +742,11 @@ predict_spat_reg_fun <- function(i,list_param){
     }
 
     #lm_mod <- try(lm(formula,data=test_df)) #tested model
-    v2 <- lag.listw(reg_listw_w,var=data_reg$v2) #creating a lag variable...#maybe this should be in the cleaning out function?
-    data_reg$v3 <- data_reg$v2 #this is the lag variable...
+    v2 <- lag.listw(reg_listw_w,var=data_reg$v1) #creating a lag variable...#maybe this should be in the cleaning out function?
+    if(!is.null(data_reg$v2)){
+      data_reg$v3 <- data_reg$v2 #this is the lag variable...
+    }
+
     #This is the error!!! changed on 08/06/2014
     data_reg$v2 <- v2
     spat_mod <- try(lm(v1 ~ v2,data=data_reg))
