@@ -268,134 +268,6 @@ xyplot(data~time,group=zones,
 write.table(zones_avg_df,file=paste("zones_avg_df","_",out_suffix,".txt",sep=""))
 write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""))
 
-################ PART II : RUN SPATIAL REGRESSION ############
-
-#Now mask and crop layer
-r_var <- subset(r_stack,c(n_time_event,n_time_event+1)) #date before and after event
-r_var <- subset(r_stack,n_time_event) #date before and after event
-
-#r_clip <- rast_ref
-#r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
-rast_ref <- subset(r_stack,1)
-rast_ref <- rast_ref != NA_flag_val
-pix_id_r <- rast_ref
-values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
-pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
-
-########
-### TEST SPATIAL Prediction on one date....
-                
-### CLEAN OUT AND SCREEN NA and list of neighbours
-#Let's use our function we created to clean out neighbours
-#Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
-#this is for prediction t -1 
-#r_var <- subset(r_stack,n_time_event) #this is the date we want to use to run the spatial regression, need two layers here
-r_clip <- rast_ref #this is the image defining the study area
-
-proj_str<- NULL #SRS/CRS projection system
-out_suffix_s <- paste("d",n_time_event,out_suffix,sep="_")
-#out_dir and out_suffix set earlier
-#function(r_var,r_clip=NULL,proj_str=NULL,out_suffix,out_dir="."){
-  
-debug(create_sp_poly_spatial_reg)
-nb_obj_for_pred_t_event <- create_sp_poly_spatial_reg(r_var,r_clip,proj_str,out_suffix=out_suffix_s,out_dir)
-names(nb_obj_for_pred_t_event) #show the structure of object (which is made up of a list)
-r_poly_name <- nb_obj_for_pred_t_event$r_poly_name #name of the shapefile that has been cleaned out
-reg_listw_w <- nb_obj_for_pred_t_event$r_listw #list of weights for cleaned out shapefile
-#Use OGR to load the screened out data: note that we have now 2858 features with 3 fields
-data_reg_spdf <- readOGR(dsn=dirname(r_poly_name),
-                    layer=gsub(extension(basename(r_poly_name)),"",basename(r_poly_name)))
-
-data_reg <- as.data.frame(data_reg_spdf) #convert spdf to df
-#test a fake covariate
-#Now run the spatial regression, since there are no covariates, the error and lag models are equivalent
-#This takes a bit less than 3minutes for the dataset containing 2858 polygons
-sam_esar_eigen <- errorsarlm(v1~ 1, listw=reg_listw_w,method="eigen",
-                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
-                       tol.solve=1e-36) #tol.solve use in matrix operations
-summary(sam_esar_eigen)
-v5 <- rnorm(nrow(data_reg))
-data_reg$v5 <- v5 - mean(v5) 
-sam.esar2 <- errorsarlm(v1~ v5, listw=reg_listw_w, 
-                       data=data_reg,na.action=na.omit,zero.policy=TRUE,
-                       tol.solve=1e-36) #tol.solve use in matrix operations
-summary(sam.esar2) #using randomfake variable as  covariate
-
-print(coef(sam_esar_eigen))
-print(coef(sam.esar2)) #almost equal could set the seed to make it reproducib
-
-#Predicted values and
-data_reg_spdf$spat_reg_pred <- sam_esar_eigen$fitted.values
-data_reg_spdf$spat_reg_res <- sam_esar_eigen$residuals
-
-spat_mod <- try(spautolm(v1 ~ 1,data=data_reg, listw= reg_listw_w,na.action=na.omit,zero.policy=TRUE,
-                               tol.solve=1e-36))
-#requires v2
-try(spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-                     het = TRUE, verbose=TRUE)))
-
-#res<-gstslshet(v1 ~ v2 , data=data_reg, listw=reg_listw_w)
-#spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
-#                     het = TRUE, verbose=TRUE))
-
-lm_mod <- try(lm(v1 ~ v5,data=data_reg))
-#lm_mod2 <- try(lm(v1 ~ v4,data=data_reg))
-mean(data_reg$v2)
-mean(data_reg$v5)
-
-all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this work...
-#A work around may be to include a standar normal random variable!!
-
-################### PART III RUN TEMPORAL MODEL USING LM ########
-
-#### NOW PREDICTION USING PREVIOUS TIME STEP 
-
-n_before <- n_time_event-1
-r_var2 <- subset(r_stack,n_before:n_time_event)
-r_var2_w <- crop(r_var2,rast_ref)
-
-data_reg2_spdf <- as(r_var2_w,"SpatialPointsDataFrame")
-names(data_reg2_spdf) <- c("t1","t2")
-data_reg2 <- as.data.frame(data_reg2_spdf)
-data_reg2 <- na.omit(data_reg2) #remove NA...this reduces the number of observations
-lm_mod <- lm(t2 ~ t1, data=data_reg2)
-summary(lm_mod)
-
-#Predicted values and
-data_reg2$lm_temp_pred <- lm_mod$fitted.values
-data_reg2$lm_temp_res <- lm_mod$residuals
-
-coordinates(data_reg2) <- c("x","y")
-proj4string(data_reg2) <- CRS_reg
-
-########################################### 
-############## PART IV:Produce images from the individual predictions using time and space ####
-
-### NOW CREATE THE IMAGES BACK ...
-
-r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
-#file_format <- ".rst"
-raster_name <- paste("r_spat_pred","_",out_suffix,file_format,sep="")
-writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
-
-r_temp_pred <- rasterize(data_reg2,rast_ref,field="lm_temp_pred") #this is the prediction from lm model
-#file_format <- ".rst"
-raster_name <- paste("r_temp_pred","_",out_suffix,file_format,sep="")
-writeRaster(r_temp_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
-
-## This can be repeated in a loop to produce predictions and compare the actual to predicted
-r_pred <- stack(r_spat_pred,r_temp_pred) #stack of predictions
-names(r_pred) <- c("spatial pred","temporal pred") #change layerNames to names when using R 3.0 or above
-plot(r_pred)
-
-levelplot(r_pred,regions.col=rev(terrain.colors(255)),main="Var predictions after disturbance event")
-levelplot(r_pred,col.regions=matlab.like(25),main="Var predictions after disturbance event")
-
-#### Examining difference between predictions
-r_dif <- r_spat_pred - r_temp_pred
-plot(r_dif,main="Difference between spatial and temporal models")
-hist(r_dif,main="Difference between spatial and temporal models")
-
 ##############################################################################################
 ############## PART V PREDICT MODELS FOR USING TEMP AND SPAT REGRESSION OVER MULTIPLE time steps ####
 
@@ -452,11 +324,15 @@ out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this sho
 estimator <- "mle"
 estimation_method <- "Chebyshev"
 #estimation_method <- "LU"
+previous_step <- T
 
 #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
 n_pred <- nlayers(r_spat_var) - 1 #stack contains the layer previous to the date predicted
+
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03012017_functions.R" #PARAM 1
+source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 debug(predict_spat_reg_fun)
 pred_spat_mle_chebyshev <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
@@ -505,7 +381,6 @@ levelplot(spat_pred_rast_ols,col.regions=rev(terrain.colors(255))) #view the fou
 levelplot(spat_res_rast_ols,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ## Alternative gmm etc.
-
 
 ###########TEMPORAL METHODS
 ## Predict using temporal info: time steps 
