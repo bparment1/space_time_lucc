@@ -648,10 +648,14 @@ predict_spat_reg_fun <- function(i,list_param){
   #10) previous_step: if true, use previous time step neighbour structure to predict instead of current one
   #
   #OUTPUTS
-  #
-  #
-  
-  
+  #Object made of a list of elements:
+  #1) spat_mod: model object, may vary of structure according to the method use (e.g. errorsarlm etc.)
+  #2) r_poly_name: shapefile name screeened for NA and no neighbours features
+  #3) reg_list_w: list of weights (Queen)
+  #4) raster_pred: predicted raster based on spatial regression and neighborhood structure 
+  #5) raster_res: residuals raster 
+  #6) estimation_process: vector with estimator and method of estimation used
+
   #### Begin script ###
   
   #Extract parameters/arguments
@@ -709,7 +713,9 @@ predict_spat_reg_fun <- function(i,list_param){
   
   ## Add options later to choose the model type: lagsar,esar,spreg,lm etc.
   ##Can also add a loop to use all of them and output table???
-  if(estimator=="mle"){ #maximum likelihood estimator is used with eigen method as default, if not other method is used if not null
+  if(estimator=="mle"){ #maximum likelihood estimator 
+    #errorsarlm offers several approximations: Chebyshev, eigen, MC
+    #Default method is eigen if estimation method is NULL
     if(is.null(estimation_method)){
       estimation_method <- "eigen"
     }
@@ -764,20 +770,20 @@ predict_spat_reg_fun <- function(i,list_param){
   
   data_reg_spdf$spat_reg_res <- spat_mod$residuals
   
-  r_spat_pred <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_pred") #this is the prediction from lm model
+  r_spat_pred <- rasterize(data_reg_spdf,r_ref_s ,field="spat_reg_pred") #this is the prediction from lm model
   #file_format <- ".rst"
   raster_name <- paste("r_spat_pred_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
-  r_spat_res <- rasterize(data_reg_spdf,rast_ref,field="spat_reg_res") #this is the prediction from lm model
+  r_spat_res <- rasterize(data_reg_spdf,r_ref_s ,field="spat_reg_res") #this is the prediction from lm model
   #file_format <- ".rst"
   raster_name2 <- paste("r_spat_res_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
   writeRaster(r_spat_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
   
   #Return object contains model fitted, input and output rasters
-  spat_reg_obj <- list(spat_mod,r_poly_name,reg_listw_w,raster_name,raster_name2)
-  names(spat_reg_obj) <- c("spat_mod","r_poly_name","reg_listw_w","raster_pred","raster_res")
+  spat_reg_obj <- list(spat_mod,r_poly_name,reg_listw_w,raster_name,raster_name2,c(estimator,estimation_method))
+  names(spat_reg_obj) <- c("spat_mod","r_poly_name","reg_listw_w","raster_pred","raster_res","estimation_process")
   save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
   
   return(spat_reg_obj)
