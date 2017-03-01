@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 02/28/2017
+#DATE MODIFIED: 03/01/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: debugging changes to function to test previous step spatial structure
+#COMMIT: testing and editing functions to generate predictions based on previous spatial structre
 #
 #################################################################################################
 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_02282017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03012017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
@@ -57,7 +57,9 @@ source(file.path(script_path,function_paper_figures_analyses)) #source all funct
 #####  Parameters and argument set up ###########
 
 #in_dir <- "~/Data/Space_beats_time/case3data/" #lights/table" #PARAM3
-in_dir <- "/home/parmentier/Data/Space_beats_time/Case2_data_NDVI/"
+#in_dir <- "/home/parmentier/Data/Space_beats_time/Case2_data_NDVI/"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Case2_data_NDVI/"
+
 #in_dir <- "~/Data/Space_beats_time/case3data/lights/table"
 #in_dir <- "~/Data/Space_beats_time/Case1a_data"
 #out_dir <- "/home/parmentier/Data/Space_beats_time/outputs"
@@ -92,13 +94,16 @@ coord_names <- c("x","y") #PARAM 11
 zonal_colnames <- "r_srtm_Katrina_rec2" #PARAM 12
 
 var_names <- 1:230 #PARAM 13 #Data is stored in the columns 3 to 22
-num_cores <- 11 #PARAM 14
+#num_cores <- 11 #PARAM 14
+num_cores <- 4 #PARAM 14
+
 n_time_event <- 108 #PARAM 15 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 time_window_selected <- var_names #PARAM 16: use alll dates for now
 time_window_selected <- 100:116 #PARAM 16: use alll dates for now
 
 re_initialize_arima <- T #PARAM 17, use re-initialization ie apply arima model with one step forward at each time step
-  
+previous_step <- T #PARAM 18
+
 #date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
 #date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
 date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
@@ -169,7 +174,6 @@ head(freq(r_FID))
 ##Figure 2: zonal layer
 
 plot(subset(s_raster,zonal_colnames),main=zonal_colnames)
-
 
 reg_var_list <- l_rast[var_names] #only select population raster
 r_stack <- stack(reg_var_list)
@@ -268,6 +272,7 @@ write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""
 
 #Now mask and crop layer
 r_var <- subset(r_stack,c(n_time_event,n_time_event+1)) #date before and after event
+r_var <- subset(r_stack,n_time_event) #date before and after event
 
 #r_clip <- rast_ref
 #r_var <- crop(r_var,rast_ref) #crop/clip image using another reference image
@@ -325,8 +330,9 @@ data_reg_spdf$spat_reg_res <- sam_esar_eigen$residuals
 
 spat_mod <- try(spautolm(v1 ~ 1,data=data_reg, listw= reg_listw_w,na.action=na.omit,zero.policy=TRUE,
                                tol.solve=1e-36))
-spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-                     het = TRUE, verbose=TRUE))
+#requires v2
+try(spat_mod_spreg <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
+                     het = TRUE, verbose=TRUE)))
 
 #res<-gstslshet(v1 ~ v2 , data=data_reg, listw=reg_listw_w)
 #spat_mod_spreg2 <- try(spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
@@ -339,7 +345,6 @@ mean(data_reg$v5)
 
 all.equal(mean(data_reg$v2),as.numeric(coef(lm_mod)[1])) #ok this work...
 #A work around may be to include a standar normal random variable!!
-
 
 ################### PART III RUN TEMPORAL MODEL USING LM ########
 
@@ -449,8 +454,8 @@ estimation_method <- "Chebyshev"
 #estimation_method <- "LU"
 
 #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
-list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
-names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
+list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
+names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
 n_pred <- nlayers(r_spat_var) - 1 #stack contains the layer previous to the date predicted
 
 debug(predict_spat_reg_fun)
