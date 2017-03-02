@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/01/2017
+#DATE MODIFIED: 03/02/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03012017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
@@ -311,76 +311,70 @@ rast_ref <- subset(r_stack,1)
 #r_var <- subset(r_stack,n_time_event) #this is the date we want to use to run the spatial regression
 r_clip <- rast_ref #this is the image defining the study area
 
-### MLE Chebyshev
+### MLE EIGEN Using previous step first
 
 list_models <- NULL
 proj_str <- NULL #if null the raster images are not reprojected
 #the ouput suffix was wrong, needs to be 153!!!
 #Use 100 to 116
 #out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
-out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
 
 #estimator <- "mle"
 estimator <- "mle"
-estimation_method <- "Chebyshev"
+### MLE eigen
+estimator <- "mle"
+estimation_method <- "eigen"
 #estimation_method <- "LU"
+#estimation_method <- "Chebyshev"
+#estimator <- gmm
+
+#function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+
 previous_step <- T
+
+out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
 
 #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
-n_pred <- nlayers(r_spat_var) - 1 #stack contains the layer previous to the date predicted
-
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03012017_functions.R" #PARAM 1
-source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-
-debug(predict_spat_reg_fun)
-pred_spat_mle_chebyshev <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
-
-pred_spat_mle_chebyshev <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
-save(pred_spat_mle_chebyshev,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
-
-#pred_spat_mle_chebyshev: extract raster images from object
-spat_pred_rast_mle_Chebyshev <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_mle_Chebyshev <- stack(lapply(pred_spat_mle_chebyshev,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast_mle_Chebyshev,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle_Chebyshev,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-
-### MLE eigen
-estimator <- "mle"
-estimation_method <- "eigen"
-
-#list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
-list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method)
-names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method")
-n_pred <- nlayers(r_spat_var)
+n_pred <- nlayers(r_spat_var) -1
 #debug(predict_spat_reg_fun)
 #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
-pred_spat_mle_eigen <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
-save(pred_spat_mle_eigen,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
+pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
+save(pred_spat_mle_eigen,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,
+                                                      "_","with_previous_",out_suffix,".RData",sep="")))
 
-#pred_spat_mle_chebyshev: extract raster images from object
-spat_pred_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen,FUN=function(x){x$raster_res})) #get stack of predicted images
+#pred_spat_mle_eigen: extract raster images from object
+spat_pred_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
 levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
-### OLS for didactive purpose
+### MLE EIGEN not using previous step first
 
-list_param_spat_reg$estimator <- "ols"
-list_param_spat_reg$estimation_method <- "ols"
+previous_step <- F
 
-pred_spat_ols <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
-save(pred_spat_ols,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
+#list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
+list_param_spat_reg<- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
+names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
+n_pred <- nlayers(r_spat_var) -1
+#debug(predict_spat_reg_fun)
+#predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
-#pred_spat_mle_chebyshev: extract raster images from object
-spat_pred_rast_ols <- stack(lapply(pred_spat_ols,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_ols <- stack(lapply(pred_spat_ols,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast_ols,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_ols,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+#debug(predict_spat_reg_fun)
+#predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
-## Alternative gmm etc.
+pred_spat_mle_eigen_no_previous <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
+save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
+                                                                  "_","no_previous_",out_suffix,".RData",sep="")))
+
+#pred_spat_mle_eigen: extract raster images from object
+spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ###########TEMPORAL METHODS
 ## Predict using temporal info: time steps 
