@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/01/2017
+#DATE MODIFIED: 03/02/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -564,7 +564,12 @@ predict_temp_reg_fun <-function(i,list_param){
     #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
     #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
-    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), 
+                                     FUN=pixel_ts_arima_predict,
+                                     list_param=list_param_predict_arima_2,
+                                     mc.preschedule=FALSE,
+                                     mc.cores = num_cores) 
+    
     #pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
    
     #save this in a separate folder!!!
@@ -594,6 +599,7 @@ predict_temp_reg_fun <-function(i,list_param){
     ## Convert predicted values to raster...
     #pred_t_l<-lapply(1:1,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
 
+    browser()
     #pred_t_l <- lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
     pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
 
@@ -679,6 +685,11 @@ predict_spat_reg_fun <- function(i,list_param){
     formula <-list_formulas[[i]]
   }
   #else set formula to default??
+  if(previous_step==TRUE){
+    previous_step_str <- "with_previous_step_"
+  }else{
+    previous_step_str <- "no_previous_step_"
+  }
   
   r_ref_s <- subset(r_var,i) #subset the relevant layer, i.e. date from i is the relevant timestep
   #out_dir and out_suffix set earlier
@@ -691,17 +702,22 @@ predict_spat_reg_fun <- function(i,list_param){
   
   if(previous_step==TRUE){
     r_subset <- subset(r_var,time_step_previous)#use previous neighbour structure
-    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+    out_suffix_str <- paste0(previous_step_str,"_",out_suffix)
+    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix_str,out_dir)
   }
   
   if(previous_step==FALSE){
     r_subset <- subset(r_var,time_step_predicted) #use current neighbour structure
-    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix,out_dir)
+    out_suffix_str <- paste0(previous_step_str,"_",out_suffix)
+    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix_str,out_dir)
   }
   
   if(is.null(previous_step)){
     #use 2 layers
     r_subset <- subset(r_var,time_step_previous:time_step_predicted) # screen for missing values in the predicted step
+    out_suffix_str <- paste0("masked_two_layers","_",out_suffix) 
+    nb_obj_for_pred_t <- create_sp_poly_spatial_reg(r_subset,r_clip,proj_str,out_suffix=out_suffix_str,out_dir)
+    
   }
   
   r_poly_name <- nb_obj_for_pred_t$r_poly_name
@@ -735,11 +751,8 @@ predict_spat_reg_fun <- function(i,list_param){
     data_reg$v2 <- v2 - mean(v2)
     spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
                      het = TRUE, verbose=TRUE))
-    #spat_mod <- try(spreg(v1 ~ v2,data=data_reg, listw= reg_listw_w, model="error",   
-    #                 het = TRUE, verbose=TRUE))
   }
-  #res<- spreg(v1 ~ 1,data=data_reg, listw= reg_listw_w, model="error",   
-  #            het = TRUE, verbose=TRUE)
+
   #ordinary least square, this estimator should not be used for spatial reg but is  here for didactic purposes (course):
   #ie. values of standard errors can be compared with other...
   if(estimator=="ols"){  
@@ -772,19 +785,23 @@ predict_spat_reg_fun <- function(i,list_param){
   
   r_spat_pred <- rasterize(data_reg_spdf,r_ref_s ,field="spat_reg_pred") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name <- paste("r_spat_pred_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
+  
+  raster_name <- paste("r_spat_pred_",estimator,"_",estimation_method,"_",previous_step_str,"_",
+                       out_suffix,file_format,sep="")
   writeRaster(r_spat_pred,filename=file.path(out_dir,raster_name),overwrite=TRUE)
   
   #plot(r_spat_pred,subset(r_s,2)) #quick visualization...
   r_spat_res <- rasterize(data_reg_spdf,r_ref_s ,field="spat_reg_res") #this is the prediction from lm model
   #file_format <- ".rst"
-  raster_name2 <- paste("r_spat_res_",estimator,"_",estimation_method,"_",out_suffix,file_format,sep="")
+  raster_name2 <- paste("r_spat_res_",estimator,"_",estimation_method,"_",previous_step_str,"_",
+                        out_suffix,file_format,sep="")
   writeRaster(r_spat_res,filename=file.path(out_dir,raster_name2),overwrite=TRUE)
   
   #Return object contains model fitted, input and output rasters
   spat_reg_obj <- list(spat_mod,r_poly_name,reg_listw_w,raster_name,raster_name2,c(estimator,estimation_method))
   names(spat_reg_obj) <- c("spat_mod","r_poly_name","reg_listw_w","raster_pred","raster_res","estimation_process")
-  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",estimation_method,"_",out_suffix,".RData",sep="")))
+  save(spat_reg_obj,file= file.path(out_dir,paste("spat_reg_obj_",estimator,"_",estimation_method,"_",
+                                                   previous_step_str,"_",out_suffix,".RData",sep="")))
   
   return(spat_reg_obj)
 }
