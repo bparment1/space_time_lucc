@@ -550,98 +550,10 @@ projection(r_temp_res_rast_arima) <- CRS_reg
 projection(r_temp_res_rast_lm) <- CRS_reg
 projection(r_temp_pred_rast_lm) <- CRS_reg
 
-####### Comparing coefficients
-
-## Extract spatial coefficients
-
-#pred_spat_mle
-#pred_spat_mle_Chebyshev_test <-load_obj("pred_spat_mle_chebyshev_EDGY_predictions_03092015.RData")
-l_coef_mle_chebyshev <- lapply(pred_spat_mle_chebyshev,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_chebyshev <- as.data.frame(do.call(rbind,l_coef_mle_chebyshev))
-tb_coef_mle_chebyshev$estimation_method <- "Chebyshev"
-
-l_coef_mle_eigen <- lapply(pred_spat_mle_eigen,FUN=function(x){coef(x$spat_mod)})
-tb_coef_mle_eigen <- as.data.frame(do.call(rbind,l_coef_mle_eigen))
-tb_coef_mle_eigen$estimation_method <- "eigen"
-
-n_pred <- length(l_coef_mle_chebyshev)
-#pred_spat_mle_Matrix_test <-load_obj("pred_spat_mle_Matrix_EDGY_predictions_03092015.RData")
-#l_coef_mle_Matrix <- lapply(pred_spat_mle_Matrix_test,FUN=function(x){coef(x$spat_mod)})
-#tb_coef_mle_Matrix <- as.data.frame(do.call(rbind,l_coef_mle_Matrix))
-#tb_coef_mle_Matrix$estimation_method <- "Matrix"
-
-#tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_Chebyshev,tb_coef_mle_LU,tb_coef_mle_Matrix,tb_coef_mle_MC)))
-tb_coef_mle <- as.data.frame(do.call(rbind,list(tb_coef_mle_chebyshev,tb_coef_mle_eigen))) #,tb_coef_mle_Matrix,tb_coef_mle_MC)))
-
-tb_coef_mle$v2 <- NA                
-tb_coef_mle <- tb_coef_mle[,c(2,1,4,3)]
-names(tb_coef_mle)<- c("(Intercept)","rho","v2","estimation_method")
-tb_coef_mle$time <- 1:n_pred             
-tb_coef_mle$estimator <- "mle"
-tb_coef_mle$method <- paste(tb_coef_mle$estimator,tb_coef_mle$estimation_method,sep="_")                
-
-#View(tb_coef_mle)
-head(tb_coef_mle)
-
-#pred_spat_gmm
-#pred_spat_gmm_test <-load_obj("pred_spat_gmm_EDGY_predictions_03092015.RData")
-#l_coef_gmm <- lapply(pred_spat_gmm,FUN=function(x){coef(x$spat_mod)})
-#tb_coef_gmm <- as.data.frame(t(do.call(cbind,(l_coef_gmm))))
-#tb_coef_gmm <- tb_coef_gmm[,c(1,3,2)]
-#names(tb_coef_gmm)<- c("(Intercept)","rho","v2")
-#tb_coef_gmm$estimation_method <- "gmm"
-#tb_coef_gmm$time <- 1:4                
-#tb_coef_gmm$estimator <- "gmm"
-#tb_coef_gmm$method <- "gmm"                
-
-
-#tb_coef_mle  <- tb_coef_mle[,c(1,3,2)]
-#names(tb_coef_mle)<- c("(Intercept)","rho")
-#tb_coef_mle$v2<- NA
-#tb_coef_mle$time <- 2001:2012
-#tb_coef_mle$method <- "mle"
-#pred_spat_ols <-load_obj("pred_spat_ols_EDGY_predictions_03092015.RData")
-#pred_spat_ols
-l_coef_ols <- lapply(pred_spat_ols,FUN=function(x){coef(x$spat_mod)})
-
-tb_coef_ols <- as.data.frame(do.call(rbind,l_coef_ols))
-tb_coef_ols <- tb_coef_ols[,c(1,2)]
-names(tb_coef_ols)<- c("(Intercept)","rho")
-tb_coef_ols$v2 <- NA   
-tb_coef_ols$estimation_method <- "ols"
-tb_coef_ols$time <- 1:n_pred #20 for this dataset                
-tb_coef_ols$estimator <- "ols"
-tb_coef_ols$method <- "ols"                
-
-
-#tb_coef_sas_file <- file.path(in_dir,"EDGY_coeficients_SAS.csv")
-#tb_coef_sas <- read.table(tb_coef_sas_file,sep=";",header=T)
-#names(tb_coef_sas) <- names(tb_coef_gmm)
-
-#names(tb_coef_sas)
-
-names(tb_coef_mle)
-names(tb_coef_ols)
-#names(tb_coef_gmm)
-
-#head(tb_coef_sas)
-
-
-#tb_coef_method <- rbind(tb_coef_mle,tb_coef_gmm,tb_coef_ols)
-#tb_coef_method <- rbind(tb_coef_gmm,tb_coef_sas,tb_coef_ols,tb_coef_mle)
-tb_coef_method <- rbind(tb_coef_ols,tb_coef_mle)
-
-xyplot(rho~time,groups=method,data=tb_coef_method,type="b",
-                 auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                     border = FALSE, lines = TRUE,cex=1.2),
-                main="Comparison of rho coefficients with different methods "
-)
-
-write.table(tb_coef_method,paste("tb_coef_method",out_suffix,".txt",sep=""),row.names=F,col.names=T)                
+             
 
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
-projection(spat_pred_rast_mle_Chebyshev) <- CRS_reg
 projection(spat_pred_rast_mle_eigen) <- CRS_reg
 projection(r_temp_pred_rast_arima) <- CRS_reg
 projection(r_temp_pred_rast_lm) <- CRS_reg
