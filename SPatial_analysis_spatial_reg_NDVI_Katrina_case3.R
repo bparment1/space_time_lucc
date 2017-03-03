@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/02/2017
+#DATE MODIFIED: 03/04/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: testing and editing functions to generate predictions based on previous spatial structre
+#COMMIT: changes to spatial models and test of ARIMA models
 #
 #################################################################################################
 
@@ -77,7 +77,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_02282017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_03032017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -150,10 +150,9 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 #detach(data_tb)
 
 #### Make this a function...that will run automatically the predictions
+## from lines 152-265
 
 #Transform table text file into a raster image
-#coord_names <- c("XCoord","YCoord")
-#coord_names <- c("POINT_X1","POINT_Y1")
 
 #This function is very slow and inefficienct, needs improvement (add parallelization)
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
@@ -162,13 +161,11 @@ l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",f
 s_raster <- stack(l_rast) #stack with all the variables
 projection(s_raster) <- CRS_reg
 names(s_raster) <- names(data_tb)                
-
 r_FID <- subset(s_raster,1) #Assumes ID or reference image is the first image of the stack
 
 ##Figure 1: reference layer
 
 plot(r_FID,main=l_rast[1])
-
 head(freq(r_FID))
 
 ##Figure 2: zonal layer
@@ -287,12 +284,12 @@ write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""
 #a stack of raster 99 and raster 100.
 
 #num_cores_tmp <- 11
-time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 time_step_end <- n_time_event + 8
-time_step_subset <- time_step -1 #use 99
+time_step_subset <- time_step_start -1 #use 99
 time_window_selected <- time_step_subset:time_step_end
 
-time_window_predicted <- time_step:time_step_end #100 to 116
+time_window_predicted <- time_step_start:time_step_end #100 to 116
 r_spat_var <- subset(s_raster,time_window_selected) #predict before and after event
 
 rast_ref <- subset(r_stack,1)
@@ -321,8 +318,6 @@ proj_str <- NULL #if null the raster images are not reprojected
 
 #estimator <- "mle"
 estimator <- "mle"
-### MLE eigen
-estimator <- "mle"
 estimation_method <- "eigen"
 #estimation_method <- "LU"
 #estimation_method <- "Chebyshev"
@@ -331,26 +326,30 @@ estimation_method <- "eigen"
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
-previous_step <- T
+previous_step <- T #Use t-1 neighbour and t-1 value to predict t0
 
 out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
 
 #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
 list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
-n_pred <- nlayers(r_spat_var) -1
+n_pred <- nlayers(r_spat_var) - 1 # minus one because the first date is not predicted
 #debug(predict_spat_reg_fun)
 #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
-pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
-save(pred_spat_mle_eigen,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,
+pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
+                                               list_param=list_param_spat_reg,
+                                               mc.preschedule=FALSE,
+                                               mc.cores = num_cores)
+
+save(pred_spat_mle_eigen_with_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,
                                                       "_","with_previous_",out_suffix,".RData",sep="")))
 
 #pred_spat_mle_eigen: extract raster images from object
-spat_pred_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-spat_res_rast_mle_eigen <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
-levelplot(spat_pred_rast_mle_eigen,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-levelplot(spat_res_rast_mle_eigen,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+spat_pred_rast_mle_eigen_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+spat_res_rast_mle_eigen_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
 ### MLE EIGEN not using previous step first
 
@@ -360,13 +359,19 @@ previous_step <- F
 list_param_spat_reg<- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,previous_step)
 names(list_param_spat_reg) <- c("out_dir","r_var_spat","r_clip","proj_str","list_models","out_suffix","file_format","estimator","estimation_method","previous_step")
 n_pred <- nlayers(r_spat_var) -1
-#debug(predict_spat_reg_fun)
-#predict_spat_reg_fun(1,list_param=list_param_spat_reg)
+
 
 #debug(predict_spat_reg_fun)
 #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
 
-pred_spat_mle_eigen_no_previous <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,list_param=list_param_spat_reg,mc.preschedule=FALSE,mc.cores = num_cores)
+#debug(predict_spat_reg_fun)
+#predict_spat_reg_fun(1,list_param=list_param_spat_reg)
+
+pred_spat_mle_eigen_no_previous <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
+                                            list_param=list_param_spat_reg,
+                                            mc.preschedule=FALSE,
+                                            mc.cores = num_cores)
+
 save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
                                                                   "_","no_previous_",out_suffix,".RData",sep="")))
 
@@ -397,7 +402,7 @@ estimation_method <-"ols"
 
 #ARIMA specific
 
-num_cores_tmp <- 11
+num_cores_tmp <- 4
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 time_step_subset <- time_step -1 #use 99
 
@@ -406,12 +411,13 @@ r_stack_arima <- mask(r_stack,rast_ref)
 
 #r_stack <- r_stack_arima
 arima_order <- NULL
+n_pred <- nlayers(r_temp_var) -1
+n_pred_ahead <- n_pred
 
 list_param_temp_reg_lm <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
                             num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
 names(list_param_temp_reg_lm) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-n_pred <- nlayers(r_temp_var) -1
 #debug(predict_temp_reg_fun)
 #test_temp <- predict_temp_reg_fun(14,list_param_temp_reg_lm)
 #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
@@ -426,27 +432,27 @@ pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_t
 
 save(pred_temp_lm,file= file.path(out_dir, paste("pred_temp_lm_",out_suffix,".RData",sep="")))
 
-##ARIMA
+#########
+##Run ARIMA models
 
+#There are 954 pixels predicted
 #not run here...
 
 r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
 list_models <-NULL
-
 #the ouput suffix was wrong, needs to be 153!!!
 #Use 100 to 116
-out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
-estimator <- "lm"
-estimation_method <-"ols"
+#out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
+num_cores_tmp <- 4
 
-#ARIMA specific
+#ARIMA specific parameters
 
-num_cores_tmp <- 11
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-n_pred_ahead <- 16
+n_pred <- nlayers(r_temp_var) -1
+n_pred_ahead <- n_pred
 rast_ref <- subset(s_raster,1) #first image ID
 r_stack_arima <- mask(r_stack,rast_ref)
-
 #r_stack <- r_stack_arima
 arima_order <- NULL
 
@@ -455,14 +461,11 @@ estimation_method <-"arima"
 r_clip_tmp <- NULL
 r_clip_tmp <- rast_ref
 
-num_cores_tmp <- 11
-
 list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
                             num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
 names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                             "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-#n_pred <- nlayers(r_temp_var) -1
-n_pred <- 16
+
 #debug(predict_temp_reg_fun)
 
 if(re_initialize_arima==T){
@@ -474,9 +477,10 @@ if(re_initialize_arima==T){
     #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 
     #n_time_pred_start <- 99 + i
-    n_time_pred_start <- time_window_selected[1] - 1 + i
+    n_time_pred_start <- time_window_selected[1]  + i
     time_step <-n_time_pred_start
-    n_time_pred_end <- n_time_pred_start + length(time_window_selected)
+    #n_time_pred_end <- n_time_pred_start + length(time_window_selected)
+    n_time_pred_end <- time_window_selected[length(time_window_selected)]
     
     out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
     list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
@@ -551,7 +555,6 @@ projection(r_temp_res_rast_lm) <- CRS_reg
 projection(r_temp_pred_rast_lm) <- CRS_reg
 
              
-
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
 projection(spat_pred_rast_mle_eigen) <- CRS_reg
