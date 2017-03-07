@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/02/2017
+#DATE MODIFIED: 03/07/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: modifying spatial prediction function to predict based on previous step spatial structure
+#COMMIT: modifying temporal prediction function, specifically ARIMA models
 #
 #################################################################################################
 
@@ -404,6 +404,42 @@ extract_arima_mod_info <- function(i,list_param){
 
 #Predict using the previous date and OLS
 predict_temp_reg_fun <-function(i,list_param){
+  #####
+  #This function gnerates a prediction based on time dimension and neighbour.
+  ##Inputs are raster stack with different options for regression estimators: OLS or ARIMA
+  #####
+  ## Date created: 03/09/2014
+  ## Date modified: 03/07/2017
+  # Authors: Benoit Parmentier
+  #
+  #INPUTS:
+  #1) out_dir: path to output directory
+  #2) r_ref_s: raster stack containing data to predict
+  #3) r_clip: raster image to use for clipping raster stack
+  #4) proj_str: projection and reference system information (in PROJ4 format)
+  #5) list_models: model formula, this is not currently in use
+  #6) out_suffix: output suffix 
+  #7) file_format: ouptut raste file format, default is .tif
+  #8) estimator: general type of estimator e.g. mle, ols etc.
+  #9) estimation_method: algorithm type or method used 
+  #10)  NA_flag_val: NA value for raster
+  #Arima specific parameters:
+  #11) num_cores: number of cor used in the processing
+  #12) time_step: this is the time step for which to start the arima model with
+  #13) n_pred_ahead: limit to the prediction of arima in the future horizon in time steps 
+  #14) r_stack: raster stack with observations 
+  #15) arima_order: model used in ARIMA
+  
+  #OUTPUTS
+  #Object made of a list of elements:
+  #1) temp_mod: model object, may vary of structure according to the method use (e.g. errorsarlm etc.)
+  #2) r_poly_name: shapefile name screeened for NA and no neighbours features
+  #3) raster_pred: predicted raster based on spatial regression and neighborhood structure 
+  #4) raster_res: residuals raster 
+  #5) estimation_process: vector with estimator and method of estimation used
+  
+  #### Begin script ###
+  
   #Extract parameters/arguments
   out_dir  <- list_param$out_dir
   r_ref_s    <- list_param$r_var #if NULL, no image is created, this is the reference image
@@ -564,12 +600,7 @@ predict_temp_reg_fun <-function(i,list_param){
     #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
     #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
-    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), 
-                                     FUN=pixel_ts_arima_predict,
-                                     list_param=list_param_predict_arima_2,
-                                     mc.preschedule=FALSE,
-                                     mc.cores = num_cores) 
-    
+    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
     #pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
    
     #save this in a separate folder!!!
@@ -599,7 +630,6 @@ predict_temp_reg_fun <-function(i,list_param){
     ## Convert predicted values to raster...
     #pred_t_l<-lapply(1:1,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
 
-    browser()
     #pred_t_l <- lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
     pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
 
@@ -625,8 +655,8 @@ predict_temp_reg_fun <-function(i,list_param){
    #### PREPARE OBJECT TO RETURN
 
   #Adding mod object, the ARIMA model will be different...function...most likely
-  temp_reg_obj <- list(temp_mod,file.path(out_dir,raster_name_pred),file.path(out_dir,raster_name_res))
-  names(temp_reg_obj) <- c("temp_mod","raster_pred","raster_res")
+  temp_reg_obj <- list(temp_mod,file.path(out_dir,raster_name_pred),file.path(out_dir,raster_name_res),c(estimator,estimation_method))
+  names(temp_reg_obj) <- c("temp_mod","raster_pred","raster_res","estimation_process")
   save(temp_reg_obj,file= file.path(out_dir,paste("temp_reg_obj","_",estimator,"_",estimation_method,"_t_",i,"_",out_suffix,".RData",sep="")))
   
   #write a log file with predictions parameters used at the time:
