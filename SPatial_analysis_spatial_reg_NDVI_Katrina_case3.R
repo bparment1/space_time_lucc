@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/04/2017
+#DATE MODIFIED: 03/07/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: changes to spatial models and test of ARIMA models
+#COMMIT: more changes to ARIMA models
 #
 #################################################################################################
 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03072017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
@@ -85,9 +85,9 @@ create_out_dir_param=TRUE #PARAM9
 #data_fname <- file.path(in_dir,"output_Katrina_04082015","dat_reg_var_list_NDVI_Katrina_04082015.txt")
 data_fname <- file.path(in_dir,"dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt")
 
-#coord_names <- c("Long","Lat") #PARAM 11
-coord_names <- c("x","y") #PARAM 11
 
+coord_names <- c("x","y") #PARAM 11
+#coord_names <- c("Long","Lat") #PARAM 11
 #coord_names <- c("XCoord","YCoord")
 #coord_names <- c("POINT_X1","POINT_Y1")
 
@@ -402,7 +402,7 @@ estimation_method <-"ols"
 
 #ARIMA specific
 
-num_cores_tmp <- 4
+num_cores_tmp <- num_cores
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 time_step_subset <- time_step -1 #use 99
 
@@ -444,7 +444,7 @@ list_models <-NULL
 #Use 100 to 116
 #out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
 out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
-num_cores_tmp <- 4
+num_cores_tmp <- num_cores
 
 #ARIMA specific parameters
 
@@ -469,9 +469,9 @@ names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_mode
 #debug(predict_temp_reg_fun)
 
 if(re_initialize_arima==T){
-   l_pred_temp_arima <- vector("list",length=length(time_window_selected))
+   l_pred_temp_arima <- vector("list",length=n_pred)
 
-  for(i in 1:length(time_window_selected)){
+  for(i in 1:n_pred){
     n_pred_tmp <- 1
     n_pred_ahead <- n_pred_tmp
     #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
