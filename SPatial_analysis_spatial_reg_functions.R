@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/07/2017
+#DATE MODIFIED: 03/08/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: modifying temporal prediction function, specifically ARIMA models
+#COMMIT: changes to accuracy assessment function to compute metrics by zones
 #
 #################################################################################################
 
@@ -883,11 +883,11 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   
   #Accuracy/errors by zones
   r_res_s <- r_pred_s - r_var_s #residuals, stack of raster layers
-  mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="mean") #mean square error
-  mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="mean") #absolute error
-  sd_mae_zones_tb <- zonal(abs(r_res_s),r_zones,stat="sd") #absolute error
-  sd_rmse_tb <- zonal(r_res_s^2,r_zones,stat="sd") #
-  #sd_mse_zones_tb <- zonal(r_res_s^2,r_zones,stat="sd") #mean square error
+  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean") #mean square error
+  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean") #absolute error
+  sd_mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="sd") #absolute error
+  sd_rmse_tb <- zonal(r_res_s^2,r_zones,fun="sd") #
+  #sd_mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="sd") #mean square error
   
   rmse_zones_tb <- cbind(mse_zones_tb[,1],sqrt(mse_zones_tb[,2:dim(mse_zones_tb)[2]])) #root mean square error
   colnames(rmse_zones_tb)[1] <- c("zone")
@@ -895,13 +895,12 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   
   mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
   rmse_tb <- sqrt(cellStats((r_res_s)^2,mean)) #calculate rmse overall
-  sd_mae_tb <- sd(abs(cellStats(r_res_s),sd)) #sd for absolute error
+  sd_mae_tb <- cellStats(abs(r_res_s),sd) #sd for absolute error
 
-  
   #write out residuals rasters
   r_res_s <- writeRaster(r_res_s,filename=file.path(out_dir,"r_res_s.tif"),bylayer=TRUE,
                          suffix=paste(1:nlayers(r_res_s),out_suffix,sep="_"),overwrite=TRUE)
-  ac_obj <- list(mae_tb,rmse_tb,sd_mae_b,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
+  ac_obj <- list(mae_tb,rmse_tb,sd_mae_tb,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
   names(ac_obj) <- c("mae_tb","rmse_tb","sd_mae_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
   
   return(ac_obj)
