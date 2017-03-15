@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/09/2017
+#DATE MODIFIED: 03/15/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: rerunning analyses and checking outputs for spatial regressions and ARIMA
+#COMMIT: first changes to consider different resolution for sbt
 #
 #################################################################################################
 
@@ -53,6 +53,10 @@ function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
+#Aggregation code
+script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
+source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
@@ -77,7 +81,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_03092017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_03152017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -111,6 +115,8 @@ date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 #dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
 #dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
 dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
+agg_fact = 5
+agg_fun <- "mean" 
 
 ################# START SCRIPT ###############################
 
@@ -157,7 +163,28 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 #This function is very slow and inefficienct, needs improvement (add parallelization)
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
 
+### 
 #debug(rasterize_df_fun)
+
+
+if(!is.null(agg_fact)){
+
+  lf_agg <- mclapply(l_rast,
+                     FUN=aggregate_raster,
+                     #r_in=raster(lf_layerized_bool[1]),
+                     agg_fact=agg_fact,
+                     reg_ref_rast=NULL,
+                     #agg_fun="mean",
+                     agg_fun=agg_fun,
+                     out_suffix=NULL,
+                     file_format=file_format,
+                     out_dir=out_dir,
+                     out_rast_name = NULL,
+                     mc.preschedule=FALSE,
+                     mc.cores = num_cores) 
+  l_rast <- lf_agg 
+}
+
 s_raster <- stack(l_rast) #stack with all the variables
 projection(s_raster) <- CRS_reg
 names(s_raster) <- names(data_tb)                
@@ -696,6 +723,6 @@ xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",
        auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                        border = FALSE, lines = TRUE,cex=1.2)
 )
-histogram(r_zonal)
+#histogram(r_zonal)
 
 ################### END OF SCRIPT ##################
