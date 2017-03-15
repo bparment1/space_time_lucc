@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: moving function to explore and summarize dataset used for sbt
+#COMMIT: rerunning full code and debugging for aggregation 15, Yucatan NDVI
 #
 #################################################################################################
 
@@ -54,8 +54,10 @@ function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_func
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
+source(file.path(script_path,function_data_figures_reporting)) #source all functions used in this script 1.
+
 #Aggregation code
+function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
 script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
 
@@ -171,7 +173,8 @@ if(!is.null(agg_fact)){
 ### Generate data description and figures: make this a markdown output later on!
 #debug(explore_and_summarize_data)
 test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
-
+s_raster <- stack(l_rast)
+names(s_raster) <- names(data_tb)
 
 ###########################################################################
 ############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
@@ -200,11 +203,7 @@ time_window_selected <- time_step_subset:time_step_end
 time_window_predicted <- time_step_start:time_step_end #100 to 116
 r_spat_var <- subset(s_raster,time_window_selected) #predict before and after event
 
-rast_ref <- subset(r_stack,1)
-#rast_ref <- rast_ref != NA_flag_val
-#pix_id_r <- rast_ref
-#values(pix_id_r) <- 1:ncell(rast_ref) #create an image with pixel id for every observation
-#pix_id_r <- mask(pix_id_r,rast_ref) #3854 pixels from which 779 pixels are NA
+rast_ref <- subset(s_raster,1)
 
 ########
 ### TEST SPATIAL Prediction on one date....
@@ -316,7 +315,7 @@ num_cores_tmp <- num_cores
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 n_pred_ahead <- 16
 rast_ref <- subset(s_raster,1) #first image ID
-r_stack_arima <- mask(r_stack,rast_ref)
+r_stack_arima <- mask(s_raster,rast_ref)
 
 #r_stack <- r_stack_arima
 arima_order <- NULL
@@ -353,7 +352,7 @@ num_cores_tmp <- num_cores
 time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
 n_pred_ahead <- 16
 rast_ref <- subset(s_raster,1) #first image ID
-r_stack_arima <- mask(r_stack,rast_ref)
+r_stack_arima <- mask(s_raster,rast_ref)
 
 #r_stack <- r_stack_arima
 arima_order <- NULL
@@ -458,6 +457,10 @@ projection(r_temp_res_rast_arima) <- CRS_reg
 ##############################
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
+# Problem with rast_zonal: when aggregated categorical value become continuous
+#
+#
+
 projection(spat_pred_rast_mle_eigen_no_previous) <- CRS_reg
 projection(spat_res_rast_mle_eigen_no_previous) <- CRS_reg
 projection(spat_pred_rast_mle_eigen_with_previous) <- CRS_reg
@@ -495,8 +498,11 @@ names(res_temp_s_arima) <- sub("pred","res",names(res_temp_s_arima))
 names(res_spat_s) <- sub("pred","res",names(res_spat_s))
 #names(res_temp_s) <- paste("r_res_s_",1:nlayers(res_temp_s),"_",out_suffix,sep="")
 
+#r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
+#                   spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s_arima,res_temp_s_lm,res_spat_s)
+
 r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-                   spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s_arima,res_temp_s_lm,res_spat_s)
+                   spat_pred_rast_mle_eigen_no_previous,spat_pred_rast_mle_eigen_with_previous,res_temp_s_arima,res_spat_s)
 
 dat_out <- as.data.frame(r_results)
 dat_out <- na.omit(dat_out)
@@ -552,17 +558,24 @@ names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous","temp_arim
 #mae_tot_tb$time <- 2:n_pred
 mae_tot_tb$time <- 1:nlayers(r_huric_obs)
 
-#mae_tot_tb$time <- 2:17
-
 y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb$temp_arima))
+
+res_pix<-960
+col_mfrow<-1
+row_mfrow<-1
+png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+
 plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
 lines(temp_arima ~ time, type="b",col="magenta",data=mae_tot_tb)
 lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
 
 #lines(temp_lm ~ time, type="b",col="red",data=mae_tot_tb)
-
 legend("topleft",legend=c("spat_no","temp_arima","spat_with"),col=c("cyan","magenta","blue"),lty=1)
 title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
+
+dev.off()
+
 write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 
 #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
@@ -600,12 +613,18 @@ dd$method <- mydata$method
 dd$zones <- mydata$zone #use recycle rule
 
 #Note that to get the title correct, one needs to add
+res_pix<-960
+col_mfrow<-1
+row_mfrow<-1
+png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
 
 xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
        strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
        auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                        border = FALSE, lines = TRUE,cex=1.2)
 )
+dev.off()
 #histogram(r_zonal)
 
 ################### END OF SCRIPT ##################
