@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: modification to record figures for sbt
+#COMMIT: debugging function to explore and summarize dataset used for sbt
 #
 #################################################################################################
 
@@ -185,6 +185,8 @@ if(!is.null(agg_fact)){
   l_rast <- lf_agg 
 }
 
+debug(explore_and_summarize_data)
+test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
 
 explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event){
   ## function that generates a set of figures and summary of basics information on data
@@ -202,7 +204,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1",out_suffix,".png",sep=""),
+  png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   plot(r_FID,main=l_rast[1])
@@ -217,7 +219,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1",out_suffix,".png",sep=""),
+  png(filename=paste("Figure2_layer_zonal_areas_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   plot(subset(s_raster,zonal_colnames),main=zonal_colnames)
@@ -241,8 +243,15 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   ## Figure 3: visualization of time series
   
   #projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=paste("Figure3_visualization_time_series_time_step_1_to_4_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
   levelplot(r_stack,layers=1:4,col.regions=matlab.like(125)) #show first four images (half a year more or less)
   plot(r_stack,y=1:4)
+  dev.off()
   
   ## Figure 4: visualization of event in time series
   
@@ -254,16 +263,31 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   n_before <- n_time_event - 5
   n_after <- n_time_event + 5
   
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=paste("Figure4_visualization_time_series_time_event_before_after_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
   levelplot(r_stack,layers=n_before:n_after,col.regions=matlab.like(125))
   
-  ## Figure 5: visualization of histogram of event in time series
+  dev.off()
+  
+  ## Figure 6: visualization oftime series profile for a pixel 
   histogram(subset(r_stack,n_before:n_after))
   
   ## Figure 6: Profile for the time series
   
   mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
-  pixval <- data_tb[800,var_names]
+  pixval <- data_tb[800,var_names] #should choose earlier wich pixel
   #pix300 <- data_tb[300,var_names]
+  
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=paste("Figure6_time_series_time_profiles_pixel_",800,"_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
   
   plot(1:length(var_names),mean_vals,type="b",ylab="var",xlab="time step",
        main="Average variable and pixel 800 profile")
@@ -272,7 +296,10 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   legend("bottomleft",legend=c("Overall average VAR ","PIX 800 "),
          col=c("black","red"),lty=c(1,2))
   abline(v=n_time_event,col="blue")
-  ## Figure 5: visualization of histogram of event in time series
+  
+  dev.off()
+  
+  ## Figure 7: visualization of histogram of event in time series
   
   #title("Average pop per elevation zones (observed data)")
   ## By zone/strata
@@ -299,12 +326,25 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   dd$time  <- tmp_time
   dd$zones <- mydata$zone #use recycle rule
   
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=paste("Figure7a_average_by_zonal_areas_time_series_time_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
   xyplot(data~time |zones,#group=method,
          data=dd,type="b",xlab="time",ylab="VAR",
          #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
          auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                          border = FALSE, lines = TRUE,cex=1.2)
   )
+  dev.off()
+  
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=paste("Figure7b_average_by_zonal_areas_time_series_time_xyplot_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   xyplot(data~time,group=zones,
          data=dd,type="b",xlab="time",ylab="VAR",
@@ -314,10 +354,12 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
          main="Average by zones for VAR"
   )
   
+  dev.off()
+  
   write.table(zones_avg_df,file=paste("zones_avg_df","_",out_suffix,".txt",sep=""))
   write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""))
   
- explore_obj <- list(zones_avg,dd)
+ explore_obj <- list(zones_avg_df,dd)
  names(explore_obj) <- c("zones_avg","zones_avg_long_tb")
  return(explore_obj)
 }
