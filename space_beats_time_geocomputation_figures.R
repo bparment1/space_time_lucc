@@ -436,7 +436,7 @@ mae_tot_tb <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015
 ### mae for total region
 layout_m <- c(1,1.2)
 png(paste("Figure_3a_accuracy_","mae","_by_tot_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=560*layout_m[1],width=560*layout_m[2])
+    height=540*layout_m[1],width=540*layout_m[2])
 
 y_range <- range(cbind(mae_tot_tb$spat_reg,mae_tot_tb$temp))
 y_range <- c(y_range[1],y_range[2]+100)
@@ -447,14 +447,14 @@ x_tick_position <- mae_tot_tb$time
 plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
      ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
 points(spat_reg ~ time, col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
 lines(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb)
 points(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb,cex.pch=1.6)
-axis(1,at= x_tick_position,labels=xlab_tick)
+axis(1,at= x_tick_position,labels=xlab_tick,cex=1.6)
 
 abline(v=1.5,lty="dashed")
 #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
-legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.5)
 #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
 
 legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
@@ -471,21 +471,15 @@ dd$method <- mydata$method
 #drop first four rows
 dd <- dd[7:nrow(dd),]
 
-
 #xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
 #       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
 #      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
 #                     border = FALSE, lines = TRUE,cex=1.2)
 #)
 
-#xyplot(data~which |zones,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-#+       #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-#+      auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-#+                     border = FALSE, lines = TRUE,cex=1.2)
-
 layout_m <- c(1,3)
 
-p<- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time Step",ylab="NDVI",
+p <- xyplot(data~which |zones,group=method,data=dd,type="b",xlab="Time Step",ylab="NDVI",
        strip = strip.custom(factor.levels=as.character(unique(dd$zones))),
        #strip = strip.custom(factor.levels=as.character(unique(dd$which))),
        auto.key=list(columns=1,space="right",title="Model",cex=1),
@@ -513,51 +507,43 @@ dev.off()
 
 ###
 layout_m <- c(1,3)
-res_pix<-960
-col_mfrow<-2
-row_mfrow<-1
-
-##Figure 7a: change 500 with insect polygons???
-#Insect_2001_2009_mask_alaska.shp
-infile_insect<-sub(".shp","","insect_bool2.shp")             #Removing the extension from file.
-insect_pol <- readOGR(".",infile_insect)
-
-png(filename=paste("Figure7_paper1_change_Alaska_insect_fire_perimeters",out_prefix,".png",sep=""),
-    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-par(mfrow=c(row_mfrow,col_mfrow))
+res_pix <- 350
 
 #layout_m <- c(1,1.2)
 png(paste("Figure_3b_accuracy_","mae","_by_zone_and_timestep","_","NDVI_Dean_",out_suffix,".png", sep=""),
-    height=560*layout_m[1],width=560*layout_m[2])
+    height=res_pix*layout_m[1],width=res_pix*layout_m[2])
 par(mfrow=c(layout_m[1],layout_m[2]))
 
-input_data <- mae_zones_tb
+
 for ( i in 3:5){
+  input_data <- mae_zones_tb
+  y_range <- range(cbind(input_data[,2:5])) #four time steps!! first column is zone...
+  y_range <- c(y_range[1],y_range[2]+100)
   col_names <- unique(input_data$method)
-  input_data <- subset(input_data,zones==3)
+  input_data <- subset(input_data,zones==i)
   input_data <- subset(input_data,select=c(names(input_data)!="zones"))
   input_data <- subset(input_data,select=c(names(input_data)!="method"))
   input_data <- as.data.frame(t(input_data))
   names(input_data) <- col_names
   input_data$time <- 1:nrow(input_data)
   
-  y_range <- range(cbind(input_data$spat_reg,input_data$temp))
-  y_range <- c(y_range[1],y_range[2]+100)
+  #y_range <- range(cbind(input_data$spat_reg,input_data$temp))
+  #y_range <- c(y_range[1],y_range[2]+100)
   #xlab_tick <- mae_tot_tb$time
   xlab_tick <- c("T-1","T+1","T+2","T+3")
   x_tick_position <- input_data$time
 
-  plot(spat_reg ~ time, type="l",col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6)
-  points(spat_reg ~ time, col="cyan",data=mae_tot_tb,ylim=y_range,
-     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.6,cex.pch=1.6)
-  lines(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb)
-  points(temp ~ time, col="magenta",lwd=3,pch=16,data=mae_tot_tb,cex.pch=1.6)
-  axis(1,at= x_tick_position,labels=xlab_tick)
+  plot(spat_reg ~ time, type="l",col="cyan",data=input_data,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.7)
+  points(spat_reg ~ time, col="cyan",data=input_data,ylim=y_range,
+     ylab= "NDVI",xlab="Time step",xaxt="n",lwd=3,pch=16,cex.lab=1.7)
+  lines(temp ~ time, col="magenta",lwd=3,pch=16,data=input_data)
+  points(temp ~ time, col="magenta",lwd=3,pch=16,data=input_data)
+  axis(1,at= x_tick_position,labels=xlab_tick,cex=1.8,font=2)
 
-  abline(v=1.5,lty="dashed")
+  abline(v=1.3,lty="dashed")
   #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n")
-  legend("top",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
+  legend("topleft",legend=c("hurricane"),lty="dashed",bty="n",cex=1.6)
   #legend("topleft",legend=c("hurricane event"),lty="dashed",bty="n",cex=1.4)
 
   legend("topright",legend=c("spatial","temporal"),col=c("cyan","magenta"),lty=1,lwd=3,bty="n",cex=1.6)
@@ -566,7 +552,6 @@ for ( i in 3:5){
 }
 
 dev.off()
-
 
 
 ######################################
