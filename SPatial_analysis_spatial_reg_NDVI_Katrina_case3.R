@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: debugging function to explore and summarize dataset used for sbt
+#COMMIT: moving function to explore and summarize dataset used for sbt
 #
 #################################################################################################
 
@@ -49,6 +49,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03082017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_03152017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -121,15 +122,7 @@ agg_fun <- "mean"
 ################# START SCRIPT ###############################
 
 ### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
-#set up the working directory
-#Create output directory
 
-##specific processing done for srm
-#r_dem <- raster("/data/project/layers/commons/data_workflow/inputs/dem-cgiar-srtm-1km-tif/srtm_1km.tif")
-#r_dem_Katrina<-crop(r_dem,r_stack)
-#writeRaster(r_dem_Katrina,file.path(in_dir,"r_srtm_Katrina.rst"))
-#library(ggmap)
-### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
 #set up the working directory
 #Create output directory
 
@@ -146,26 +139,13 @@ if(create_out_dir_param==TRUE){
 }
 
 data_tb <-read.table(data_fname,sep=",",header=T)
-#data_tb$ezone_c[data_tb$Elev_zone 
-
-#add elevation?
-#attach(data_tb)
-#data_tb$ezone_c[Elev_Zone < 3] <- 1
-#data_tb$ezone_c[Elev_Zone == 3] <- NA  
-#data_tb$ezone_c[Elev_Zone == 4] <- 2  
-#detach(data_tb)
-
-#### Make this a function...that will run automatically the predictions
-## from lines 152-265
 
 #Transform table text file into a raster image
 
-#This function is very slow and inefficienct, needs improvement (add parallelization)
-l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
-
 ### 
 #debug(rasterize_df_fun)
-
+#This function is very slow and inefficienct, needs improvement (add parallelization)
+l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
 
 if(!is.null(agg_fact)){
 
@@ -185,187 +165,16 @@ if(!is.null(agg_fact)){
   l_rast <- lf_agg 
 }
 
-debug(explore_and_summarize_data)
+###########################
+#### PART II: data reporting: description
+
+### Generate data description and figures: make this a markdown output later on!
+#debug(explore_and_summarize_data)
 test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
 
-explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event){
-  ## function that generates a set of figures and summary of basics information on data
-  #
-  #
-  
-  s_raster <- stack(l_rast) #stack with all the variables
-  projection(s_raster) <- CRS_reg
-  names(s_raster) <- names(data_tb)                
-  r_FID <- subset(s_raster,1) #Assumes ID or reference image is the first image of the stack
-  
-  ##Figure 1: reference layer
-  
-  ##Figure 1: wwf ecoregion
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  plot(r_FID,main=l_rast[1])
-  dev.off()
-  
-  
-  freq_tb <- (freq(r_FID))
-  #writeRaster()
-  
-  ##Figure 2: zonal layer
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure2_layer_zonal_areas_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  plot(subset(s_raster,zonal_colnames),main=zonal_colnames)
-  
-  dev.off()
-  
-  reg_var_list <- l_rast[var_names] #only select population raster
-  r_stack <- stack(reg_var_list)
-  projection(r_stack) <- CRS_reg
-  names(r_stack) <- names(data_tb)[var_names]
-  
-  #Later rerport this basic information in  a text file 
-  dim(r_stack) #34x49x230 
-  ncell(s_raster) #1666
-  freq(r_FID,value=NA) #122
-  ncell(s_raster) - freq(r_FID,value=NA) #1544
-  res(r_stack) #about 1km
-  
-  #Automate this step?
-  
-  ## Figure 3: visualization of time series
-  
-  #projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure3_visualization_time_series_time_step_1_to_4_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  levelplot(r_stack,layers=1:4,col.regions=matlab.like(125)) #show first four images (half a year more or less)
-  plot(r_stack,y=1:4)
-  dev.off()
-  
-  ## Figure 4: visualization of event in time series
-  
-  n_time_event #108
-  dates3[108]
-  #[1] "2005-08-29"
-  
-  ## plottting after and before event
-  n_before <- n_time_event - 5
-  n_after <- n_time_event + 5
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure4_visualization_time_series_time_event_before_after_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  levelplot(r_stack,layers=n_before:n_after,col.regions=matlab.like(125))
-  
-  dev.off()
-  
-  ## Figure 6: visualization oftime series profile for a pixel 
-  histogram(subset(r_stack,n_before:n_after))
-  
-  ## Figure 6: Profile for the time series
-  
-  mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
-  pixval <- data_tb[800,var_names] #should choose earlier wich pixel
-  #pix300 <- data_tb[300,var_names]
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure6_time_series_time_profiles_pixel_",800,"_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  
-  plot(1:length(var_names),mean_vals,type="b",ylab="var",xlab="time step",
-       main="Average variable and pixel 800 profile")
-  lines(1:length(var_names),pixval,type="b",ylab="var",xlab="time step",col=c("red"),
-        main="Average variable and pixel 800 profile")
-  legend("bottomleft",legend=c("Overall average VAR ","PIX 800 "),
-         col=c("black","red"),lty=c(1,2))
-  abline(v=n_time_event,col="blue")
-  
-  dev.off()
-  
-  ## Figure 7: visualization of histogram of event in time series
-  
-  #title("Average pop per elevation zones (observed data)")
-  ## By zone/strata
-  
-  r_zonal <- subset(s_raster,zonal_colnames)
-  zones_tb_avg<- zonal(r_stack,r_zonal,fun='mean')
-  
-  zones_avg_df <- as.data.frame(zones_tb_avg)
-  n_zones <- length(unique(zones_avg_df$zone))
-  
-  n_time <- ncol(zones_avg_df) -1
-  #pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-  
-  mydata<- zones_avg_df
-  #dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-  dd <- do.call(make.groups, mydata) 
-  #dd$lag <- mydata$lag 
-  dd$zones <- mydata$zones
-  #dd$method <- mydata$method
-  #drop first few rows that contain no data but zones...
-  n_start <-n_zones +1
-  dd <- dd[n_start:nrow(dd),]
-  tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
-  dd$time  <- tmp_time
-  dd$zones <- mydata$zone #use recycle rule
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure7a_average_by_zonal_areas_time_series_time_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  xyplot(data~time |zones,#group=method,
-         data=dd,type="b",xlab="time",ylab="VAR",
-         #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-         auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                         border = FALSE, lines = TRUE,cex=1.2)
-  )
-  dev.off()
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure7b_average_by_zonal_areas_time_series_time_xyplot_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  xyplot(data~time,group=zones,
-         data=dd,type="b",xlab="time",ylab="VAR",
-         #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
-         auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                         border = FALSE, lines = TRUE,cex=1.2),
-         main="Average by zones for VAR"
-  )
-  
-  dev.off()
-  
-  write.table(zones_avg_df,file=paste("zones_avg_df","_",out_suffix,".txt",sep=""))
-  write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""))
-  
- explore_obj <- list(zones_avg_df,dd)
- names(explore_obj) <- c("zones_avg","zones_avg_long_tb")
- return(explore_obj)
-}
 
-##############################################################################################
-############## PART V PREDICT MODELS FOR USING TEMP AND SPAT REGRESSION OVER MULTIPLE time steps ####
+###########################################################################
+############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
 
 ##This times will we use an automated function to generate predictions over multiple dates
 
@@ -480,7 +289,9 @@ spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previ
 levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
 
-###########TEMPORAL METHODS
+##############################################################################################
+############## PART III TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
+
 ## Predict using temporal info: time steps 
 
 ### Use ARIMA!!! with time before
@@ -522,7 +333,6 @@ arima_order <- NULL
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 
 #pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
-
 
 ##ARIMA
 
@@ -645,6 +455,7 @@ projection(r_temp_res_rast_arima) <- CRS_reg
 #projection(r_temp_res_rast_lm) <- CRS_reg
 #projection(r_temp_pred_rast_lm) <- CRS_reg
 
+##############################
 ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
 
 projection(spat_pred_rast_mle_eigen_no_previous) <- CRS_reg
