@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/15/2017
+#DATE MODIFIED: 03/16/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: rerunning full code and debugging for aggregation 15, Yucatan NDVI
+#COMMIT: zonal var: fixing problem after aggregation
 #
 #################################################################################################
 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03082017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03162017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_03152017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
@@ -81,10 +81,10 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84 
 CRS_reg <- CRS_WGS84 # PARAM 4
 
-file_format <- ".rst" #PARAM5
+file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_03152017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_03162017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -147,7 +147,7 @@ data_tb <-read.table(data_fname,sep=",",header=T)
 ### 
 #debug(rasterize_df_fun)
 #This function is very slow and inefficienct, needs improvement (add parallelization)
-l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format,NA_flag_val,tolerance_val=0.000120005)
+l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=file_format,NA_flag_val,tolerance_val=0.000120005)
 
 if(!is.null(agg_fact)){
 
@@ -164,7 +164,40 @@ if(!is.null(agg_fact)){
                      out_rast_name = NULL,
                      mc.preschedule=FALSE,
                      mc.cores = num_cores) 
+  
+  l_rast_original <- l_rast
   l_rast <- lf_agg 
+  
+  ###Break out and get mean per class and do majority rule!
+  
+  #l_rast_original
+  #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
+  #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
+  raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
+  out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
+  #debug(generate_soft_cat_aggregated_raster_fun)
+  lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
+                                                         reg_ref_rast=NULL,
+                                                         agg_fact,
+                                                         agg_fun,
+                                                         num_cores,
+                                                         NA_flag_val=NA_flag_val,
+                                                         file_format,
+                                                         out_dir,
+                                                         out_suffix_str)
+
+  reclass_in_majority <- function(lf_soft,threshold){
+    
+    r_zonal_agg_soft <- stack(lf_agg_soft)
+    r_rec <- r_zonal_agg_soft>0.5
+    
+    ### substitute value 1 by the actual number
+    #subs..
+    #lapply()
+  }
+  
+  r_test <- max(r_zonal_agg_soft)
+  
 }
 
 ###########################
