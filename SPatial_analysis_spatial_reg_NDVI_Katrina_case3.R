@@ -185,32 +185,65 @@ if(!is.null(agg_fact)){
                                                          file_format,
                                                          out_dir,
                                                          out_suffix_str)
-  lf_agg_soft
+
+  reclass_val <- unique(raster(raster_name)) #unique zonal values to reassign
+  #reclass_val <- c(0,1,2) # value for the elevation reclassified
   
+  r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),threshold_val=NULL,max_aggregation = TRUE,reclass_val = reclass_val)
   
-  reclass_in_majority <- function(lf_soft,threshold,reclass_val){
+  reclass_in_majority <- function(r_stack,threshold_val=0.5,max_aggregation=FALSE,reclass_val){
     ##
+    #This function reclassify a set of soft layers using the majority or maximum value rule.
+    #When max_aggregation is TRUE, the max value rule is used in the aggregation.
+    #
+    #INPUTS
+    #1) lf_soft
+    #2) threshold_val
+    #3) max_aggregation
+    #4) reclass_val
     #
     
     ## Reclass
-    if(!is.null(threshold)){
-      r_rec <- r_zonal_agg_soft>0.5
+    if(!is.null(threshold_val) & (max_aggregation==FALSE)){
+      r_rec_threshold <- r_stack > threshold_val
+      
+      r_rec_val_s <- lapply(1:nlayers(r_rec_threshold),
+                            function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
+                            x <- subs(subset(r_stack,i), df_subs)},r_stack=r_rec_threshold)
+      r_rec_val_s <- stack(r_rec_val_s) #this contains pixel above 0.5 with re-assigned values
+      r_rec <- calc(r_test,function(x){sum(x)})
+
+      ### prepare return object
+      reclass_obj <- list(r_rec,r_rec_val_s)
+      names(reclass_obj) <- c("r_rec","r_rec_val_s")
+      
     }
     
-    if(is.null(threshold)){
-      r_zonal_agg_soft <- stack(lf_agg_soft)
+    if(max_aggregation==TRUE){
+      #r_zonal_agg_soft <- stack(lf_agg_soft)
       #Find the max, in stack of pixels (can be used for maximum compositing)
-      maxStack <- calc(r_zonal_agg_soft, function(x) max(x, na.rm = TRUE))
+      r_max_s <- calc(r_stack, function(x) max(x, na.rm = TRUE))
       #maxStack <- stackApply(r_zonal_agg_soft, indices=rep(1,nlayers(r_zonal_agg_soft)), fun = max, na.rm=TRUE)
-      r_rec_max <- overlay(r_zonal_agg_soft,maxStack, fun=function(x,y){as.numeric(x==y)})
-      r_ties <- sum(r_rec_max) #find out ties
+      r_max_rec_s <- overlay(r_stack,r_max_s, fun=function(x,y){as.numeric(x==y)})
+      r_ties <- sum(r_max_rec_s) #find out ties
       #this may be long
-      freq_r_rec_df <- freq(r_rec_max,merge=T)
+      #freq_r_rec_df <- freq(r_rec_max,merge=T)
+    
+      r_rec_val_s <- lapply(1:nlayers(r_max_rec_s),
+                    function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
+                             x <- subs(subset(r_stack,i), df_subs)},r_stack=r_max_rec_s)
+      r_rec_val_s <- stack(r_rec_val_s)
+      r_rec <- calc(r_test,function(x){sum(x)})
+      #x2 <- subs(r, df, subsWithNA=FALSE)
+    
+      ### prepare return object
+      reclass_obj <- list(r_rec,r_re_rec_val_s,r_max_rec_s,r_ties)
+      names(reclass_obj) <- c("r_rec","r_re_rec_val_s","r_max_rec_s","r_ties")
     }
+    
+    ###
+    return(reclass_obj)
   }
-  
-  r_test <- max(r_zonal_agg_soft)
-  
 }
 
 ###########################
