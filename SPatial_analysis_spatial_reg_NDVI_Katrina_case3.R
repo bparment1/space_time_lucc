@@ -84,7 +84,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_03162017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"NDVI_Katrina_04062017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -166,7 +166,7 @@ if(!is.null(agg_fact)){
                      mc.cores = num_cores) 
   
   l_rast_original <- l_rast
-  l_rast <- lf_agg 
+  l_rast <- unlist(lf_agg) 
   
   ###Break out and get mean per class and do majority rule!
   
@@ -185,15 +185,28 @@ if(!is.null(agg_fact)){
                                                          file_format,
                                                          out_dir,
                                                          out_suffix_str)
-
-  reclass_in_majority <- function(lf_soft,threshold){
+  lf_agg_soft
+  
+  
+  reclass_in_majority <- function(lf_soft,threshold,reclass_val){
+    ##
+    #
     
-    r_zonal_agg_soft <- stack(lf_agg_soft)
-    r_rec <- r_zonal_agg_soft>0.5
+    ## Reclass
+    if(!is.null(threshold)){
+      r_rec <- r_zonal_agg_soft>0.5
+    }
     
-    ### substitute value 1 by the actual number
-    #subs..
-    #lapply()
+    if(is.null(threshold)){
+      r_zonal_agg_soft <- stack(lf_agg_soft)
+      #Find the max, in stack of pixels (can be used for maximum compositing)
+      maxStack <- calc(r_zonal_agg_soft, function(x) max(x, na.rm = TRUE))
+      #maxStack <- stackApply(r_zonal_agg_soft, indices=rep(1,nlayers(r_zonal_agg_soft)), fun = max, na.rm=TRUE)
+      r_rec_max <- overlay(r_zonal_agg_soft,maxStack, fun=function(x,y){as.numeric(x==y)})
+      r_ties <- sum(r_rec_max) #find out ties
+      #this may be long
+      freq_r_rec_df <- freq(r_rec_max,merge=T)
+    }
   }
   
   r_test <- max(r_zonal_agg_soft)
