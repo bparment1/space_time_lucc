@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: zonal var: fixing problem after aggregation
+#COMMIT: moving aggregation majority function to function script
 #
 #################################################################################################
 
@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03162017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_04072017_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_03152017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
@@ -191,59 +191,6 @@ if(!is.null(agg_fact)){
   
   r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),threshold_val=NULL,max_aggregation = TRUE,reclass_val = reclass_val)
   
-  reclass_in_majority <- function(r_stack,threshold_val=0.5,max_aggregation=FALSE,reclass_val){
-    ##
-    #This function reclassify a set of soft layers using the majority or maximum value rule.
-    #When max_aggregation is TRUE, the max value rule is used in the aggregation.
-    #
-    #INPUTS
-    #1) lf_soft
-    #2) threshold_val
-    #3) max_aggregation
-    #4) reclass_val
-    #
-    
-    ## Reclass
-    if(!is.null(threshold_val) & (max_aggregation==FALSE)){
-      r_rec_threshold <- r_stack > threshold_val
-      
-      r_rec_val_s <- lapply(1:nlayers(r_rec_threshold),
-                            function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
-                            x <- subs(subset(r_stack,i), df_subs)},r_stack=r_rec_threshold)
-      r_rec_val_s <- stack(r_rec_val_s) #this contains pixel above 0.5 with re-assigned values
-      r_rec <- calc(r_test,function(x){sum(x)})
-
-      ### prepare return object
-      reclass_obj <- list(r_rec,r_rec_val_s)
-      names(reclass_obj) <- c("r_rec","r_rec_val_s")
-      
-    }
-    
-    if(max_aggregation==TRUE){
-      #r_zonal_agg_soft <- stack(lf_agg_soft)
-      #Find the max, in stack of pixels (can be used for maximum compositing)
-      r_max_s <- calc(r_stack, function(x) max(x, na.rm = TRUE))
-      #maxStack <- stackApply(r_zonal_agg_soft, indices=rep(1,nlayers(r_zonal_agg_soft)), fun = max, na.rm=TRUE)
-      r_max_rec_s <- overlay(r_stack,r_max_s, fun=function(x,y){as.numeric(x==y)})
-      r_ties <- sum(r_max_rec_s) #find out ties
-      #this may be long
-      #freq_r_rec_df <- freq(r_rec_max,merge=T)
-    
-      r_rec_val_s <- lapply(1:nlayers(r_max_rec_s),
-                    function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
-                             x <- subs(subset(r_stack,i), df_subs)},r_stack=r_max_rec_s)
-      r_rec_val_s <- stack(r_rec_val_s)
-      r_rec <- calc(r_test,function(x){sum(x)})
-      #x2 <- subs(r, df, subsWithNA=FALSE)
-    
-      ### prepare return object
-      reclass_obj <- list(r_rec,r_re_rec_val_s,r_max_rec_s,r_ties)
-      names(reclass_obj) <- c("r_rec","r_re_rec_val_s","r_max_rec_s","r_ties")
-    }
-    
-    ###
-    return(reclass_obj)
-  }
 }
 
 ###########################
