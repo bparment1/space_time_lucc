@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 03/08/2017
+#DATE MODIFIED: 04/07/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: changes to accuracy assessment function to compute metrics by zones
+#COMMIT:fixing bugs in reclass_in_majority
 #
 #################################################################################################
 
@@ -908,7 +908,7 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 
 #Fuction to rasterize a table with coordinates and variables...,maybe add option for ref image??
 #Make this more efficient!!!
-rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,num_cores=0,rast_ref=NULL,out_dir=".",file_format=".rst",NA_flag_val=-9999,tolerance_val= 0.000120005){
+rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,num_cores=0,rast_ref=NULL,out_dir=".",file_format=".tif",NA_flag_val=-9999,tolerance_val= 0.000120005){
   #This function creates a stack of raster images from a data frame table.
   #If not reference raster image is provided, the function generate its own raster grid.
   #The generated grid is a function of the distance between points and the tolrance index
@@ -974,6 +974,63 @@ rasterize_df_fun <- function(data_tb,coord_names,proj_str,out_suffix,num_cores=0
   
   ##
   return(unlist(rast_list))
+}
+
+
+reclass_in_majority <- function(r_stack,threshold_val=0.5,max_aggregation=FALSE,reclass_val){
+  ##
+  #This function reclassify a set of soft layers using the majority or maximum value rule.
+  #When max_aggregation is TRUE, the max value rule is used in the aggregation.
+  #
+  #INPUTS
+  #1) r_stack
+  #2) threshold_val
+  #3) max_aggregation
+  #4) reclass_val
+  #
+  
+  ## Reclass
+  if(!is.null(threshold_val) & (max_aggregation==FALSE)){
+    r_rec_threshold <- r_stack > threshold_val
+    #use calc later to save directly the file
+    #
+    
+    r_rec_val_s <- lapply(1:nlayers(r_rec_threshold),
+                          function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
+                          x <- subs(subset(r_stack,i), df_subs)},r_stack=r_rec_threshold)
+    r_rec_val_s <- stack(r_rec_val_s) #this contains pixel above 0.5 with re-assigned values
+    r_rec <- calc(r_test,function(x){sum(x)})
+    
+    ### prepare return object
+    reclass_obj <- list(r_rec,r_rec_val_s)
+    names(reclass_obj) <- c("r_rec","r_rec_val_s")
+    
+  }
+  
+  if(max_aggregation==TRUE){
+    #r_zonal_agg_soft <- stack(lf_agg_soft)
+    #Find the max, in stack of pixels (can be used for maximum compositing)
+    r_max_s <- calc(r_stack, function(x) max(x, na.rm = TRUE))
+    #maxStack <- stackApply(r_zonal_agg_soft, indices=rep(1,nlayers(r_zonal_agg_soft)), fun = max, na.rm=TRUE)
+    r_max_rec_s <- overlay(r_stack,r_max_s, fun=function(x,y){as.numeric(x==y)})
+    r_ties <- sum(r_max_rec_s) #find out ties
+    #this may be long
+    #freq_r_rec_df <- freq(r_rec_max,merge=T)
+    
+    r_rec_val_s <- lapply(1:nlayers(r_max_rec_s),
+                          function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
+                          x <- subs(subset(r_stack,i), df_subs)},r_stack=r_max_rec_s)
+    r_rec_val_s <- stack(r_rec_val_s)
+    r_rec <- calc(r_rec_val_s,function(x){sum(x)})#overlays the layer with sum, 
+    #x2 <- subs(r, df, subsWithNA=FALSE)
+    
+    ### prepare return object
+    reclass_obj <- list(r_rec,r_rec_val_s,r_max_rec_s,r_ties)
+    names(reclass_obj) <- c("r_rec","r_rec_val_s","r_max_rec_s","r_ties")
+  }
+  
+  ###
+  return(reclass_obj)
 }
 
 ################### END OF SCRIPT ##################
