@@ -47,7 +47,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_04072017_functions.R" #PARAM 1
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_04072017b.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_03152017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
@@ -92,7 +92,6 @@ create_out_dir_param=TRUE #PARAM9
 #data_fname <- file.path(in_dir,"output_Katrina_04082015","dat_reg_var_list_NDVI_Katrina_04082015.txt")
 data_fname <- file.path(in_dir,"dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt")
 
-
 coord_names <- c("x","y") #PARAM 11
 #coord_names <- c("Long","Lat") #PARAM 11
 #coord_names <- c("XCoord","YCoord")
@@ -118,7 +117,7 @@ date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 #dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
 #dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
 dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
-agg_fact = 5
+agg_fact <- 5
 agg_fun <- "mean" 
 
 ################# START SCRIPT ###############################
@@ -189,7 +188,32 @@ if(!is.null(agg_fact)){
   reclass_val <- unique(raster(raster_name)) #unique zonal values to reassign
   #reclass_val <- c(0,1,2) # value for the elevation reclassified
   
-  r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),threshold_val=NULL,max_aggregation = TRUE,reclass_val = reclass_val)
+  #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_04072017b.R" #PARAM 1
+  #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
+  #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+  #debug(reclass_in_majority)
+
+  r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),
+                                       threshold_val=NULL,
+                                       max_aggregation = TRUE,
+                                       reclass_val = reclass_val)
+  
+  plot(r_reclass_obj$r_rec)
+  rast_zonal <- r_reclass_obj$r_rec
+  #zonal_colnames
+  raster_name <- paste0("agg_",agg_fact,"_","r_",zonal_colnames,"_",out_suffix,file_format)
+  
+  writeRaster(rast_zonal,
+               filename=file.path(out_dir,raster_name),
+               overwrite=TRUE)  
+  
+  #r_srtm_Katrina_rec2
+  #-rw-rw-r-- 1 bparmentier bparmentier 1894 Apr  7 12:33 r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
+  #-rw-rw-r-- 1 bparmentier bparmentier 1016 Apr  7 12:34 agg_5_r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
+  
+  ###
+  zonal_colnames <- gsub(extension(raster_name),"",raster_name)
+  ##
   
 }
 
@@ -200,7 +224,7 @@ if(!is.null(agg_fact)){
 #debug(explore_and_summarize_data)
 test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
 s_raster <- stack(l_rast)
-names(s_raster) <- names(data_tb)
+#names(s_raster) <- names(data_tb)
 
 ###########################################################################
 ############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
