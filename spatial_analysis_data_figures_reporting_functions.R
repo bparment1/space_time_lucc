@@ -1,11 +1,11 @@
 ####################################    Space Time Analyses Project   #######################################
 ############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
-#This script functions to produce predictions for the dates following the Hurricane Dean event.       
+#This script functions produce predictions for the dates following the Hurricane Dean event.       
 #The script uses spatial regression with weight matrix to predict NDVI values in the MOORE EDGY region. 
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 03/15/2017
+#DATE MODIFIED: 06/07/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: changes to accuracy assessment function to compute metrics by zones
+#COMMIT: debugging error in zonal column name
 #
 #################################################################################################
 
@@ -81,14 +81,26 @@ library(bitops)
 
 ### Make a function to uniformize NA accros given dates!!!
 
-explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event){
-  ## function that generates a set of figures and summary of basics information on data
+explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event,pixel_index=800,out_dir=NULL,out_suffix=NULL){
+  ## Function that generates a set of figures and summary of basics information on data provided for SBT.
+  # This include time profile, raster time steps and before after event figures.
   #
-  #
+  #INPUTS
+  #1) l_rast: list of raster time series and variables (zones, etc.)
+  #2) zonal_colnames: name of the column matching the zone
+  #3) var_names: index vector matching the time series
+  #4) n_time_event: time step matching the event studied
+  #5) pixel_index: pixel index corresponding to time series to be plotted
+  #6) out_dir: if null use the current directory
+  #7) out_suffix: if null use "" (maybe process id later on)
+  #OUTPUTS
+  #1)
+  
+  ############# BEGIN SCRIPT ###########
   
   s_raster <- stack(l_rast) #stack with all the variables
   projection(s_raster) <- CRS_reg
-  names(s_raster) <- names(data_tb)                
+  #names(s_raster) <- names(data_tb)                
   r_FID <- subset(s_raster,1) #Assumes ID or reference image is the first image of the stack
   
   ##Figure 1: reference layer
@@ -170,15 +182,15 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   histogram(subset(r_stack,n_before:n_after))
   
   ## Figure 6: Profile for the time series
-  
+
   mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
-  pixval <- data_tb[800,var_names] #should choose earlier wich pixel
+  pixval <- data_tb[pixel_index,var_names] #should choose earlier wich pixel
   #pix300 <- data_tb[300,var_names]
   
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure6_time_series_time_profiles_pixel_",800,"_",out_suffix,".png",sep=""),
+  png(filename=paste("Figure6_time_series_time_profiles_pixel_",pixel_index,"_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   
