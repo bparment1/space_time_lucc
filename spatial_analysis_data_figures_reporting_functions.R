@@ -22,7 +22,6 @@
 
 #This script currently contains 1 function:
 
-
 ###Loading R library and packages                                                      
 
 library(sp)
@@ -94,95 +93,147 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   #6) out_dir: if null use the current directory
   #7) out_suffix: if null use "" (maybe process id later on)
   #OUTPUTS
-  #1)
-  
+  ## ojbect with three items:
+  #1) zones_avg: data.frame with average by zone
+  #2) zones_vag_long_tb: data.frame with average by zone in long format
+  #3) out_files: list of outputs files generated (mostly figures)
+
   ############# BEGIN SCRIPT ###########
   
+  if(is.null(out_dir)){
+    out_dir = "."
+  }
+  
+  if(is.null(out_suffix)){
+    out_suffix <- ""
+  }
+  
   s_raster <- stack(l_rast) #stack with all the variables
-  projection(s_raster) <- CRS_reg
+  projection(s_raster) <- proj_str
   #names(s_raster) <- names(data_tb)                
   r_FID <- subset(s_raster,1) #Assumes ID or reference image is the first image of the stack
   
+  list_fig_filename <- vector("list",length=8)
+  
+  #############
   ##Figure 1: reference layer
   
-  ##Figure 1: wwf ecoregion
+  out_fig_filename <- file.path(out_dir,paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""))
+  
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
+  png(filename= out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   plot(r_FID,main=l_rast[1])
   dev.off()
   
+  list_fig_filename[[1]] <- out_fig_filename
   
   freq_tb <- (freq(r_FID))
   #writeRaster()
   
+  ###############
   ##Figure 2: zonal layer
+  
+  out_fig_filename <- file.path(out_dir,paste("Figure2_layer_zonal_areas_",out_suffix,".png",sep=""))
   
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure2_layer_zonal_areas_",out_suffix,".png",sep=""),
+  png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   plot(subset(s_raster,zonal_colnames),main=zonal_colnames)
   
   dev.off()
   
+  list_fig_filename[[2]] <-  out_fig_filename
+  
   reg_var_list <- l_rast[var_names] #only select population raster
   r_stack <- stack(reg_var_list)
   projection(r_stack) <- CRS_reg
   names(r_stack) <- names(data_tb)[var_names]
   
-  #Later rerport this basic information in  a text file 
+  ##### 
+  #Report this basic information in  a text file 
+  filename_stat <- paste0("raster_time_series_basics_info_",out_suffix,".txt")
+  
+  sink(file=filename_stat)
   dim(r_stack) #34x49x230 
   ncell(s_raster) #1666
   freq(r_FID,value=NA) #122
   ncell(s_raster) - freq(r_FID,value=NA) #1544
   res(r_stack) #about 1km
+  sink()
   
-  #Automate this step?
+  #improve this later!
   
+  ##################
   ## Figure 3: visualization of time series
+  
+  out_fig_filename <- file.path(out_dir,paste("Figure3_visualization_time_series_time_step_1_to_4_",out_suffix,".png",sep=""))
   
   #projection(r_stack) <- CRS_WGS84 #making sure the same  CRS format is used
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure3_visualization_time_series_time_step_1_to_4_",out_suffix,".png",sep=""),
+  png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  levelplot(r_stack,layers=1:4,col.regions=matlab.like(125)) #show first four images (half a year more or less)
-  plot(r_stack,y=1:4)
+  p <- levelplot(r_stack,layers=1:4,col.regions=matlab.like(125)) #show first four images (half a year more or less)
+  #plot(r_stack,y=1:4)
+  print(p)
   dev.off()
+  
+  list_fig_filename[[3]] <- out_fig_filename
   
   ## Figure 4: visualization of event in time series
   
   n_time_event #108
-  dates3[108]
+  #dates3[108]
   #[1] "2005-08-29"
   
   ## plottting after and before event
   n_before <- n_time_event - 5
   n_after <- n_time_event + 5
   
+  out_fig_filename <- file.path(out_dir,paste("Figure4_visualization_time_series_time_event_before_after_",out_suffix,".png",sep=""))
+  
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure4_visualization_time_series_time_event_before_after_",out_suffix,".png",sep=""),
+  png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  levelplot(r_stack,layers=n_before:n_after,col.regions=matlab.like(125))
+  p<- levelplot(r_stack,layers=n_before:n_after,col.regions=matlab.like(125))
+  print(p)
+  dev.off()
+  
+  list_fig_filename[[4]] <- out_fig_filename
+  
+  ## Figure 5: histogram before and after event
+
+  out_fig_filename <- file.path(out_dir,paste("Figure5_histogram_time_series_time_event_before_after_",out_suffix,".png",sep=""))
+  
+  res_pix<-960
+  col_mfrow<-1
+  row_mfrow<-1
+  png(filename=out_fig_filename,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  histogram(subset(r_stack,n_before:n_after))
   
   dev.off()
   
-  ## Figure 6: visualization oftime series profile for a pixel 
-  histogram(subset(r_stack,n_before:n_after))
+  list_fig_filename[[5]] <- out_fig_filename
   
+  ##############
   ## Figure 6: Profile for the time series
 
+  out_fig_filename <- file.path(out_dir,paste("Figure6_time_series_time_profiles_pixel_",pixel_index,"_",out_suffix,".png",sep=""))
+  
   mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
   pixval <- data_tb[pixel_index,var_names] #should choose earlier wich pixel
   #pix300 <- data_tb[300,var_names]
@@ -190,9 +241,8 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure6_time_series_time_profiles_pixel_",pixel_index,"_",out_suffix,".png",sep=""),
+  png(filename=out_fig_filename ,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
   
   plot(1:length(var_names),mean_vals,type="b",ylab="var",xlab="time step",
        main="Average variable and pixel 800 profile")
@@ -204,9 +254,10 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   dev.off()
   
-  ## Figure 7: visualization of histogram of event in time series
+  list_fig_filename[[6]] <- out_fig_filename
   
-  #title("Average pop per elevation zones (observed data)")
+  ##################
+  ## Figure 7: Average pop per elevation zones (observed data)
   ## By zone/strata
   
   r_zonal <- subset(s_raster,zonal_colnames)
@@ -231,41 +282,58 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   dd$time  <- tmp_time
   dd$zones <- mydata$zone #use recycle rule
   
+  out_fig_filename <- file.path(out_dir,paste("Figure7a_average_by_zonal_areas_time_series_time_",out_suffix,".png",sep=""))
+  
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure7a_average_by_zonal_areas_time_series_time_",out_suffix,".png",sep=""),
+  png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  xyplot(data~time |zones,#group=method,
+  p <- xyplot(data~time |zones,#group=method,
          data=dd,type="b",xlab="time",ylab="VAR",
          #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
          auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                         border = FALSE, lines = TRUE,cex=1.2)
-  )
+                         border = FALSE, lines = TRUE,cex=1.2))
+         
+  print(p)
+  
   dev.off()
+  
+  list_fig_filename[[7]] <- out_fig_filename 
+  
+  ###############
+  
+  out_fig_filename <- file.path(out_dir,paste("Figure7b_average_by_zonal_areas_time_series_time_xyplot_",out_suffix,".png",sep=""))
   
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure7b_average_by_zonal_areas_time_series_time_xyplot_",out_suffix,".png",sep=""),
+  png(filename= out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  xyplot(data~time,group=zones,
+  p<- xyplot(data~time,group=zones,
          data=dd,type="b",xlab="time",ylab="VAR",
          #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
          auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
                          border = FALSE, lines = TRUE,cex=1.2),
          main="Average by zones for VAR"
   )
-  
+  print(p)
   dev.off()
+  
+  list_fig_filename[[8]] <- out_fig_filename 
+  
+  ##### Prepare object to  return
+  
+  list_out_filename <- c(list_fig_filename,filename_stat)
   
   write.table(zones_avg_df,file=paste("zones_avg_df","_",out_suffix,".txt",sep=""))
   write.table(dd,file=paste("zones_avg_df_long_table","_",out_suffix,".txt",sep=""))
   
-  explore_obj <- list(zones_avg_df,dd)
-  names(explore_obj) <- c("zones_avg","zones_avg_long_tb")
+  explore_obj <- list(zones_avg_df,dd,list_out_filename)
+  names(explore_obj) <- c("zones_avg","zones_avg_long_tb","out_files")
+  
   return(explore_obj)
 }
 
