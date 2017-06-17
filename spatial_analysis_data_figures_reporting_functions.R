@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 06/07/2017
+#DATE MODIFIED: 06/17/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: debugging error in zonal column name
+#COMMIT: fixing proj_str and print p problem
 #
 #################################################################################################
 
@@ -80,7 +80,7 @@ library(bitops)
 
 ### Make a function to uniformize NA accros given dates!!!
 
-explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event,pixel_index=800,out_dir=NULL,out_suffix=NULL){
+explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event,proj_str,pixel_index=800,out_dir=NULL,out_suffix=NULL){
   ## Function that generates a set of figures and summary of basics information on data provided for SBT.
   # This include time profile, raster time steps and before after event figures.
   #
@@ -89,9 +89,10 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   #2) zonal_colnames: name of the column matching the zone
   #3) var_names: index vector matching the time series
   #4) n_time_event: time step matching the event studied
-  #5) pixel_index: pixel index corresponding to time series to be plotted
-  #6) out_dir: if null use the current directory
-  #7) out_suffix: if null use "" (maybe process id later on)
+  #5) proj_str: projection string in PROJ4 format
+  #6) pixel_index: pixel index corresponding to time series to be plotted
+  #7) out_dir: if null use the current directory
+  #8) out_suffix: if null use "" (maybe process id later on)
   #OUTPUTS
   ## ojbect with three items:
   #1) zones_avg: data.frame with average by zone
@@ -153,7 +154,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   reg_var_list <- l_rast[var_names] #only select population raster
   r_stack <- stack(reg_var_list)
-  projection(r_stack) <- CRS_reg
+  projection(r_stack) <- proj_str
   names(r_stack) <- names(data_tb)[var_names]
   
   ##### 
@@ -223,8 +224,8 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  histogram(subset(r_stack,n_before:n_after))
-  
+  p <- histogram(subset(r_stack,n_before:n_after))
+  print(p)
   dev.off()
   
   list_fig_filename[[5]] <- out_fig_filename
