@@ -60,6 +60,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     out_suffix=""
   }
   
+  projection(s_raster) <- proj_str
+  
   ###########################################################################
   ############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
   
@@ -235,8 +237,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
     
     #ARIMA specific
-    
-    num_cores_tmp <- num_cores
+    #num_cores_tmp <- num_cores
     time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
     n_pred_ahead <- 16
     
@@ -266,7 +267,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         
         out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
         list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                                    num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
+                                    num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
         names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                         "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
         #undebug(predict_temp_reg_fun)
@@ -286,7 +287,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
       
       out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
       list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                                  num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
+                                  num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
       names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                       "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
       
@@ -349,13 +350,12 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   projection(spat_res_rast_mle_eigen_with_previous) <- proj_str
   
   projection(r_temp_pred_rast_arima) <- proj_str
-  #projection(r_temp_pred_rast_lm) <- CRS_reg
-  
-  rast_zonal <- subset(s_raster,zonal_colnames)
-  
-  projection(rast_ref) <- proj_str
-  projection(rast_zonal) <- proj_str
-  projection(s_raster) <- proj_str
+
+  ## This should be set earlier from the s_raster stack
+  #rast_zonal <- subset(s_raster,zonal_colnames)
+  #projection(rast_ref) <- proj_str
+  #projection(rast_zonal) <- proj_str
+  #projection(s_raster) <- proj_str
   
   #r_huric_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
   r_huric_obs <- subset(s_raster,time_window_predicted) #remove 99 because not considred in the prediction!!
@@ -428,10 +428,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #ac_temp_arima_obj$mae_tb
   #,ac_temp_lm_obj$mae_tb))
   
-  mae_tot_tb <- (cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
+  mae_tot_tb <- cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
                        ac_spat_mle_eigen_with_previous_obj$mae_tb,
-                       ac_temp_arima_obj$mae_tb
-  ))
+                       ac_temp_arima_obj$mae_tb)
   
   mae_tot_tb <- as.data.frame(mae_tot_tb)
   row.names(mae_tot_tb) <- NULL
@@ -439,7 +438,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
   #mae_tot_tb$time <- 2:n_pred
   mae_tot_tb$time <- 1:nlayers(r_huric_obs)
-  
   y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb$temp_arima))
   
   res_pix<-960
