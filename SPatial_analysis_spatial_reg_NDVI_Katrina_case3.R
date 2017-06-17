@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 06/08/2017
+#DATE MODIFIED: 06/17/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -21,7 +21,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: modifying summary figures and checking all outputs
+#COMMIT: further modifications to the run_space_and_time_models
 #
 #################################################################################################
 
@@ -49,7 +49,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_06072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06082017.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06172017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -79,12 +79,11 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
 proj_str<- CRS_WGS84 
-CRS_reg <- CRS_WGS84 # PARAM 4
 
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"NDVI_Katrina_06082017" #output suffix for the files and output folder #PARAM 8
+out_suffix <-"NDVI_Katrina_06172017" #output suffix for the files and output folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -228,6 +227,7 @@ test <- explore_and_summarize_data(l_rast,
                                    zonal_colnames, 
                                    var_names,
                                    n_time_event,
+                                   proj_str =proj_str,
                                    pixel_index = 800,
                                    out_dir = out_dir,
                                    out_suffix=out_suffix)
@@ -243,7 +243,16 @@ previous_step <- T
 method_time <- c("arima","arima") # estimator <- "arima",estimation_method <-"arima"
 method_space <- c("mle","eigen") #estimator <- "mle",estimation_method <- "eigen"
 
+debug(run_space_and_time_models)
 
+run_space_and_time_models(s_raster,n_time_event,time_window_selected,
+                                      method_space=c("mle","eigen"),
+                                      method_time=c("arima","arima"), 
+                                      file_format=".tif",
+                                      rast_ref=NULL,
+                                      zonal_colnames,
+                                      num_cores=1,out_dir=out_dir, out_suffix=out_suffix)
+  
 run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected,
                                       method_space=c("mle","eigen"),
                                       method_time=c("arima","arima"), 
@@ -257,6 +266,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   if(is.null(out_suffix)){
     out_suffix=""
   }
+  
   ###########################################################################
   ############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
   
@@ -302,12 +312,14 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ### MLE EIGEN Using previous step first
   
   list_models <- NULL
-  proj_str <- NULL #if null the raster images are not reprojected
-  #the ouput suffix was wrong, needs to be 153!!!
+  #proj_str <- NULL #if null the raster images are not reprojected
+
   #Use 100 to 116
   #out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
   
-  #estimator <- "mle"
+  estimator <- method_space[1]
+  estimation_method <- method_space[2]
+  
   #estimator <- "mle"
   #estimation_method <- "eigen"
   #estimation_method <- "LU"
@@ -318,7 +330,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
   previous_step <- T #Use t-1 neighbour and t-1 value to predict t0
-  
   out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
   
   #list_param_spat_reg <- list(out_dir,r_spat_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator)
@@ -343,7 +354,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   spat_res_rast_mle_eigen_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
   levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
   levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-  
   
   #############################################
   ### STEP 2:
@@ -376,106 +386,108 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
   levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
   
-  
   ##############################################################################################
   ############## PART III TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
+
+  estimator <- method_time[1]
+  estimation_method <- method_time[2]
   
-  ## Predict using temporal info: time steps 
-  
-  ### Use ARIMA!!! with time before
-  
-  #out_dir
-  #r_clip
-  #proj_str
-  #file_format
-  
-  r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
+  #rast_ref <- subset(s_raster,1) #first image ID
+  r_stack <- mask(s_raster,rast_ref)
+
+  r_temp_var <- subset(r_stack,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
+  #r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
   list_models <-NULL
-  
-  #the ouput suffix was wrong, needs to be 153!!!
-  #Use 100 to 116
-  time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-  #100 for NDVI
-  out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
-  estimator <- "lm"
-  estimation_method <-"ols"
-  
-  #ARIMA specific
-  
-  num_cores_tmp <- num_cores
-  time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-  n_pred_ahead <- 16
-  rast_ref <- subset(s_raster,1) #first image ID
-  r_stack_arima <- mask(s_raster,rast_ref)
-  
-  #r_stack <- r_stack_arima
-  arima_order <- NULL
-  
-  #list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-  #                            num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
-  #names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
-  #                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-  #n_pred <- nlayers(r_temp_var) -1
-  #undebug(predict_temp_reg_fun)
-  #test_temp <- predict_temp_reg_fun(14,list_param_temp_reg)
-  #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
-  
-  #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-  
-  #pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
-  
-  ##ARIMA
-  
-  #not run here...
-  
-  r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
-  list_models <-NULL
-  
-  #the ouput suffix was wrong, needs to be 153!!!
-  #Use 100 to 116
-  time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-  
-  out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
-  estimator <- "lm"
-  estimation_method <-"ols"
-  
-  #ARIMA specific
-  
-  num_cores_tmp <- num_cores
-  time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-  n_pred_ahead <- 16
-  rast_ref <- subset(s_raster,1) #first image ID
-  r_stack_arima <- mask(s_raster,rast_ref)
-  
-  #r_stack <- r_stack_arima
-  arima_order <- NULL
-  
-  estimator <- "arima"
-  estimation_method <-"arima"
-  r_clip_tmp <- NULL
-  r_clip_tmp <- rast_ref
-  
   num_cores_tmp <- num_cores
   
-  list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                              num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
-  names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
-                                  "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-  #n_pred <- nlayers(r_temp_var) -1
-  n_pred <- 16
-  #debug(predict_temp_reg_fun)
-  
-  if(re_initialize_arima==T){
-    l_pred_temp_arima <- vector("list",length=length(time_window_selected))
+  ###############################
+  ### Predict using OLS 
+  if(estimator=="lm"){
+
+    #Use 100 to 116
+    time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    #100 for NDVI
+    out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+    #estimator <- "lm"
+    #estimation_method <-"ols"
     
-    for(i in 1:length(time_window_selected)){
-      n_pred <- 1
-      n_pred_ahead <- n_pred
-      #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    #ARIMA specific
+    time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    n_pred_ahead <- 16
+    arima_order <- NULL
+    
+    #list_param_temp_reg <- list(out_dir,r_temp_var,r_clip,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+    #                            num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
+    #names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+    #                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
+    #n_pred <- nlayers(r_temp_var) -1
+    #undebug(predict_temp_reg_fun)
+    #test_temp <- predict_temp_reg_fun(14,list_param_temp_reg)
+    #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
+    
+    #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+    
+    #pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
+    
+  }
+  
+  ###############################
+  ### Predict using ARIMA
+  
+  if(estimator=="arima"){
+    
+    #Use 100 to 116
+    time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+    
+    #ARIMA specific
+    
+    num_cores_tmp <- num_cores
+    time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    n_pred_ahead <- 16
+    
+    arima_order <- NULL
+    r_clip_tmp <- rast_ref
+    
+    list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+                                num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
+    names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+                                    "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
+    #n_pred <- nlayers(r_temp_var) -1
+    n_pred <- 16
+    #debug(predict_temp_reg_fun)
+    
+    if(re_initialize_arima==T){
+      l_pred_temp_arima <- vector("list",length=length(time_window_selected))
       
-      #n_time_pred_start <- 99 + i
-      n_time_pred_start <- time_window_selected[1] - 1 + i
-      time_step <-n_time_pred_start
+      for(i in 1:length(time_window_selected)){
+        n_pred <- 1
+        n_pred_ahead <- n_pred
+        #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+        
+        #n_time_pred_start <- 99 + i
+        n_time_pred_start <- time_window_selected[1] - 1 + i
+        time_step <-n_time_pred_start
+        n_time_pred_end <- n_time_pred_start + length(time_window_selected)
+        
+        out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
+        list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+                                    num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
+        names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+                                        "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
+        #undebug(predict_temp_reg_fun)
+        pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
+        l_pred_temp_arima[[i]] <- pred_temp_arima  #only one date predicted...one step ahead
+      }
+    }else{
+      time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+      #n_pred <- 16
+      n_pred <- length(time_window_selected) -1
+      n_pred_ahead <- n_pred
+      
+      #n_time_pred_start <- 100 
+      n_time_pred_start <- time_window_selected[1] 
+      
       n_time_pred_end <- n_time_pred_start + length(time_window_selected)
       
       out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
@@ -483,33 +495,15 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                   num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
       names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                       "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-      #undebug(predict_temp_reg_fun)
-      pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
-      l_pred_temp_arima[[i]] <- pred_temp_arima  #only one date predicted...one step ahead
+      
+      #debug(predict_temp_reg_fun)
+      pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
+      
     }
-  }else{
-    time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    #n_pred <- 16
-    n_pred <- length(time_window_selected) -1
-    n_pred_ahead <- n_pred
     
-    #n_time_pred_start <- 100 
-    n_time_pred_start <- time_window_selected[1] 
-    
-    n_time_pred_end <- n_time_pred_start + length(time_window_selected)
-    
-    out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
-    list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                                num_cores_tmp,time_step,n_pred_ahead,r_stack_arima,arima_order,NA_flag_val)
-    names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
-                                    "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
-    
-    #debug(predict_temp_reg_fun)
-    pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
     
   }
   
-
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
   
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -713,11 +707,12 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
+  p <- xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
          strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
          auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                         border = FALSE, lines = TRUE,cex=1.2)
-  )
+                         border = FALSE, lines = TRUE,cex=1.2))
+  try(print(p))
+  
   dev.off()
   #histogram(r_zonal)
   
