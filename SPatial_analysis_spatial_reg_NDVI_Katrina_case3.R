@@ -1,6 +1,7 @@
 ####################################    Space Time Analyses PAPER   #######################################
 ############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
-#This script produces a prediction for the dates following the Hurricane event.       
+#This script produces predictions for the Space Beats Time Framework.
+#Data used in the script are related to hurricane Katrina.
 #The script uses spatial neighbours to predict Light data values in the Hurricane Katrina New Orleans region. 
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
@@ -21,7 +22,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: moving function run_space_and_time_models
+#COMMIT: testing and debugging function run_space_and_time_models
 #
 #################################################################################################
 
@@ -47,7 +48,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_space_and_time_predictions <- "space_and_time_predictions_functions_06172017.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_06172017c.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_06072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06172017.R" #PARAM 1
@@ -67,24 +68,16 @@ source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all fu
 
 #in_dir <- "~/Data/Space_beats_time/case3data/" #lights/table" #PARAM3
 #in_dir <- "/home/parmentier/Data/Space_beats_time/Case2_data_NDVI/"
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Case2_data_NDVI/"
-
 #in_dir <- "~/Data/Space_beats_time/case3data/lights/table"
 #in_dir <- "~/Data/Space_beats_time/Case1a_data"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Case2_data_NDVI/"
+
 #out_dir <- "/home/parmentier/Data/Space_beats_time/outputs"
 out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs"
-
-#moore_window <- file.path(in_dir,"window_test4.rst")
-#winds_zones_fname <- file.path(in_dir,"00_windzones_moore_sin.rst")
-
-proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
-#CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
-CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
-proj_str<- CRS_WGS84 
+proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"  
 
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
+NA_flag_val <- -9999 #PARAM7
 out_suffix <-"NDVI_Katrina_06172017" #output suffix for the files and output folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
@@ -115,9 +108,6 @@ previous_step <- T #PARAM 18
 #date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
 date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 
-#dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
-#dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
-dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
 agg_fact <- 5
 agg_fun <- "mean" 
 
@@ -141,6 +131,9 @@ if(create_out_dir_param==TRUE){
 }
 
 data_tb <-read.table(data_fname,sep=",",header=T)
+#dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
+#dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
+dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
 
 #Transform table text file into a raster image
 
@@ -244,19 +237,24 @@ s_raster <- stack(l_rast)
 
 num_cores <- 4
 previous_step <- T
-method_time <- c("arima","arima") # estimator <- "arima",estimation_method <-"arima"
 method_space <- c("mle","eigen") #estimator <- "mle",estimation_method <- "eigen"
 re_initialize_arima <- T
+method_time <- c("arima","arima",re_initialize_arima) # estimator <- "arima",estimation_method <-"arima"
 
-debug(run_space_and_time_models)
+#debug(run_space_and_time_models)
 
-run_space_and_time_models(s_raster,n_time_event,time_window_selected,
-                                      method_space=c("mle","eigen"),
-                                      method_time=c("arima","arima",re_initialize_arima), 
-                                      file_format=".tif",
-                                      rast_ref=NULL,
-                                      zonal_colnames,
-                                      num_cores=1,out_dir=out_dir, out_suffix=out_suffix)
+run_space_and_time_models(s_raster,
+                          n_time_event,
+                          time_window_selected,
+                          method_space=c("mle","eigen"),
+                          method_time=c("arima","arima",T), 
+                          NA_flag_val=NA_flag_val,
+                          file_format=".tif",
+                          rast_ref=NULL,
+                          zonal_colnames,
+                          num_cores=num_cores,
+                          out_dir=out_dir, 
+                          out_suffix=out_suffix)
 
 
 ###########################  END OF SCRIPT #########################################
