@@ -17,7 +17,7 @@
 #TO DO:
 # Simplify and clean up code
 #
-#COMMIT: initial commit for the run space and time function to simplify modeling for the project
+#COMMIT: adding aggregation raster function to test SBT at different spatial resolutions
 #
 #################################################################################################
 
@@ -48,7 +48,8 @@ library(bitops)
 
 run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected,
                                       method_space=c("mle","eigen"),
-                                      method_time=c("arima","arima"), 
+                                      method_time=c("arima","arima",T),
+                                      NA_flag_val=-9999,
                                       file_format=".tif",
                                       rast_ref=NULL,
                                       zonal_colnames,
