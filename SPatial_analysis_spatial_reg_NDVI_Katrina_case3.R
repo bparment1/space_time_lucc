@@ -22,7 +22,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: creating aggreate raster function in case Space and time predictions on aggregated values are needed
+#COMMIT:  moving aggreate raster function for SBT spatial resolution test
 #
 #################################################################################################
 
@@ -144,93 +144,7 @@ dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI K
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=file_format,NA_flag_val,tolerance_val=0.000120005)
 
 if(!is.null(agg_fact)){
-
-  aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir){
-    #
-    #Function to aggregate input raster stack
-    #if use majority then the zonal layer is aggregated and then reclassfied based by the majority rule
-    
-    lf_agg <- mclapply(l_rast,
-                       FUN=aggregate_raster,
-                       #r_in=raster(lf_layerized_bool[1]),
-                       agg_fact=agg_fact,
-                       reg_ref_rast=NULL,
-                       #agg_fun="mean",
-                       agg_fun=agg_fun,
-                       out_suffix=NULL,
-                       file_format=file_format,
-                       out_dir=out_dir,
-                       out_rast_name = NULL,
-                       mc.preschedule=FALSE,
-                       mc.cores = num_cores) 
-    
-    l_rast_original <- l_rast
-    l_rast <- unlist(lf_agg) 
-    
-    ###Break out and get mean per class and do majority rule!
-    
-    if(use_majority==TRUE){
-      
-      #l_rast_original
-      #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
-      #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-      raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-      out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
-      #debug(generate_soft_cat_aggregated_raster_fun)
-      lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
-                                                             reg_ref_rast=NULL,
-                                                             agg_fact,
-                                                             agg_fun,
-                                                             num_cores,
-                                                             NA_flag_val=NA_flag_val,
-                                                             file_format,
-                                                             out_dir,
-                                                             out_suffix_str)
-      
-      reclass_val <- unique(raster(raster_name)) #unique zonal values to reassign
-      #reclass_val <- c(0,1,2) # value for the elevation reclassified
-      
-      #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_04072017b.R" #PARAM 1
-      #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
-      #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-      #debug(reclass_in_majority)
-      
-      r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),
-                                           threshold_val=NULL,
-                                           max_aggregation = TRUE,
-                                           reclass_val = reclass_val)
-      
-      plot(r_reclass_obj$r_rec)
-      rast_zonal <- r_reclass_obj$r_rec
-      #zonal_colnames
-      raster_name <- paste0("agg_",agg_fact,"_","r_",zonal_colnames,"_",out_suffix,file_format)
-      
-      writeRaster(rast_zonal,
-                  filename=file.path(out_dir,raster_name),
-                  overwrite=TRUE)  
-      
-    }
-
-    if(use_majority==FALSE){
-      #sure SRTM and reclass based on threshold values?
-      
-    }
-    
-    #r_srtm_Katrina_rec2
-    #-rw-rw-r-- 1 bparmentier bparmentier 1894 Apr  7 12:33 r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
-    #-rw-rw-r-- 1 bparmentier bparmentier 1016 Apr  7 12:34 agg_5_r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
-    
-    ###
-    zonal_colnames <- gsub(extension(raster_name),"",raster_name)
-    ##
-    
-    ##########################
-    #### prepare return object
-    
-    
-    return(zonal_colnames,l_rast,l_rast_original)
-  }
-  
+  aggregate_raster_fun(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir)
 }
 
 ###########################
