@@ -127,8 +127,10 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
   ##########################
   #### prepare return object
   
+  obj <- list(zonal_colnames,l_rast,l_rast_original)
+  names(obj) <- c("zonal_colnames","l_rast","l_rast_original")
   
-  return(zonal_colnames,l_rast,l_rast_original)
+  return(obj)
 }
 
 
@@ -222,6 +224,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   n_pred <- nlayers(r_spat_var) - 1 # minus one because the first date is not predicted
   #debug(predict_spat_reg_fun)
   #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
+  browser()
   
   pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
                                                  list_param=list_param_spat_reg,
