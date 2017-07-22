@@ -6,7 +6,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 06/17/2017
+#DATE MODIFIED: 07/22/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -48,7 +48,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_space_and_time_predictions <- "space_and_time_predictions_functions_06172017d.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_07222017.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_06072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06172017.R" #PARAM 1
@@ -78,7 +78,7 @@ proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"NDVI_Katrina_06172017" #output suffix for the files and output folder #PARAM 8
+out_suffix <-"NDVI_Katrina_07222017" #output suffix for the files and output folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
@@ -110,6 +110,7 @@ date_range3 <- c("2001.01.01","2010.12.31") #NDVI Katrina
 
 agg_fact <- 5
 agg_fun <- "mean" 
+use_majority <- T
 
 ################# START SCRIPT ###############################
 
@@ -144,7 +145,13 @@ dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI K
 l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=file_format,NA_flag_val,tolerance_val=0.000120005)
 
 if(!is.null(agg_fact)){
-  aggregate_raster_fun(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir)
+  #debug(aggregate_raster_fun)
+  obj <- aggregate_raster_fun(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir)
+
+  l_rast <- obj$l_rast  
+  zonal_colnames <- obj$zonal_colnames
+  l_rast_original <- obj$l_rast_original
+  
 }
 
 ###########################
