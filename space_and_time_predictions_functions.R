@@ -6,8 +6,8 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
-#DATE CREATED: 06/17/2017 
-#DATE MODIFIED: 06/17/2017
+#DATE CREATED: 07/23/2017 
+#DATE MODIFIED: 06/23/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -224,7 +224,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   n_pred <- nlayers(r_spat_var) - 1 # minus one because the first date is not predicted
   #debug(predict_spat_reg_fun)
   #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
-  browser()
+  #browser()
   
   pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
                                                  list_param=list_param_spat_reg,
@@ -473,12 +473,19 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
   #                   spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s_arima,res_temp_s_lm,res_spat_s)
   
+  #browser()
+  rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
+  
   r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-                     spat_pred_rast_mle_eigen_no_previous,spat_pred_rast_mle_eigen_with_previous,res_temp_s_arima,res_spat_s)
+                     spat_pred_rast_mle_eigen_no_previous,
+                     spat_pred_rast_mle_eigen_with_previous,
+                     res_temp_s_arima,res_spat_s)
   
   dat_out <- as.data.frame(r_results)
   dat_out <- na.omit(dat_out)
-  write.table(dat_out,file=paste("dat_out_",out_suffix,".txt",sep=""),
+  
+  filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
+  write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
   
   ### Now accuracy assessment using MAE
@@ -600,8 +607,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   ############## Prepare return object #############
   
-  ###
+  space_and_time_prediction_obj <-  list(filename_dat_out,mae_tot_tb,mae_zones_tb)
+  names(space_and_time_prediction_obj) <- c("filename_dat_out","mae_tot_tb","mae_zones_tb")
+  return(space_and_time_prediction_obj)
   
-  ##
-  return()
 }
