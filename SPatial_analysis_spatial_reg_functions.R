@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 04/07/2017
+#DATE MODIFIED: 06/07/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -164,7 +164,7 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
   
   
   if(!is.null(proj_str)){
-    r_s <- projectRaster(r_s,crs=CRS_WGS84) #project to latlong
+    r_s <- projectRaster(r_s,crs=proj_str) #project to latlong
   }
   
   #convert to polygon...for input in model
