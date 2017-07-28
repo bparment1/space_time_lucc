@@ -35,10 +35,20 @@ list_vt <- list(vtn1,vt0,vt1,vt2,vt3,vt4)
 
 list_r <-(lapply(list_vt, function(x,rast){rast[]<-x;return(rast)},rast=r))
 r_var <- stack(list_r)
+
+## generating additional variables
+r_zonal <- subset(r_var,1)
+r_zonal[] <- rep(1,ncell(r_zonal))
+r_x <-init(r_var,v="x")
+r_y <-init(r_var,v="y")
+
 col_palette <- matlab.like(100)
 #col_palette <- matlab.like(100)
 
+
 levelplot(r_var,col.regions=col_palette,main="Time series")
+
+
 
 #?Moran
 f <- matrix(c(1,1,1,
@@ -52,35 +62,7 @@ t_corr_fun <- function(i,list_rast){
   return(cor_val)
 }
 
-#undebug(t_corr_fun)
-t_corr_fun(2,list_rast=list_r)
-
-var_mean <- cellStats(r_var,mean)
-s_corr <- unlist(lapply(list_r, function(rast){Moran(rast,w=f)}))
-t_corr <- unlist(lapply(2:length(list_r),FUN=t_corr_fun,list_rast=list_r))
-t_corr <- c(NA,t_corr)
-plot(var_mean,type="l")
-## TO find A, B, C: use differencing
-plot(diff(var_mean),type="l")
-
-plot(t_corr,type="b",col="pink",ylim=c(-1,1))
-lines(s_corr,type="b",col="blue")
-
-par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
-plot(t_corr,type="l",col="pink")
-par(new = TRUE)
-plot(s_corr,type="l",col="blue",axes = FALSE, bty="n",xlab = "", ylab = "")
-axis(side=4, at = pretty(range(s_corr)))
-mtext("spat corr", side=4, line=3)
-
-### Generate tables:
-
-df_ts <- data.frame(s_corr=s_corr,t_corr=t_corr,var=var_mean)
-df_ts$time_step <- 1:nrow(df_ts)
-View(df_ts)
-plot(t_corr,s_corr,type="b")
-text(t_corr,s_corr,labels=df_ts$time_step,cex=2)
-#text(c(2,2),c(37,35),labels=c("Non-case","Case"))
+#Call function
 
 
 ################# END OF SCRIPT ##################
