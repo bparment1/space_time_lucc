@@ -607,8 +607,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   ############## Prepare return object #############
   
-  space_and_time_prediction_obj <-  list(filename_dat_out,mae_tot_tb,mae_zones_tb)
-  names(space_and_time_prediction_obj) <- c("filename_dat_out","mae_tot_tb","mae_zones_tb")
+  space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
+  names(space_and_time_prediction_obj) <- c("filename_dat_out","s_raster","mae_tot_tb","mae_zones_tb")
   return(space_and_time_prediction_obj)
   
 }
