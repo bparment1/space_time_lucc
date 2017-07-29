@@ -2,6 +2,9 @@ library(raster)
 library(rasterVis)
 library(colorRamps)
 
+
+###### PART 1: generate dataset ##########
+
 n_row <- 3
 n_col <- 3
 
@@ -36,6 +39,10 @@ list_vt <- list(vtn1,vt0,vt1,vt2,vt3,vt4)
 list_r <-(lapply(list_vt, function(x,rast){rast[]<-x;return(rast)},rast=r))
 r_var <- stack(list_r)
 
+n_layers <- nlayers(r_var)
+r_var_names <- paste0("time_",1:n_layers)
+names(r_var) <- r_var_names
+
 ## generating additional variables
 r_zonal <- subset(r_var,1)
 r_zonal[] <- rep(1,ncell(r_zonal))
@@ -45,24 +52,12 @@ r_y <-init(r_var,v="y")
 col_palette <- matlab.like(100)
 #col_palette <- matlab.like(100)
 
-
 levelplot(r_var,col.regions=col_palette,main="Time series")
 
+#Call function for sbt?
+writeRaster(r_var, names(r_var), bylayer=TRUE, format='GTiff')
 
-
-#?Moran
-f <- matrix(c(1,1,1,
-              1,0,1,
-              1,1,1), nrow=3)
-
-t_corr_fun <- function(i,list_rast){
-  r_subset <- stack(list_rast[[i-1]],list_rast[[i]]) 
-  cor_val<-layerStats(r_subset,'pearson')
-  cor_val <- cor_val[[1]][1,2]
-  return(cor_val)
-}
-
-#Call function
+########## Generate figures and metrics ##########
 
 
 ################# END OF SCRIPT ##################
