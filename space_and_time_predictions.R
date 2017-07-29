@@ -22,8 +22,11 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT:  initial commit for general Space Beats Time script
+#COMMIT:  first test runing script general Space Beats Time script
 #
+
+#Rscript space_and_time_predictions_07292017b.R "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
+
 #################################################################################################
 
 ###Loading R library and packages                                                      
@@ -66,106 +69,97 @@ source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all fu
 
 #####  Parameters and argument set up ###########
 
-args <- commandArgs(TRUE)
+args<-commandArgs(TRUE)
 
-args_table <- args[0]
+args_table <- args[1]
 
-df_args <- read.table(args_table,sep=",")
+#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
 
-in_dir <- df_args[1,2]
-out_dir <- df_args[2,2]
-proj_str <- df_args[3,2]
-file_format <- df_args[4,2]
-NA_flag_val <- df_args[5,2]
-out_suffix <- df_args[6,2]
-create_out_dir_param <- df_args[7,2] 
-data_fname <- df_args[8,2] 
-coord_names <- df_args[9,2]  
-zonal_colnames <- df_args[10,2] 
-var_names <- df_args[11,2] 
-num_cores <- df_args[12,2] 
-n_time_event <- df_args[13,2]
-time_window_selected <- df_args[14,2] 
-previous_step <- df_args[15,2] 
-date_range <- df_args[16,2]  
-agg_fact <- df_args[17,2]  
-agg_fun <- df_args[18,2]
-use_majority <- df_args[19,2]
-method_space <- df_args[20,2] 
-re_initialize_arima <- df_args[21,2] 
-method_time <- df_args[22,2]
-pixel_index <- df_args[23,2] 
+df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
-### Check data type:
-NA_flag_val <- as.integer(NA_flag_val)
-coord_names <- unlist(strsplit(coord_names,","))
-num_cores <- as.integer(num_cores)
-var_names <- as.integer(unlist(strsplit("1,230",",")))
-var_names <- seq(var_names[1],var_names[2])
-date_range <- "2001.01.01,2010.12.31,16"
-date_range <- (unlist(strsplit(date_range,",")))
+index_val <- 2 #this is set up for parallelization, if we have multiple regions
 
-# #in_dir <- "~/Data/Space_beats_time/case3data/" #lights/table" #PARAM3
-# #in_dir <- "/home/parmentier/Data/Space_beats_time/Case2_data_NDVI/"
-# #in_dir <- "~/Data/Space_beats_time/case3data/lights/table"
-# #in_dir <- "~/Data/Space_beats_time/Case1a_data"
+in_dir <- df_args[1,index_val]
+out_dir <- df_args[2,index_val]
+proj_str <- df_args[3,index_val]
+file_format <- df_args[4,index_val]
+NA_flag_val <- df_args[5,index_val]
+out_suffix <- df_args[6,index_val]
+create_out_dir_param <- df_args[7,index_val] 
+data_fname <- df_args[8,index_val] 
+coord_names <- df_args[9,index_val]  
+zonal_colnames <- df_args[10,index_val] 
+var_names <- df_args[11,index_val] 
+num_cores <- df_args[12,index_val] 
+n_time_event <- df_args[13,index_val]
+time_window_selected <- df_args[14,index_val] 
+previous_step <- df_args[15,index_val] 
+date_range <- df_args[16,index_val]  
+agg_fact <- df_args[17,index_val]  
+agg_fun <- df_args[18,index_val]
+use_majority <- df_args[19,index_val]
+method_space <- df_args[20,index_val] 
+re_initialize_arima <- df_args[21,index_val] 
+method_time <- df_args[22,index_val]
+pixel_index <- df_args[23,index_val] 
+
+#### input values for Katrina NDVI data
 # in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Case2_data_NDVI/" #PARAM 1
-# 
-# #out_dir <- "/home/parmentier/Data/Space_beats_time/outputs"
 # out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs" #PARAM 2
 # proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"  #PARAM 3
-# 
-# ## Constant
 # file_format <- ".tif" #PARAM5 #PARAM 4
-# NA_flag_val <- -9999 #PARAM7 #PARAM5
-# 
-# out_suffix <-"NDVI_Katrina_07282017" # PARAM6, output suffix for the files and output folder 
-# create_out_dir_param=TRUE #PARAM7
-# 
-# #data_fname <- file.path("/home/parmentier/Data/Space_beats_time/R_Workshop_April2014","Katrina_Output_CSV - Katrina_pop.csv")
-# #data_fname <- file.path(in_dir,"lights/table","Kat_lights.txt") #PARAM 10
-# #data_fname <- file.path(in_dir,"output_Katrina_04082015","dat_reg_var_list_NDVI_Katrina_04082015.txt")
-# data_fname <- file.path(in_dir,"dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt") #PARAM 8
-# 
-# coord_names <- c("x","y") #PARAM 9
-# #coord_names <- c("Long","Lat") 
-# #coord_names <- c("XCoord","YCoord")
-# #coord_names <- c("POINT_X1","POINT_Y1")
-# 
+# NA_flag_val <- "-9999" #PARAM7 #PARAM5
+# out_suffix <-"NDVI_Katrina_07282017" # PARAM6, output suffix for the files and output folder
+# create_out_dir_param <- TRUE #PARAM7
+# data_fname <- "/home/bparmentier/Google Drive/Space_beats_time/Case2_data_NDVI/dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt" #PARAM 8
+# coord_names <- "x,y" #PARAM 9
 # zonal_colnames <- "r_srtm_Katrina_rec2" #PARAM 12
-# 
-# var_names <- 1:230 #PARAM 10 #Data is stored in the columns 3 to 22
-# #num_cores <- 11 #PARAM 
-# num_cores <- 4 #PARAM 11
-# 
-# n_time_event <- 108 #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
-# time_window_selected <- 100:116 #PARAM 13: use alll dates for now
-# 
-# previous_step <- T #PARAM 14
-# 
-# #date_range1 <- c("2001.01.01","2012.12.31") #EDGY DEAN
-# #date_range2 <- c("1992.01.01","2013.12.31") #Light Katrina: annual
-# date_range3 <- c("2001.01.01","2010.12.31") #PARAM 15, NDVI Katrina
-# 
-# agg_fact <- 5 #PARAM 16
+# var_names <- "1,230" #PARAM 10 #Data is stored in the columns 3 to 22
+# #num_cores <- "4" #PARAM 11
+# n_time_event <- "108" #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
+# time_window_selected <- "100,116" #PARAM 13: use alll dates for now
+# previous_step <- TRUE #PARAM 14
+# date_range <- "2001.01.01,2010.12.31,16" #PARAM 15, NDVI Katrina
+# agg_fact <- "5" #PARAM 16 , if NULL no aggregation is performed
 # agg_fun <- "mean" #PARAM 17
-# use_majority <- T #PARAM 18
-# 
-# ## Constant?
-# method_space <- c("mle","eigen") #PARAM 19, estimator <- "mle",estimation_method <- "eigen"
-# re_initialize_arima <- T #PARAM 20
-# method_time <- c("arima","arima",re_initialize_arima) #PARAM 21, estimator <- "arima",estimation_method <-"arima"
-# 
-# #pixel index
-# pixel_index <- 800 #PARAM 22
+# use_majority <- TRUE #PARAM 18
+# method_space <- "mle,eigen" #PARAM 19, estimator <- "mle",estimation_method <- "eigen"
+# re_initialize_arima <- TRUE #PARAM 20
+# method_time <- "arima,arima,TRUE" #PARAM 21, estimator <- "arima",estimation_method <-"arima"
+# pixel_index <- "800" #PARAM 22
 
 ################# START SCRIPT ###############################
 
 ### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
 
+### Check input argument data types:
+NA_flag_val <- as.integer(NA_flag_val)
+coord_names <- unlist(strsplit(coord_names,","))
+num_cores <- as.integer(num_cores)
+var_names <- as.integer(unlist(strsplit(var_names,",")))
+var_names <- seq(var_names[1],var_names[2])
+n_time_event <- as.integer(n_time_event)
+time_window_selected <-  as.integer(unlist(strsplit(time_window_selected,",")))
+time_window_selected <- seq(time_window_selected[1],time_window_selected[2])
+
+method_space <- (unlist(strsplit(method_space,",")))
+method_time <- (unlist(strsplit(method_time,",")))
+
+date_range <- (unlist(strsplit(date_range,",")))
+
+### Handle command line data type
+if(agg_fact=="NULL"){
+  agg_fact <- NULL
+}else{
+  agg_fact <- as.integer(agg_fact)
+}
+if(out_dir=="NULL"){
+  out_dir <- NULL
+}
+  
 #set up the working directory
 #Create output directory
-create_sp_poly_spatial_reg
+
 if(is.null(out_dir)){
   out_dir <- dirname(in_dir) #output will be created in the input dir
 }
@@ -179,11 +173,15 @@ if(create_out_dir_param==TRUE){
 }
 
 ## Add check to see if raster tif or list of files!!
-data_tb <-read.table(data_fname,sep=",",header=T)
+
+data_tb <- try(read.table(data_fname,sep=",",header=T))
+#if(inherits(data_tb)=="try-error"){
+  #<- stack(data_fname)
+#}
 
 #dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
 #dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
-dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI Katrina
+dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_range[3]))$dates #NDVI Katrina
 
 #Transform table text file into a raster image
 
@@ -191,16 +189,31 @@ dates3 <- generate_dates_by_step(date_range3[1],date_range3[2],16)$dates #NDVI K
 ### Aggregate data if necessary
 #debug(rasterize_df_fun)
 #This function is very slow and inefficienct, needs improvement (add parallelization)
-l_rast <- rasterize_df_fun(data_tb,coord_names,proj_str,out_suffix,out_dir=".",file_format=file_format,NA_flag_val,tolerance_val=0.000120005)
+l_rast <- rasterize_df_fun(data_tb,
+                           coord_names,
+                           proj_str,
+                           out_suffix,
+                           out_dir=out_dir,
+                           file_format=file_format,
+                           NA_flag_val,
+                           tolerance_val=0.000120005)
 
 if(!is.null(agg_fact)){
   #debug(aggregate_raster_fun)
-  obj <- aggregate_raster_fun(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir)
+  obj <- aggregate_raster_fun(l_rast,
+                              zonal_colnames,
+                              use_majority,
+                              agg_fact,
+                              agg_fun,
+                              file_format,
+                              rast_ref,
+                              num_cores,
+                              out_suffix,
+                              out_dir)
 
   l_rast <- obj$l_rast  
   zonal_colnames <- obj$zonal_colnames
   l_rast_original <- obj$l_rast_original
-  
 }
 
 ###########################
@@ -210,12 +223,12 @@ if(!is.null(agg_fact)){
 #debug(explore_and_summarize_data)
 #test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
 
-test <- explore_and_summarize_data(l_rast,
+explore_obj <- explore_and_summarize_data(l_rast,
                                    zonal_colnames, 
                                    var_names,
                                    n_time_event,
                                    proj_str =proj_str,
-                                   pixel_index = 800,
+                                   pixel_index = pixel_index,
                                    out_dir = out_dir,
                                    out_suffix=out_suffix)
 
@@ -237,10 +250,10 @@ s_raster <- stack(l_rast)
 run_space_and_time_models(s_raster,
                           n_time_event,
                           time_window_selected,
-                          method_space=c("mle","eigen"),
-                          method_time=c("arima","arima",T), 
+                          method_space=method_space,
+                          method_time=method_time, 
                           NA_flag_val=NA_flag_val,
-                          file_format=".tif",
+                          file_format=file_format,
                           rast_ref=NULL,
                           zonal_colnames,
                           num_cores=num_cores,
