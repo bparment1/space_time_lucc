@@ -1,6 +1,43 @@
-library(raster)
+####################################    Space Beats Time Research  #######################################
+################################ Generating datasets for examples of curves #######################################
+#This script generates datasets for the Space Beats Time Framework.
+#
+#AUTHORS: Benoit Parmentier                                             
+#DATE CREATED: 07/28/2017 
+#DATE MODIFIED: 07/30/2017
+#Version: 1
+#PROJECT:  with Marco Millones            
+#
+#COMMENTS: - Generate additional datasets
+#
+#TO DO:
+# - 
+#COMMIT:  
+#
+#################################################################################################
+
+###Loading R library and packages                                                      
+
+library(sp)
+library(rgdal)
+library(spdep)
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
+library(gtools)
+library(maptools)
+library(parallel)
 library(rasterVis)
-library(colorRamps)
+library(raster)
+library(zoo)  #original times series function functionalies and objects/classes
+library(xts)  #extension of time series objects and functionalities
+library(forecast) #arima and other time series methods
+library(lubridate) #date and time handling tools
+library(colorRamps) #contains matlab.like color palette
+library(rgeos) #spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
+
+###################### Functions used ############
+
 
 t_corr_fun <- function(i,list_rast){
   r_subset <- stack(list_rast[[i-1]],list_rast[[i]]) 
@@ -57,7 +94,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   
   plot(var_mean,type="l")
   
-  obj_metrics <- df_compute_change_shape_metrics(var_mean,method = "differencing")
+  obj_metrics <- compute_change_shape_metrics(var_mean,method = "differencing")
   
   plot(diff(var_mean),type="l")
   
@@ -75,11 +112,12 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   
   df_ts <- data.frame(s_corr=s_corr,t_corr=t_corr,var=var_mean)
   df_ts$time_step <- 1:nrow(df_ts)
-  View(df_ts)compute_change_shape_metrics
+  #View(df_ts)compute_change_shape_metrics
   plot(t_corr,s_corr,type="b")
   text(t_corr,s_corr,labels=df_ts$time_step,cex=2)
   #text(c(2,2),c(37,35),labels=c("Non-case","Case"))
   
+  return(df_ts)
 }
 
 
