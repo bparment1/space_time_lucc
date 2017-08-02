@@ -4,7 +4,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 07/30/2017
+#DATE MODIFIED: 08/02/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -38,6 +38,24 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###################### Functions used ############
 
+create_dir_fun <- function(out_dir,out_suffix){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    out_dir <- file.path(out_dir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
+  return(out_dir)
+}
+
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
 
 t_corr_fun <- function(i,list_rast){
   r_subset <- stack(list_rast[[i-1]],list_rast[[i]]) 
