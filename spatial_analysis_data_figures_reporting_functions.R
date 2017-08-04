@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 06/17/2017
+#DATE MODIFIED: 08/04/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: fixing proj_str and print p problem
+#COMMIT: debugging explore_data function to account for raster stack rather than data table
 #
 #################################################################################################
 
@@ -155,18 +155,25 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   reg_var_list <- l_rast[var_names] #only select population raster
   r_stack <- stack(reg_var_list)
   projection(r_stack) <- proj_str
-  names(r_stack) <- names(data_tb)[var_names]
+  #names(r_stack) <- names(data_tb)[var_names]
   
   ##### 
   #Report this basic information in  a text file 
   filename_stat <- paste0("raster_time_series_basics_info_",out_suffix,".txt")
   
   sink(file=filename_stat)
+  "Raster stack dimension for variable:"
   dim(r_stack) #34x49x230 
+  "Number of cells in a raster:"
   ncell(s_raster) #1666
+  "Number of NA values:"
   freq(r_FID,value=NA) #122
+  "Number of valid (not NA):"
   ncell(s_raster) - freq(r_FID,value=NA) #1544
+  "Spatial resolution in x and y:"
   res(r_stack) #about 1km
+  "Projection information:"
+  projection(r_stack)
   sink()
   
   #improve this later!
@@ -192,13 +199,13 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   ## Figure 4: visualization of event in time series
   
-  n_time_event #108
+  #n_time_event #108
   #dates3[108]
   #[1] "2005-08-29"
   
   ## plottting after and before event
-  n_before <- n_time_event - 5
-  n_after <- n_time_event + 5
+  n_before <- n_time_event - 2
+  n_after <- n_time_event + 2
   
   out_fig_filename <- file.path(out_dir,paste("Figure4_visualization_time_series_time_event_before_after_",out_suffix,".png",sep=""))
   
@@ -208,8 +215,12 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  p<- levelplot(r_stack,layers=n_before:n_after,col.regions=matlab.like(125))
+  p<- levelplot(r_stack,
+                layers=n_before:n_after,
+                col.regions=matlab.like(125))
+
   print(p)
+  
   dev.off()
   
   list_fig_filename[[4]] <- out_fig_filename
@@ -235,8 +246,12 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
 
   out_fig_filename <- file.path(out_dir,paste("Figure6_time_series_time_profiles_pixel_",pixel_index,"_",out_suffix,".png",sep=""))
   
-  mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
-  pixval <- data_tb[pixel_index,var_names] #should choose earlier wich pixel
+  #mean_vals <- colMeans(data_tb[,var_names],na.rm=T)
+  mean_vals <- cellStats(r_stack,"mean")
+  
+  pix_val <- r_stack[index_val]
+  #pixval <- data_tb[pixel_index,var_names] #should choose earlier wich pixel
+  
   #pix300 <- data_tb[300,var_names]
   
   res_pix<-960
@@ -247,7 +262,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   plot(1:length(var_names),mean_vals,type="b",ylab="var",xlab="time step",
        main="Average variable and pixel 800 profile")
-  lines(1:length(var_names),pixval,type="b",ylab="var",xlab="time step",col=c("red"),
+  lines(1:length(var_names),pix_val,type="b",ylab="var",xlab="time step",col=c("red"),
         main="Average variable and pixel 800 profile")
   legend("bottomleft",legend=c("Overall average VAR ","PIX 800 "),
          col=c("black","red"),lty=c(1,2))
