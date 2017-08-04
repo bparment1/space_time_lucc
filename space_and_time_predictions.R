@@ -6,7 +6,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 07/29/2017
+#DATE MODIFIED: 08/04/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -54,7 +54,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 function_space_and_time_predictions <- "space_and_time_predictions_functions_07282017.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_07282017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06172017.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
@@ -74,6 +74,7 @@ args<-commandArgs(TRUE)
 args_table <- args[1]
 
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
+#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_sample_data1_08042017.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -174,7 +175,7 @@ if(create_out_dir_param==TRUE){
 
 ## Add check to see if raster tif or list of files!!
 
-data_tb <- try(read.table(data_fname,sep=",",header=T))
+data_tb <- try(read.table(data_fname,sep=",",header=T,stringsAsFactors = F))
 #if(inherits(data_tb)=="try-error"){
   #<- stack(data_fname)
 #}
@@ -189,14 +190,20 @@ dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_
 ### Aggregate data if necessary
 #debug(rasterize_df_fun)
 #This function is very slow and inefficienct, needs improvement (add parallelization)
-l_rast <- rasterize_df_fun(data_tb,
-                           coord_names,
-                           proj_str,
-                           out_suffix,
-                           out_dir=out_dir,
-                           file_format=file_format,
-                           NA_flag_val,
-                           tolerance_val=0.000120005)
+
+### If ncol is greater than 1 then, it is a textfile with data rather than a list of raster
+if(ncol(data_tb)>1){
+  l_rast <- rasterize_df_fun(data_tb,
+                             coord_names,
+                             proj_str,
+                             out_suffix,
+                             out_dir=out_dir,
+                             file_format=file_format,
+                             NA_flag_val,
+                             tolerance_val=0.000120005)
+}else{
+  l_rast <- data_tb[,1]
+}
 
 if(!is.null(agg_fact)){
   #debug(aggregate_raster_fun)
