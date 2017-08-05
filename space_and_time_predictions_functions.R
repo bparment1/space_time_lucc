@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 08/07/2017
+#DATE MODIFIED: 08/09/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -17,7 +17,7 @@
 #TO DO:
 # Simplify and clean up code
 #
-#COMMIT: adding aggregation raster function to test SBT at different spatial resolutions
+#COMMIT: fixing output dir to save arima outputs
 #
 #################################################################################################
 

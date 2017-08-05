@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 07/28/2017
+#DATE MODIFIED: 08/05/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT:fixing bugs in reclass_in_majority
+#COMMIT: fixing bugs in reclass_in_majority
 #
 #################################################################################################
 
@@ -409,7 +409,7 @@ predict_temp_reg_fun <-function(i,list_param){
   ##Inputs are raster stack with different options for regression estimators: OLS or ARIMA
   #####
   ## Date created: 03/09/2014
-  ## Date modified: 03/07/2017
+  ## Date modified: 08/05/2017
   # Authors: Benoit Parmentier
   #
   #INPUTS:
@@ -487,7 +487,7 @@ predict_temp_reg_fun <-function(i,list_param){
     n_end   <- c(time_step)+n_pred_ahead
     r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
     r_var2 <- subset(r_ref_s,i:n_pred)
-    r_ref_s <- crop(r_var2,r_clip)
+    r_ref_s <- crop(r_var2,r_clip) #used in the prediciton with only tow time steps
     
     data_reg2_spdf <- as(r_ref_s,"SpatialPointsDataFrame")
     names(data_reg2_spdf) <- c("t1","t2")
@@ -495,8 +495,9 @@ predict_temp_reg_fun <-function(i,list_param){
     data_reg2 <- na.omit(data_reg2) #remove NA...this reduces the number of observations
     ols_temp_mod_pred_obj <-try(lm(t2 ~ t1, data=data_reg2))
     #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
-
-    save(ols_temp_mod_pred_obj,file=file.path(out_dir,paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep="")))
+    
+    filename_obj <- file.path(out_dir,paste("ols_temp_mod_pred_obj","_",out_suffix,".RData",sep=""))
+    save(ols_temp_mod_pred_obj,file=filename_obj)
     #temp_mod <- paste("ols_temp_pred_obj","_",out_suffix,".RData",sep="")
     #summary(lm_mod)
   
