@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/05/2017
+#DATE MODIFIED: 08/06/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -890,8 +890,12 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   sd_rmse_tb <- zonal(r_res_s^2,r_zones,fun="sd") #
   #sd_mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="sd") #mean square error
   
-  rmse_zones_tb <- cbind(mse_zones_tb[,1],sqrt(mse_zones_tb[,2:dim(mse_zones_tb)[2]])) #root mean square error
-  colnames(rmse_zones_tb)[1] <- c("zone")
+  rmse_zones_tb <- cbind(mse_zones_tb[,1],
+                         sqrt(mse_zones_tb[,2:dim(mse_zones_tb)[2]])) #root mean square error
+  if(!is.null(colnames(rmse_zones_tb)[1])){
+    colnames(rmse_zones_tb)[1] <- c("zone")
+  }
+
   #Overall Accuracy/errors 
   
   mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
