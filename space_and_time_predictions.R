@@ -6,7 +6,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/06/2017
+#DATE MODIFIED: 08/07/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -22,7 +22,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT:  first test runing script general Space Beats Time script
+#COMMIT:  testing Space Beats Time script modifications on Katrina NDVI 
 #
 
 #Rscript space_and_time_predictions_07292017b.R "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
@@ -51,7 +51,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 ###### Functions used in this script
 
-function_space_and_time_predictions <- "space_and_time_predictions_functions_08062017.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_08072017.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_08062017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
@@ -73,8 +73,8 @@ args<-commandArgs(TRUE)
 
 args_table <- args[1]
 
-#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
-args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_sample_data1_08042017.csv"
+args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_08072017.csv"
+#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_sample_data1_08042017.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -252,7 +252,7 @@ s_raster <- stack(l_rast)
 #re_initialize_arima <- T
 #method_time <- c("arima","arima",re_initialize_arima) # estimator <- "arima",estimation_method <-"arima"
 #method_time <- c(estimator,estimation_method,F)
-method_time <- c("lm","ols",FALSE)
+#method_time <- c("lm","ols",FALSE)
 
 #debug(run_space_and_time_models)
 
