@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 08/06/2017
+#DATE MODIFIED: 08/07/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -290,6 +290,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   list_models <-NULL
   num_cores_tmp <- num_cores
   
+  browser()
   ###############################
   ### Predict using OLS 
   if(estimator=="lm"){
@@ -341,17 +342,21 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   ###############################
   ### Predict using ARIMA
+  browser()
   
   if(estimator=="arima"){
     
     #Use 100 to 116
     #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+    #out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
+    out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
     
     #ARIMA specific
     #num_cores_tmp <- num_cores
-    time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    n_pred_ahead <- 16
+    #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    time_step <- time_step_start + 1 # We are
+    
+    n_pred_ahead <- nlayers(r_temp_var) -1 
     
     arima_order <- NULL
     r_clip_tmp <- rast_ref
@@ -361,10 +366,11 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                     "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
     #n_pred <- nlayers(r_temp_var) -1
-    n_pred <- 16
+    n_pred <- n_pred_ahead
     #debug(predict_temp_reg_fun)
     
     if(re_initialize_arima==T){
+      #l_pred_temp_arima <- vector("list",length=length(time_window_selected))
       l_pred_temp_arima <- vector("list",length=length(time_window_selected))
       
       for(i in 1:length(time_window_selected)){
@@ -374,10 +380,12 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         
         #n_time_pred_start <- 99 + i
         n_time_pred_start <- time_window_selected[1] - 1 + i
+        
         time_step <-n_time_pred_start
         n_time_pred_end <- n_time_pred_start + length(time_window_selected)
         
-        out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
+        #out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
+        
         list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
                                     num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
         names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
@@ -569,7 +577,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
   #mae_tot_tb$time <- 2:n_pred
   mae_tot_tb$time <- 1:nlayers(r_huric_obs)
-  y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb$temp_arima))
+  y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
   
   res_pix<-960
   col_mfrow<-1
@@ -579,14 +587,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
   plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
-  #lines(temp_arima ~ time, type="b",col="magenta",data=mae_tot_tb)
-  lines(temp_formula_str, type="b",col="magenta",data=mae_tot_tb)
-  
+  lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
   lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
-  
-  lines(temp_lm ~ time, type="b",col="red",data=mae_tot_tb)
   legend("topleft",
-         legend=c("spat_no","temp_arima","spat_with"),
+         legend=c("spat_no",name_method_time,"spat_with"),
          col=c("cyan","magenta","blue"),
          lty=1)
   title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
@@ -601,7 +605,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #                      ac_temp_obj$mae_zones_tb[1:3,])
   mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
                         ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
-                        ac_temp_arima_obj$mae_zones_tb)
+                        ac_temp_obj$mae_zones_tb)
   
   mae_zones_tb <- as.data.frame(mae_zones_tb)
   
