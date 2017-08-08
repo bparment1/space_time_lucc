@@ -345,7 +345,15 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   browser()
   
   if(estimator=="arima"){
+
+    #time_step_start <- time_window_selected[1]
+    #time_step_end <- time_window_selected[length(time_window_selected)]
     
+    #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
+    #time_step_end <- n_time_event + 8
+    #time_step_subset <- time_step_start +1 # this is because we miss the first date of pred!!
+    
+    #time_window_selected <- time_step_subset:time_step_end
     #Use 100 to 116
     #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
     #out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
@@ -368,12 +376,16 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     #n_pred <- nlayers(r_temp_var) -1
     n_pred <- n_pred_ahead
     #debug(predict_temp_reg_fun)
+    ## problem to resolve the arima model from re_initialization are overwritten
     
     if(re_initialize_arima==T){
       #l_pred_temp_arima <- vector("list",length=length(time_window_selected))
       l_pred_temp_arima <- vector("list",length=length(time_window_selected))
       
+      #To predict the last date, we need the previous date
       for(i in 1:length(time_window_selected)){
+      #for(i in 1:length(time_window_predicted)){
+          
         n_pred <- 1
         n_pred_ahead <- n_pred
         #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
@@ -420,7 +432,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   }
   
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
-  
+  browser()
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
   #using 11 cores
@@ -592,7 +604,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   legend("topleft",
          legend=c("spat_no",name_method_time,"spat_with"),
          col=c("cyan","magenta","blue"),
-         lty=1)
+         lty=1,
+         cex=0.8)
   title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
   
   dev.off()
