@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/06/2017
+#DATE MODIFIED: 08/08/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: fixing bugs in reclass_in_majority
+#COMMIT: checking arima code
 #
 #################################################################################################
 
@@ -409,7 +409,7 @@ predict_temp_reg_fun <-function(i,list_param){
   ##Inputs are raster stack with different options for regression estimators: OLS or ARIMA
   #####
   ## Date created: 03/09/2014
-  ## Date modified: 08/05/2017
+  ## Date modified: 08/08/2017
   # Authors: Benoit Parmentier
   #
   #INPUTS:
@@ -576,7 +576,7 @@ predict_temp_reg_fun <-function(i,list_param){
     pix_val <- as(r_stack,"SpatialPointsDataFrame") #this will be changed later...to read line by line!!!!
     pix_val2 <- as.data.frame(pix_val)
     df_xy <- pix_val2[,c("x","y")]
-    pix_val2 <-  pix_val2[,1:time_step] #152 or 135 in this case, predictions starts at 136
+    pix_val2 <-  pix_val2[,1:time_step] #152 or 135 in this case, predictions starts at timestep+1
     pix_val2 <- as.data.frame(t(as.matrix(pix_val2 )))#dim 152x26,616
 
     ### Should add a window option to subset the pixels time series
@@ -598,7 +598,7 @@ predict_temp_reg_fun <-function(i,list_param){
     list_param_predict_arima_2 <- list(pix_val=pix_val2,arima_order=arima_order,n_ahead=n_pred_ahead,out_dir=out_dir_arima,out_suffix=out_suffix,na.rm=T,df_xy=df_xy)
 
     #debug(pixel_ts_arima_predict)
-    #test_pix_obj <- pixel_ts_arima_predict(20,list_param=list_param_predict_arima_2)
+    test_pix_obj <- pixel_ts_arima_predict(1,list_param=list_param_predict_arima_2)
     #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
     arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
