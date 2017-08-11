@@ -601,7 +601,12 @@ predict_temp_reg_fun <-function(i,list_param){
     test_pix_obj <- pixel_ts_arima_predict(1,list_param=list_param_predict_arima_2)
     #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
-    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
+    arima_pixel_pred_obj <- mclapply(1:length(pix_val2), 
+                                     FUN=pixel_ts_arima_predict,
+                                     list_param=list_param_predict_arima_2,
+                                     mc.preschedule=FALSE,
+                                     mc.cores = num_cores) 
+    
     #pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
    
     #save this in a separate folder!!!
