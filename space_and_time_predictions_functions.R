@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 08/09/2017
+#DATE MODIFIED: 08/11/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -369,10 +369,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     arima_order <- NULL
     r_clip_tmp <- rast_ref
     
-    list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                                num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
-    names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
-                                    "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
+    #list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+    #                            num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
+    #names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+    #                                "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
     #n_pred <- nlayers(r_temp_var) -1
     n_pred <- n_pred_ahead
     #debug(predict_temp_reg_fun)
@@ -398,7 +398,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         
         #out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
         
-        list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
+        #fix the output dir
+        list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s[i],file_format,estimator,estimation_method,
                                     num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
         names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                         "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
