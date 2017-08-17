@@ -4,7 +4,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 08/15/2017
+#DATE MODIFIED: 08/17/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -39,7 +39,7 @@ library(sf)
 
 ###### Functions used in this script
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_08022017.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_08172017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -54,7 +54,7 @@ proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"  #PARAM 3
 file_format <- ".tif" #PARAM5 #PARAM 4
 NA_flag_val <- -9999 #PARAM7 #PARAM5
 
-out_suffix <-"Katrina_08152017" # PARAM6, output suffix for the files and output folder 
+out_suffix <-"Katrina_08172017" # PARAM6, output suffix for the files and output folder 
 create_out_dir_param=TRUE #PARAM7
 
 #coord_names <- c("x","y") #PARAM 9
