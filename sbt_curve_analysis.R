@@ -4,7 +4,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 08/17/2017
+#DATE MODIFIED: 08/18/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -59,7 +59,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_08172017.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_08182017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -131,23 +131,24 @@ col_palette <- matlab.like(100)
 
 levelplot(r_var,col.regions=col_palette,main="Time series")
 
-
 ### Write text file with names of input layers
 
-lf <- file.path(out_dir,paste0(names(r_stack),".tif"))
-lf
+#lf <- file.path(out_dir,paste0(names(r_stack),".tif"))
+#lf
   
-list_raster_filename <- paste("time_raster_",out_suffix,".txt",sep="")
-write.table(lf,file=list_raster_filename,sep=",")
+#list_raster_filename <- paste("time_raster_",out_suffix,".txt",sep="")
+#write.table(lf,file=list_raster_filename,sep=",")
 #df_rast <- read.table(list_raster_filename,sep=",")
 
 ########## Generate figures and metrics ##########
 
-var_mean_stack <- cellStats(r_stack,mean)
-var_mean <- cellStats(r_var,mean)
+var_mean_stack <- cellStats(r_stack,mean,na.rm=T)
+var_mean <- cellStats(r_var,mean,na.rm=T)
 
 plot(var_mean,type="b")
 plot(var_mean_stack,type="b")
+
+#Make this a time series object?
 
 t_corr <- unlist(lapply(2:n_layers,FUN=t_corr_fun,list_rast=r_var))
 t_corr_val <- t_corr_fun(2,list_rast=r_var)
@@ -159,17 +160,8 @@ f <- matrix(c(1,1,1,
               1,0,1,
               1,1,1), nrow=3)
 
-undebug(Moran_run)
+#undebug(Moran_run)
 Moran_run(1,r_var,f=f)
-Moran_run<- function (i,r_stack,f=NULL){
-  if(is.null(f)){
-    f <- matrix(c(1,1,1,
-                  1,0,1,
-                  1,1,1), nrow=3)
-  }
-  moran_val <- Moran(subset(r_stack,i),w=f)
-  return(moran_val)
-}
 
 s_corr <- unlist(lapply(1:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
 
@@ -184,5 +176,6 @@ par(new = TRUE)
 plot(s_corr,type="l",col="blue",axes = FALSE, bty="n",xlab = "", ylab = "")
 axis(side=4, at = pretty(range(s_corr)))
 mtext("spat corr", side=4, line=3)
+
 ################# END OF SCRIPT ##################
 
