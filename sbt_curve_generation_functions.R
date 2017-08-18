@@ -1,9 +1,49 @@
-library(raster)
-library(rasterVis)
-library(colorRamps)
+####################################    Space Beats Time Research  #######################################
+################################ Function to generate and analyze curves #######################################
+#This script contains function to analyze datasets for the Space Beats Time Framework.
+#This includes:  time series correlation, spatial correlation for steps of time series stack.
+#
+#AUTHORS: Benoit Parmentier                                             
+#DATE CREATED: 08/17/2017 
+#DATE MODIFIED: 08/18/2017
+#Version: 1
+#PROJECT:  Space Beats Time             
+#
+#COMMENTS: - Generate additional datasets
+#
+#TO DO:
+# - 
+#COMMIT: adding Moran's I calculation and documentation
+#
+#################################################################################################
 
+###Loading R library and packages                                                      
+
+library(sp)
+library(rgdal)
+library(spdep)
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
+library(gtools)
+library(maptools)
+library(parallel)
+library(rasterVis)
+library(raster)
+library(zoo)  #original times series function functionalies and objects/classes
+library(xts)  #extension of time series objects and functionalities
+library(forecast) #arima and other time series methods
+library(lubridate) #date and time handling tools
+library(colorRamps) #contains matlab.like color palette
+library(rgeos) #spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
+library(sf)
+
+############## start of script #################
 
 t_corr_fun <- function(i,list_rast){
+  #
+  #
+  
   if(class(list_rast)=="character"){
     r_subset <- stack(list_rast[[i-1]],list_rast[[i]]) 
   }else{
@@ -12,6 +52,17 @@ t_corr_fun <- function(i,list_rast){
   cor_val<-layerStats(r_subset,'pearson',na.rm=T)
   cor_val <- cor_val[[1]][1,2]
   return(cor_val)
+}
+
+Moran_run<- function (i,r_stack,f=NULL){
+  #function to compute Moran's I on a raster stack
+  if(is.null(f)){
+    f <- matrix(c(1,1,1,
+                  1,0,1,
+                  1,1,1), nrow=3)
+  }
+  moran_val <- Moran(subset(r_stack,i),w=f)
+  return(moran_val)
 }
 
 compute_change_shape_metrics <- function(var_mean,method="differencing"){
@@ -80,7 +131,9 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   
   df_ts <- data.frame(s_corr=s_corr,t_corr=t_corr,var=var_mean)
   df_ts$time_step <- 1:nrow(df_ts)
-  View(df_ts)compute_change_shape_metrics
+  View(df_ts)
+  
+  #compute_change_shape_metrics
   plot(t_corr,s_corr,type="b")
   text(t_corr,s_corr,labels=df_ts$time_step,cex=2)
   #text(c(2,2),c(37,35),labels=c("Non-case","Case"))
