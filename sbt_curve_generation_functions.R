@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 08/17/2017 
-#DATE MODIFIED: 08/18/2017
+#DATE MODIFIED: 08/20/2017
 #Version: 1
 #PROJECT:  Space Beats Time             
 #
@@ -88,6 +88,43 @@ compute_change_shape_metrics <- function(var_mean,method="differencing"){
   names(obj_metrics) <- c("df_shape_metrics","b_range")
   
   return(obj_metrics)
+}
+
+generate_dates_by_step <-function(start_date,end_date,step_date){
+  #library(xts) declare out of this function
+  #library(zoo)
+  #library(lubridate)
+  
+  st <- as.Date(start_date,format="%Y.%m.%d")
+  en <- as.Date(end_date,format="%Y.%m.%d")
+  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
+  year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
+  
+  ll_list <- vector("list",length=length(year_list))
+  for (i in 1:length(year_list)){
+    if(i==1){
+      first_date <-st
+    }else{
+      first_date<-paste(year_list[[i]],"-01","-01",sep="")
+    }
+    if(i==length(year_list)){
+      last_date <-en
+    }else{
+      last_date<-paste(year_list[[i]],"-12","-31",sep="")
+    }
+    #ll <- seq.Date(st, en, by=step)
+    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
+    ll_list[[i]]<-as.character(ll)
+    #paste(yday(ll,)
+  }
+  
+  #
+  dates_modis <-as.Date(unlist((ll_list))) 
+  #wiht 001
+  dates_DOY_modis <- paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep="")
+  dates_obj <- list(dates_modis,dates_DOY_modis)
+  names(dates_obj) <- c("dates","doy")  
+  return(dates_obj)
 }
 
 generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix="",out_dir="."){
