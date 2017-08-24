@@ -6,7 +6,7 @@
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/15/2017
+#DATE MODIFIED: 08/24/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -73,7 +73,7 @@ args<-commandArgs(TRUE)
 
 args_table <- args[1]
 
-args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_08092017.csv"
+args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_08242017.csv"
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_sample_data1_08042017.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
@@ -201,6 +201,8 @@ if(ncol(data_tb)>1){
                              file_format=file_format,
                              NA_flag_val,
                              tolerance_val=0.000120005)
+  zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
+  
 }else{
   l_rast <- data_tb[,1]
 }
@@ -229,7 +231,7 @@ if(!is.null(agg_fact)){
 ### Generate data description and figures: make this a markdown output later on!
 #debug(explore_and_summarize_data)
 #test <- explore_and_summarize_data(l_rast,zonal_colnames, var_names,n_time_event)
-
+#debug(explore_and_summarize_data)
 explore_obj <- explore_and_summarize_data(l_rast,
                                    zonal_colnames, 
                                    var_names,
