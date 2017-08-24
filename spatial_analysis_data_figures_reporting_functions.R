@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 08/04/2017
+#DATE MODIFIED: 08/24/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
