@@ -117,6 +117,7 @@ lf <-list.files(pattern="NDVI_Katrina_08092017.tif",in_dir_rast,full.names=T)
 lf <- mixedsort(lf)
 r_stack <- stack(lf)
 
+time_window_selected <- 100:123
 r_var <- subset(r_stack,time_window_selected)
 
 n_layers <- nlayers(r_var)
@@ -191,7 +192,6 @@ r_tmp <- rollmean(r_ts,k=12)
 # x <- zApply(s, by=as.yearqtr, fun=mean, name='quarters')
 #r_tmp <- zApply(r_ts, by=12, fun=rollmean)
 
-
 data_df <- as.data.frame(r_stack)
 data_df <- na.omit(data_df)
 
@@ -207,6 +207,15 @@ dim(df_ts)
 df_ts_smoothed <- rollmean(df_ts,k=23)
 plot(df_ts[,1])
 lines(df_ts_smoothed[,1],col="red")
+
+time_window_selected <- 100:116 #PARAM 13: use alll dates for now
+
+range_dates[100:123]
+df_ts_w <- df_ts[100:123,]
+plot(df_ts_w[,1])
+
+## Run shape code on the window and also get the space beats time predictions for 100:123
+/home/bparmentier/Google Drive/Space_beats_time/outputs
 
 ################# END OF SCRIPT ##################
 

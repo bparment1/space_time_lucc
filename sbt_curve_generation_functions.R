@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 08/17/2017 
-#DATE MODIFIED: 08/20/2017
+#DATE MODIFIED: 08/25/2017
 #Version: 1
 #PROJECT:  Space Beats Time             
 #
@@ -77,7 +77,7 @@ compute_change_shape_metrics <- function(var_mean,method="differencing"){
   
   #class(var_mean)
   test <- as.numeric((names(var_mean)==names(which.min(var_diff))))
-  a_metric_index <- grep(1,test) 
+  a_metric_index <- grep(1,test) +1 #because diff is shifter left
   
   a_metric <- var_mean[b_range[1]-1] - var_mean[a_metric_index]  #drop
   c_metric <- var_mean[b_range[length(b_range)]]- var_mean[a_metric_index]
@@ -141,15 +141,63 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   }
   
   #undebug(t_corr_fun)
-  t_corr_fun(2,list_rast=list_r)
+  #t_corr_fun(2,list_rast=list_r)
   
-  var_mean <- cellStats(r_var,mean)
-  s_corr <- unlist(lapply(list_r, function(rast){Moran(rast,w=f)}))
-  t_corr <- unlist(lapply(2:length(list_r),FUN=t_corr_fun,list_rast=list_r))
-  t_corr <- c(NA,t_corr)
+  #var_mean_stack <- cellStats(r_stack,mean,na.rm=T)
+  var_mean <- cellStats(r_var,mean,na.rm=T)
+  #Make this a time series object?
   
-  plot(var_mean,type="l")
+  t_corr_val <- unlist(lapply(2:n_layers,FUN=t_corr_fun,list_rast=r_var))
+  #t_corr_val <- t_corr_fun(2,list_rast=r_var)
   
+  plot(t_corr_val,type="b")
+  plot(var_mean,type="b")
+  
+  #undebug(Moran_run)
+  #Moran_run(1,r_var,f=f)
+  
+  s_corr <- unlist(lapply(1:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
+  
+  ## Plot temporal and spatial correlation:
+  
+  plot(t_corr,type="b",col="magenta",
+       ylim=c(-1,1),
+       ylab="correlation",
+       xlab="Time steps")
+  lines(s_corr,type="b",col="blue")
+  legend("bottomleft",
+         legend=c("temporal","spatial"),
+         col=c("magenta","blue"),
+         lty=1,
+         cex=0.8)
+  title("Spatial and temporal correlation") 
+  
+  ### Plot on different scale
+  par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
+  plot(t_corr,type="l",
+       col="magenta",
+       ylab="temporal correlation",
+       xlab="Time steps")
+  par(new = TRUE)
+  plot(s_corr,
+       type="l",
+       col="blue",
+       axes = FALSE, 
+       bty="n",xlab = "", ylab = "")
+  axis(side=4, at = pretty(range(s_corr)))
+  mtext("spatial correlation", side=4, line=3)
+  legend("bottomleft",
+         legend=c("temporal","spatial"),
+         col=c("magenta","blue"),
+         lty=1,
+         cex=0.8)
+  title("Spatial and temporal correlation") 
+  
+  ### Now mean plot?
+  plot(var_mean,type="b")
+  
+  #### Now examine shape of inputs:
+  debug(compute_change_shape_metrics)
   obj_metrics <- compute_change_shape_metrics(var_mean,method = "differencing")
   
   plot(diff(var_mean),type="l")
@@ -175,6 +223,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   text(t_corr,s_corr,labels=df_ts$time_step,cex=2)
   #text(c(2,2),c(37,35),labels=c("Non-case","Case"))
   
+  return()
 }
 
 
