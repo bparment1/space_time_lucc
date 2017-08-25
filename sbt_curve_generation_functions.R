@@ -77,7 +77,7 @@ compute_change_shape_metrics <- function(var_mean,method="differencing"){
   
   #class(var_mean)
   test <- as.numeric((names(var_mean)==names(which.min(var_diff))))
-  a_metric_index <- grep(1,test) +1 #because diff is shifter left
+  a_metric_index <- grep(1,test) 
   
   a_metric <- var_mean[b_range[1]-1] - var_mean[a_metric_index]  #drop
   c_metric <- var_mean[b_range[length(b_range)]]- var_mean[a_metric_index]
@@ -132,23 +132,6 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   ###
   #?Moran
   
-  if(moran_type=="queen"){
-  
-    f <- matrix(c(1,1,1,
-                  1,0,1,
-                  1,1,1), nrow=3)
-    
-  }
-  
-  #undebug(t_corr_fun)
-  #t_corr_fun(2,list_rast=list_r)
-  
-  #var_mean_stack <- cellStats(r_stack,mean,na.rm=T)
-  var_mean <- cellStats(r_var,mean,na.rm=T)
-  #Make this a time series object?
-  
-  t_corr_val <- unlist(lapply(2:n_layers,FUN=t_corr_fun,list_rast=r_var))
-  #t_corr_val <- t_corr_fun(2,list_rast=r_var)
   
   plot(t_corr_val,type="b")
   plot(var_mean,type="b")

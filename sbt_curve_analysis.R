@@ -1,10 +1,11 @@
 ####################################    Space Beats Time Research  #######################################
 ################################ Generating datasets for examples of curves #######################################
-#This script generates datasets for the Space Beats Time Framework.
+#This script performs analyses of curves correlation and shape.
+#It use datasets for the Space Beats Time Framework.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 08/20/2017
+#DATE MODIFIED: 08/25/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -12,7 +13,7 @@
 #
 #TO DO:
 # - 
-#COMMIT: initial commit curve analysis
+#COMMIT: changes to generate plot and tables function
 #
 #################################################################################################
 
@@ -59,7 +60,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_08202017.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_08252017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -74,7 +75,7 @@ proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"  #PARAM 3
 file_format <- ".tif" #PARAM5 #PARAM 4
 NA_flag_val <- -9999 #PARAM7 #PARAM5
 
-out_suffix <-"curve_analysis_Katrina_08172017" # PARAM6, output suffix for the files and output folder 
+out_suffix <-"curve_analysis_Katrina_08252017" # PARAM6, output suffix for the files and output folder 
 create_out_dir_param=TRUE #PARAM7
 
 #coord_names <- c("x","y") #PARAM 9
@@ -85,11 +86,14 @@ num_cores <- 4 #PARAM 11
 n_time_event <- "108" #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 
 #time_window_selected <- 2:5
-time_window_selected <- 100:116 #PARAM 13: use alll dates for now
+#time_window_selected <- 100:116 #PARAM 13: use alll dates for now
+time_window_selected <- 100:123
 
 #n_time_event <- 108 #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 #time_window_selected <- 100:116 #PARAM 13: use alll dates for now
 date_range <- c("2001.01.01","2010.12.31",16) #PARAM 15, NDVI Katrina
+
+sbt_results_filename <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_NDVI_Katrina_08242017/mae_tot_tb_NDVI_Katrina_08242017.txt"
 
 ################# START SCRIPT ###############################
 
@@ -117,7 +121,6 @@ lf <-list.files(pattern="NDVI_Katrina_08092017.tif",in_dir_rast,full.names=T)
 lf <- mixedsort(lf)
 r_stack <- stack(lf)
 
-time_window_selected <- 100:123
 r_var <- subset(r_stack,time_window_selected)
 
 n_layers <- nlayers(r_var)
@@ -143,40 +146,12 @@ levelplot(r_var,col.regions=col_palette,main="Time series")
 
 ########## Generate figures and metrics ##########
 
-var_mean_stack <- cellStats(r_stack,mean,na.rm=T)
-var_mean <- cellStats(r_var,mean,na.rm=T)
-
-plot(var_mean,type="b")
-plot(var_mean_stack,type="b")
-
-#Make this a time series object?
-
-t_corr <- unlist(lapply(2:n_layers,FUN=t_corr_fun,list_rast=r_var))
-t_corr_val <- t_corr_fun(2,list_rast=r_var)
-
-plot(t_corr_val,type="b")
 
 
 f <- matrix(c(1,1,1,
               1,0,1,
               1,1,1), nrow=3)
 
-#undebug(Moran_run)
-Moran_run(1,r_var,f=f)
-
-s_corr <- unlist(lapply(1:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
-
-plot(s_corr,type="b")
-
-plot(t_corr,type="b",col="pink",ylim=c(-1,1))
-lines(s_corr,type="b",col="blue")
-
-par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
-plot(t_corr,type="l",col="pink")
-par(new = TRUE)
-plot(s_corr,type="l",col="blue",axes = FALSE, bty="n",xlab = "", ylab = "")
-axis(side=4, at = pretty(range(s_corr)))
-mtext("spat corr", side=4, line=3)
 
 ##### remove seasonality
 
@@ -185,9 +160,9 @@ range_dates <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDV
 class(range_dates)
 
 #s <- setZ(s, as.Date('2000-1-1') + 0:2)
-r_ts <- setZ(subset(r_stack,1:230), range_dates)
+#r_ts <- setZ(subset(r_stack,1:230), range_dates)
 
-r_tmp <- rollmean(r_ts,k=12)
+#r_tmp <- rollmean(r_ts,k=12)
 
 # x <- zApply(s, by=as.yearqtr, fun=mean, name='quarters')
 #r_tmp <- zApply(r_ts, by=12, fun=rollmean)
@@ -208,14 +183,27 @@ df_ts_smoothed <- rollmean(df_ts,k=23)
 plot(df_ts[,1])
 lines(df_ts_smoothed[,1],col="red")
 
-time_window_selected <- 100:116 #PARAM 13: use alll dates for now
+#time_window_selected <- 100:116 #PARAM 13: use alll dates for now
 
 range_dates[100:123]
 df_ts_w <- df_ts[100:123,]
 plot(df_ts_w[,1])
 
 ## Run shape code on the window and also get the space beats time predictions for 100:123
-/home/bparmentier/Google Drive/Space_beats_time/outputs
+#/home/bparmentier/Google Drive/Space_beats_time/outputs
 
+sbt_results_filename <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_NDVI_Katrina_08242017/mae_tot_tb_NDVI_Katrina_08242017.txt"
+mae_tot_sbt <- read.table(sbt_results_filename,sep=" ",header=T,stringsAsFactors = F)
+
+View(mae_tot_sbt)
+
+debug(generate_plots_table)
+lf_file <- generate_plots_table(r_var,
+                        mae_tot_tb=mae_tot_sbt,
+                        moran_type="queen",
+                        out_suffix=out_suffix,
+                        out_dir=out_dir)
+  
+  
 ################# END OF SCRIPT ##################
 
