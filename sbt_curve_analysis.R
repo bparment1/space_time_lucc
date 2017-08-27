@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 08/25/2017
+#DATE MODIFIED: 09/03/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -60,7 +60,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_08252017.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_08272017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -146,12 +146,9 @@ levelplot(r_var,col.regions=col_palette,main="Time series")
 
 ########## Generate figures and metrics ##########
 
-
-
 f <- matrix(c(1,1,1,
               1,0,1,
               1,1,1), nrow=3)
-
 
 ##### remove seasonality
 
