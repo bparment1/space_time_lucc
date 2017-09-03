@@ -264,9 +264,22 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          lwd=0.7,
          col="green")
   
-  text(15,2900,pos=1,
+  text(24,3200,pos=1,
        labels="C",
        cex=1)
+  
+  ### Now plot space beats time
+  plot(mae_tot_tb$temp_arima, 2:23,
+       type="l",
+       col="magenta")
+  lines(mae_tot_tb$spat_reg_no_previous,
+        type="l",
+        col="blue")
+  legend("topright",
+         legend=c("temporal","spatial"),
+         col=c("magenta","blue"),
+         lty=1,
+         cex=0.8)
   
   ### Generate tables:
   
