@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 08/17/2017 
-#DATE MODIFIED: 08/25/2017
+#DATE MODIFIED: 09/03/2017
 #Version: 1
 #PROJECT:  Space Beats Time             
 #
@@ -156,7 +156,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   #undebug(Moran_run)
   #Moran_run(1,r_var,f=f)
   
-  s_corr <- unlist(lapply(1:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
+  s_corr <- unlist(lapply(2:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
   
   ## Plot temporal and spatial correlation:
   
@@ -193,15 +193,19 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          cex=0.8)
   title("Spatial and temporal correlation") 
   
-  curve(var_mean)
+  #curve(var_mean)
   
   #### Now examine shape of inputs:
   #debug(compute_change_shape_metrics)
   obj_metrics <- compute_change_shape_metrics(var_mean,method = "differencing")
   
-  plots()
+  #plots()
   ### Now mean plot?
-  plot(var_mean,type="l")
+  plot(var_mean,type="l",
+       ylim=c(2500,6500))
+  
+  ###  A metric 
+  
   a_metric_coords <- list(c(9.5,5500),c(9.5,3500))
   #segments(a_metric_coords[[1]][1],
   #        a_metric_coords[[1]][2],
@@ -214,22 +218,55 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          code=3,
          cex=0.7,
          col="green")
-   
-  #segments(x0, y0, x1 = x0, y1 = y0,
-  #         col = par("fg"), lty = par("lty"), lwd = par("lwd"),
-  #         ...)
+  #text(a_metric_coords[[1]][1]/2,a_metric_coords[[1]][2]/2,"A")
+  n_time_event <- 9 # for 108
   
-  plot(diff(var_mean),type="l")
+  text(n_time_event,4500,pos=1,
+       labels="A",
+       cex=1)
+
+  #annotate(c("A"),X=a_metric_coords[[1]][1],
+  #         x=a_metric_coords[[1]][1],cex=c(1.4,3),
+  #         arrow.lwd=c(2,4),
+  #         arrow.length=c(0.1,0.25),
+  #         border.lwd=c(1,3), 
+  #        fill=c("pink","white"), col=c("blue","green"),
+  #         adj=c(0,1),border.col=c("orange","purple"))
   
-  plot(t_corr,type="b",col="pink",ylim=c(-1,1))
-  lines(s_corr,type="b",col="blue")
+  #### Add B metric
+  #do B, 200 below the lowest point
+  b_metrics <- 13
+  b_metric_coords <- list(c(9,2800),c(22,2800))
   
-  par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
-  plot(t_corr,type="l",col="pink")
-  par(new = TRUE)
-  plot(s_corr,type="l",col="blue",axes = FALSE, bty="n",xlab = "", ylab = "")
-  axis(side=4, at = pretty(range(s_corr)))
-  mtext("spat corr", side=4, line=3)
+  arrows(b_metric_coords[[1]][1],
+         b_metric_coords[[1]][2],
+         b_metric_coords[[2]][1],
+         b_metric_coords[[2]][2],
+         code=3,
+         cex=0.4,
+         col="green")
+
+  text(15,2900,pos=1,
+       labels="B",
+       cex=1)
+
+  #### Add C metric
+  #do C, 100 to the right
+  c_metrics <- 13
+  c_metric_coords <- list(c(23,2900),c(23,3500))
+  
+  arrows(c_metric_coords[[1]][1],
+         c_metric_coords[[1]][2],
+         c_metric_coords[[2]][1],
+         c_metric_coords[[2]][2],
+         code=3,
+         cex=0.4,
+         lwd=0.7,
+         col="green")
+  
+  text(15,2900,pos=1,
+       labels="C",
+       cex=1)
   
   ### Generate tables:
   
@@ -239,7 +276,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   
   #compute_change_shape_metrics
   plot(t_corr,s_corr,type="b")
-  text(t_corr,s_corr,labels=df_ts$time_step,cex=2)
+  text(t_corr,s_corr,pos=1,labels=1:22,cex=1)
   #text(c(2,2),c(37,35),labels=c("Non-case","Case"))
   
   return()
