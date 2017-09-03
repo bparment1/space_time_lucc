@@ -60,7 +60,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_08272017.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_09032017d.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -75,7 +75,7 @@ proj_str<- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"  #PARAM 3
 file_format <- ".tif" #PARAM5 #PARAM 4
 NA_flag_val <- -9999 #PARAM7 #PARAM5
 
-out_suffix <-"curve_analysis_Katrina_08252017" # PARAM6, output suffix for the files and output folder 
+out_suffix <-"curve_analysis_Katrina_09032017" # PARAM6, output suffix for the files and output folder 
 create_out_dir_param=TRUE #PARAM7
 
 #coord_names <- c("x","y") #PARAM 9
