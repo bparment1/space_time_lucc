@@ -128,8 +128,14 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
 }
 
 generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix="",out_dir="."){
-
-  ###
+  ## This function generates plots and tables for mean profile, correlaion and shape metrics.
+  #
+  #
+  #
+  
+  ##########
+  ### PART 1: compute means, metrics and correlations
+  
   #?Moran
   
   if(moran_type=="queen"){
@@ -140,69 +146,34 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
     
   }
   
-  #undebug(t_corr_fun)
-  #t_corr_fun(2,list_rast=list_r)
-  
-  #var_mean_stack <- cellStats(r_stack,mean,na.rm=T)
   var_mean <- cellStats(r_var,mean,na.rm=T)
-  #Make this a time series object?
-  
+
   t_corr <- unlist(lapply(2:n_layers,FUN=t_corr_fun,list_rast=r_var))
-  #t_corr_val <- t_corr_fun(2,list_rast=r_var)
-  
-  plot(t_corr,type="b")
-  plot(var_mean,type="b")
-  
+
   #undebug(Moran_run)
   #Moran_run(1,r_var,f=f)
   
   s_corr <- unlist(lapply(2:nlayers(r_var),FUN=Moran_run,r_stack=r_var,f=f))
-  
-  ## Plot temporal and spatial correlation:
-  
-  plot(t_corr,type="b",col="magenta",
-       ylim=c(-1,1),
-       ylab="correlation",
-       xlab="Time steps")
-  lines(s_corr,type="b",col="blue")
-  legend("bottomleft",
-         legend=c("temporal","spatial"),
-         col=c("magenta","blue"),
-         lty=1,
-         cex=0.8)
-  title("Spatial and temporal correlation") 
-  
-  ### Plot on different scale
-  par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
-  plot(t_corr,type="l",
-       col="magenta",
-       ylab="temporal correlation",
-       xlab="Time steps")
-  par(new = TRUE)
-  plot(s_corr,
-       type="l",
-       col="blue",
-       axes = FALSE, 
-       bty="n",xlab = "", ylab = "")
-  axis(side=4, at = pretty(range(s_corr)))
-  mtext("spatial correlation", side=4, line=3)
-  legend("bottomleft",
-         legend=c("temporal","spatial"),
-         col=c("magenta","blue"),
-         lty=1,
-         cex=0.8)
-  title("Spatial and temporal correlation") 
-  
-  #curve(var_mean)
-  
-  #### Now examine shape of inputs:
-  #debug(compute_change_shape_metrics)
+
   obj_metrics <- compute_change_shape_metrics(var_mean,method = "differencing")
   
-  #plots()
+  #### PART 2: Plots of mean profile and shape metrics 
+  #debug(compute_change_shape_metrics)
+  
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
+  
+  png_filename_var_mean <- paste("Figure_mean_plot_var_with_shape_metrics_",
+                        out_suffix,".png",sep="")
+  png(png_filename_var_mean,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
   ### Now mean plot?
   plot(var_mean,type="l",
-       ylim=c(2500,6500))
+       ylim=c(2500,6500),
+       ylab="Mean NDVI",
+       xlab="Time Steps")
   
   ###  A metric 
   
@@ -212,26 +183,18 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   #        a_metric_coords[[2]][1],
   #        a_metric_coords[[2]][2])
   arrows(a_metric_coords[[1]][1],
-           a_metric_coords[[1]][2],
-           a_metric_coords[[2]][1],
-           a_metric_coords[[2]][2],
+         a_metric_coords[[1]][2],
+         a_metric_coords[[2]][1],
+         a_metric_coords[[2]][2],
          code=3,
          cex=0.7,
          col="green")
   #text(a_metric_coords[[1]][1]/2,a_metric_coords[[1]][2]/2,"A")
   n_time_event <- 9 # for 108
   
-  text(n_time_event,4500,pos=1,
+  text(11.5,4500,pos=2,
        labels="A",
        cex=1)
-
-  #annotate(c("A"),X=a_metric_coords[[1]][1],
-  #         x=a_metric_coords[[1]][1],cex=c(1.4,3),
-  #         arrow.lwd=c(2,4),
-  #         arrow.length=c(0.1,0.25),
-  #         border.lwd=c(1,3), 
-  #        fill=c("pink","white"), col=c("blue","green"),
-  #         adj=c(0,1),border.col=c("orange","purple"))
   
   #### Add B metric
   #do B, 200 below the lowest point
@@ -245,11 +208,11 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          code=3,
          cex=0.4,
          col="green")
-
-  text(15,2900,pos=1,
+  
+  text(15,2850,pos=1,
        labels="B",
        cex=1)
-
+  
   #### Add C metric
   #do C, 100 to the right
   c_metrics <- 13
@@ -264,14 +227,37 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          lwd=0.7,
          col="green")
   
-  text(24,3200,pos=1,
+  text(24,3300,pos=1,
        labels="C",
        cex=1)
+
+  legend("topright",
+         legend=c("A: Loss","B: Length of event","C: Recovery"),
+         #col=c("magenta","blue"),
+         #lty=1,
+         cex=1,
+         bty="n")
+  title("Mean value and event shape metrics") 
   
+  dev.off()
+  
+  ### Part 4: Space and Time predictions
   ### Now plot space beats time
-  plot(mae_tot_tb$temp_arima, 2:23,
+
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
+  
+  png_filename_sbt <- paste("Figure_space_and_time_predictions_",
+                        out_suffix,".png",sep="")
+  png(png_filename_sbt,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  plot(mae_tot_tb$temp_arima,
        type="l",
-       col="magenta")
+       col="magenta",
+       xlab="Time Steps",
+       ylab="Mean Absolute Error (MAE)")
   lines(mae_tot_tb$spat_reg_no_previous,
         type="l",
         col="blue")
@@ -279,20 +265,55 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          legend=c("temporal","spatial"),
          col=c("magenta","blue"),
          lty=1,
-         cex=0.8)
+         bty="n",
+         cex=1)
+  title("Space and Time prediction errors")
+  dev.off()  
+  
+  ###### Part 5:
+  ## Plot temporal and spatial correlation:
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
+  
+  png_filename_temp_spat_correlation <- paste("Figure_temporal_spatial_correlation_",
+                                 out_suffix,".png",sep="")
+  png(png_filename_temp_spat_correlation,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  plot(t_corr,type="l",col="magenta",
+       ylim=c(-1,1),
+       ylab="correlation",
+       xlab="Time steps")
+  lines(s_corr,type="l",col="blue")
+  legend("bottomleft",
+         legend=c("temporal","spatial"),
+         col=c("magenta","blue"),
+         lty=1,
+         cex=1,
+         bty="n")
+  title("Spatial and temporal correlation") 
+  
+  dev.off()
+  
   
   ### Generate tables:
   
-  df_ts <- data.frame(s_corr=s_corr,t_corr=t_corr,var=var_mean)
-  df_ts$time_step <- 1:nrow(df_ts)
-  View(df_ts)
+  df_info <- data.frame(s_corr=s_corr,t_corr=t_corr,var=var_mean[2:length(var_mean)])
+  #df_ts$time_step <- 1:nrow(df_ts)
+  #View(df_ts)
   
-  #compute_change_shape_metrics
-  plot(t_corr,s_corr,type="b")
-  text(t_corr,s_corr,pos=1,labels=1:22,cex=1)
-  #text(c(2,2),c(37,35),labels=c("Non-case","Case"))
+  ######
   
-  return()
+  obj_info <- list(df_info,
+                   list(png_filename_var_mean,
+                   png_filename_var_mean,png_filename_sbt,
+                   png_filename_temp_spat_correlation))
+  names(obj_info) <- c("df_info","list_png")
+  
+  #####
+  
+  return(obj_info)
 }
 
 
