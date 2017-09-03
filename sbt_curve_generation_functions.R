@@ -253,7 +253,8 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   png(png_filename_sbt,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  plot(mae_tot_tb$temp_arima,
+  plot(2:24,mae_tot_tb$temp_arima,
+       #2:23,
        type="l",
        col="magenta",
        xlab="Time Steps",
@@ -268,6 +269,55 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          bty="n",
          cex=1)
   title("Space and Time prediction errors")
+  
+  #### Add D metric
+  #do D, 100 to the right
+  
+  d_metrics <- 13
+  #d_metric_coords <- list(c(8,620),c(8,2080))
+  d_metric_coords <- list(c(12,630),c(12,2080))
+  
+  arrows(d_metric_coords[[1]][1],
+         d_metric_coords[[1]][2],
+         d_metric_coords[[2]][1],
+         d_metric_coords[[2]][2],
+         code=3,
+         cex=0.4,
+         lwd=0.7,
+         col="green")
+  
+  text(12.5,1500,pos=1,
+       labels="D",
+       cex=1)
+
+  
+  #### Add E metric
+  #do e, 100 to the right
+  
+  e_metrics <- 13
+  #d_metric_coords <- list(c(8,620),c(8,2080))
+  e_metric_coords <- list(c(8,500),c(14,500))
+  
+  arrows(e_metric_coords[[1]][1],
+         e_metric_coords[[1]][2],
+         e_metric_coords[[2]][1],
+         e_metric_coords[[2]][2],
+         code=3,
+         cex=0.4,
+         lwd=0.7,
+         col="green")
+  
+  text(11,490,pos=1,
+       labels="E",
+       cex=1)
+  
+  legend("topleft",
+         legend=c("D: Strength","E: Length of event"),
+         #col=c("magenta","blue"),
+         #lty=1,
+         cex=1,
+         bty="n")
+
   dev.off()  
   
   ###### Part 5:
