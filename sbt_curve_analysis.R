@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 07/28/2017 
-#DATE MODIFIED: 09/03/2017
+#DATE MODIFIED: 09/04/2017
 #Version: 1
 #PROJECT:  with Marco Millones            
 #
@@ -60,7 +60,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_sbt_curve_generation <- "sbt_curve_generation_functions_09032017d.R"
+function_sbt_curve_generation <- "sbt_curve_generation_functions_09042017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_sbt_curve_generation))
 
@@ -82,15 +82,10 @@ create_out_dir_param=TRUE #PARAM7
 #zonal_colnames <- "r_srtm_Katrina_rec2" #PARAM 12
 num_cores <- 4 #PARAM 11
 
-#n_time_event <- 3
-n_time_event <- "108" #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
-
-#time_window_selected <- 2:5
-#time_window_selected <- 100:116 #PARAM 13: use alll dates for now
+#n_time_event <- "108" #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
 time_window_selected <- 100:123
+n_time_event <- 9 # for 108
 
-#n_time_event <- 108 #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
-#time_window_selected <- 100:116 #PARAM 13: use alll dates for now
 date_range <- c("2001.01.01","2010.12.31",16) #PARAM 15, NDVI Katrina
 
 sbt_results_filename <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_NDVI_Katrina_08242017/mae_tot_tb_NDVI_Katrina_08242017.txt"
@@ -127,7 +122,6 @@ n_layers <- nlayers(r_var)
 r_var_names <- paste0("time_",1:n_layers)
 names(r_var) <- r_var_names
 
-n_time_event <- 9 # for 108
 plot(r_var)
 
 col_palette <- matlab.like(100)
@@ -152,17 +146,8 @@ f <- matrix(c(1,1,1,
 
 ##### remove seasonality
 
-date_range <- c("2001.01.01","2010.12.31") #PARAM 15, NDVI Katrina
 range_dates <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
 class(range_dates)
-
-#s <- setZ(s, as.Date('2000-1-1') + 0:2)
-#r_ts <- setZ(subset(r_stack,1:230), range_dates)
-
-#r_tmp <- rollmean(r_ts,k=12)
-
-# x <- zApply(s, by=as.yearqtr, fun=mean, name='quarters')
-#r_tmp <- zApply(r_ts, by=12, fun=rollmean)
 
 data_df <- as.data.frame(r_stack)
 data_df <- na.omit(data_df)
@@ -180,21 +165,22 @@ df_ts_smoothed <- rollmean(df_ts,k=23)
 plot(df_ts[,1])
 lines(df_ts_smoothed[,1],col="red")
 
-#time_window_selected <- 100:116 #PARAM 13: use alll dates for now
-
-range_dates[100:123]
-df_ts_w <- df_ts[100:123,]
+range_dates[time_window_selected]
+df_ts_w <- df_ts[time_window_selected,]
 plot(df_ts_w[,1])
 
 ## Run shape code on the window and also get the space beats time predictions for 100:123
 #/home/bparmentier/Google Drive/Space_beats_time/outputs
 
-sbt_results_filename <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_NDVI_Katrina_08242017/mae_tot_tb_NDVI_Katrina_08242017.txt"
 mae_tot_sbt <- read.table(sbt_results_filename,sep=" ",header=T,stringsAsFactors = F)
 
 View(mae_tot_sbt)
 
-debug(generate_plots_table)
+#debug(generate_plots_table)
+function_sbt_curve_generation <- "sbt_curve_generation_functions_09042017.R"
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
+source(file.path(script_path,function_sbt_curve_generation))
+
 lf_file <- generate_plots_table(r_var,
                         mae_tot_tb=mae_tot_sbt,
                         moran_type="queen",
