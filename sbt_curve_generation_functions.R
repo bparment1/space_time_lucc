@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 08/17/2017 
-#DATE MODIFIED: 09/03/2017
+#DATE MODIFIED: 09/04/2017
 #Version: 1
 #PROJECT:  Space Beats Time             
 #
@@ -232,7 +232,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
        cex=1)
 
   legend("topright",
-         legend=c("A: Loss","B: Length of event","C: Recovery"),
+         legend=c("A: Strength","B: Length of event","C: Recovery"),
          #col=c("magenta","blue"),
          #lty=1,
          cex=1,
@@ -240,10 +240,40 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   title("Mean value and event shape metrics") 
   
   dev.off()
+
+  ####### Metric plot
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
   
+  png_filename_var_mean <- paste("Figure_metric_shape_mean_plot_var__",
+                                 out_suffix,".png",sep="")
+  png(png_filename_var_mean,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  ### Now mean plot?
+  
+  case_metrics <- data.frame(B=c(15,10,25),A=c(2000,1000,2500))
+  plot(case_metrics,
+       type="p",
+       pch=10,
+       ylim=c(0,3000),
+       xlim=c(0,30),
+       ylab="Metric A",
+       xlab="Metric B")
+
+  text(case_metrics,pos=1,
+       labels=c("case 1","case 2","case 3"),
+       cex=1)
+  title("Shape metrics: Mean variable (proxy) profile")
+  
+  dev.off()
+  
+    
   ### Part 4: Space and Time predictions
   ### Now plot space beats time
-
+  #browser()
+  
   res_pix<- 500
   col_mfrow<-1
   row_mfrow<-1
@@ -268,7 +298,7 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
          lty=1,
          bty="n",
          cex=1)
-  title("Space and Time prediction errors")
+  title("Spatial and Temporal models errors")
   
   #### Add D metric
   #do D, 100 to the right
@@ -289,7 +319,6 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   text(12.5,1500,pos=1,
        labels="D",
        cex=1)
-
   
   #### Add E metric
   #do e, 100 to the right
@@ -320,6 +349,36 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
 
   dev.off()  
   
+  #### metric plot:
+  
+  ####### Metric plot
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
+  
+  png_filename_var_mean <- paste("Figure_metric_shape_sbt_error_plot_var_",
+                                 out_suffix,".png",sep="")
+  png(png_filename_var_mean,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  ### Now mean plot?
+  
+  case_metrics_sbt_errors <- data.frame(E=c(6.5,10,22),D=c(1500,800,2000))
+  plot(case_metrics_sbt_errors,
+       type="p",
+       pch=10,
+       ylim=c(0,3000),
+       xlim=c(0,30),
+       ylab="Metric D",
+       xlab="Metric E")
+  
+  text(case_metrics_sbt_errors,pos=1,
+       labels=c("case 1","case 2","case 3"),
+       cex=1)
+  title("Spatial and temporal models errors")
+  dev.off()
+  
+  ######################################
   ###### Part 5:
   ## Plot temporal and spatial correlation:
   res_pix<- 500
@@ -346,6 +405,79 @@ generate_plots_table <- function(r_var,mae_tot_tb,moran_type="queen",out_suffix=
   
   dev.off()
   
+  ##### Metric plot for time and spatial autocorrelation
+  
+  ####### Metric plot
+  browser()
+  
+  index_selected <- n_time_event-1
+  
+  t_corr_subset <- t_corr[c(index_selected-1,index_selected,index_selected+1)]
+  s_corr_subset <- s_corr[c(index_selected-1,index_selected,index_selected+1)]
+  
+  #case_metrics_ <- data.frame(B=c(15,10,25),A=c(2000,1000,2500))
+  case_1_val <- data.frame(B=t_corr_subset,A=s_corr_subset)
+  case_2_val <- data.frame(B=c(0.6,0.4,0.58),A=c(0.35,0.40,0.42))
+  case_3_val <- data.frame(B=c(0.85,0.58,0.75),A=c(0.55,0.6,0.62))
+  
+  res_pix<- 500
+  col_mfrow<-1
+  row_mfrow<-1
+  
+  png_filename_var_mean <- paste("Figure_metric_temporal_spatial_correlation_",
+                                 out_suffix,".png",sep="")
+  png(png_filename_var_mean,
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  ### Now mean plot?
+  
+  plot(case_1_val,
+       type="b",
+       pch=20,
+       ylim=c(0.2,0.8),
+       xlim=c(0.2,1),
+       ylab="Spatial correlation",
+       xlab="Temporal correlation")
+
+  text(case_1_val,pos=3,
+       labels=c("T-1","T0","T+1"),
+       cex=0.7)
+  
+  lines(case_2_val,
+       type="b",
+       pch=23,
+       ylim=c(-1,1),
+       xlim=c(-1,1),
+       ylab="Metric A",
+       xlab="Metric B")
+
+  text(case_2_val,
+       pos=1,
+       labels=c("T-1","T0","T+1"),
+       cex=0.7)
+  
+  lines(case_3_val,
+       type="b",
+       pch=8,
+       ylim=c(-1,1),
+       xlim=c(-1,1),
+       ylab="Metric A",
+       xlab="Metric B")
+  
+  text(case_3_val,pos=3,
+       labels=c("T-1","T0","T+1"),
+       cex=0.7)
+
+  legend("topleft",
+         legend=c("Case 1","Case 2","Case 3"),
+         #col=c("magenta","blue"),
+         #lty=1,
+         pch=c(20,23,8),
+         cex=1,
+         bty="n")
+  
+  title("Spatial and temporal correlation before, during and after event")
+  dev.off()
   
   ### Generate tables:
   
