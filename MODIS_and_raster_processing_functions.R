@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 04/08/2015
+#MODIFIED ON: 09/26/2017
 #PROJECT: None, general utility functions for raster (GIS) processing.     
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -610,9 +610,9 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   ll <- seq.Date(st, en, by="1 day") #sequence of dates
   dates_queried <- format(ll,"%Y.%m.%d") #formatting queried dates
   
-  url_product <-paste("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product,"/",sep="") #URL is a constant...
+  url_product <-paste("https://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product,"/",sep="") #URL is a constant...
   #url_product <- file.path("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product)
-  
+  #debug(extractFolders)
   dates_available <- extractFolders(url_product)  #Get the list of available driectory dates for the product, from 2000 to now
   
   list_folder_dates <- intersect(as.character(dates_queried), as.character(dates_available)) #list of remote folders to access
@@ -659,8 +659,33 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
     file_items <- list_files_tiles[[j]]
     for (i in 1:length(file_items)){
       file_item <- file_items[i]
-      download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))
+      #download.file(file_item,destfile=file.path(out_dir_tiles[j],basename(file_item)))
       #download.file(file_item,destfile="test.hdf")
+      ## need a .netrc file,
+      ##set the file to at least Read (400) or Read/Write (600)
+      ##chmod 0600 ~/.netrc
+      #curl -n -L -c cookiefile -b cookiefile http://e4ftl01.cr.usgs.gov/MOLT/MOD09A1.006/2001.01.09/MOD09A1.A2001009.h13v01.006.2015140120258.hdf.xml 
+      #system("curl -n -L -c cookiefile -b cookiefile http://e4ftl01.cr.usgs.gov/MOLT/MOD09A1.006/2001.01.09/MOD09A1.A2001009.h13v01.006.2015140120258.hdf.xml") 
+      
+      #system("curl -n -L -c cookiefile -b cookiefile https://e4ftl01.cr.usgs.gov/MOLT/MOD09A1.006/2001.01.09/MOD09A1.A2001009.h13v01.006.2015140120258.hdf --output MOD09A1.A2001009.h13v01.006.2015140120258.hdf")
+      cmd_curl_str <- paste("curl -n -L -c cookiefile -b cookiefile",
+                            file_item,
+                            "--output",
+                            paste0("'",file.path(out_dir_tiles[j],basename(file_item)),"'")
+                            ) 
+      system(cmd_curl_str)
+      #system("curl -n -L -c cookiefile -b cookiefile https://e4ftl01.cr.usgs.gov/MOLT/MOD11A1.006/2001.01.01/MOD11A1.A2001001.h08v05.006.2015111170727.hdf")
+      #myopts <- RCurl::curlOptions(netrc=TRUE, netrc.file=path.expand("~/.netrc"), 
+      #                             cookiefile=path.expand("~/.urs_cookies"), 
+      #                             followlocation=TRUE) 
+      
+      #your_url <- file_item
+      #getBinaryURL(your_url, .opts=myopts) 
+      
+      #where the .netrc file should look like this: 
+        
+      #machine urs.earthdata.nasa.gov login your_login password your_pass 
+      #machine e4ftl01.cr.usgs.gov login your_login password your_pass
     }
   }
   
