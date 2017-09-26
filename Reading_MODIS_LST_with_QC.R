@@ -1,6 +1,6 @@
 ########################################  MODIS TILES PROCESSING #######################################
 ########################################### Read QC flags and mosaic tiles in R #####################################
-#The current version generat data forthe Ecuador region.
+#The current version generat data forthe Arizona region
 #This script processes MODIS tiles using Quality Flag. Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
 #using for example gdalinfo to identify the relevant dataset and QC flag options. 
@@ -18,8 +18,8 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 04/08/2015
-#PROJECT: NCEAS and general MODIS processing of all projects
+#MODIFIED ON : 09/26/2017
+#PROJECT: General MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
 #2)Add function to report statistics: missing files
@@ -51,21 +51,18 @@ library(reshape)
 
 #Functions used in the script:
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_04082015.R"
-script_path <- "~/Data/Space_beats_time/sbt_scripts"  #path to script functions
+function_analyses_paper <-"MODIS_and_raster_processing_functions_09262017.R"
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
-in_dir <- "~/Data/Space_beats_time/Case2_data_NDVI" #param1
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Arizona" #param1
 #data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
-out_dir <- "~/Data/Space_beats_time/Case2_data_NDVI" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Arizona" #param2
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 
-proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
-#CRS_reg <-"+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +units=m +no_defs";
-#CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 #CRS_reg <- proj_modis_str
 
 proj_str<- CRS_WGS84 #check if in use somewhere?
@@ -75,12 +72,11 @@ CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"Katrina_04082015" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <-"arizona_09262017" #output suffix for the files that are masked for quality and for ...param6
 create_out_dir_param=FALSE #param7
 
 #in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
 #out_dir <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/" #ATLAS SERVER 
-
 
 #infile_reg_outline=""  #input region outline defined by polygon: none Katrina
 infile_reg_outline=NULL #param9
@@ -92,33 +88,34 @@ infile_reg_outline=NULL #param9
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data/reg_input_Katrina/r_FID_predictions_09252014.rst" #param10
 ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
-infile_modis_grid <- "~/Data/Space_beats_time/Case2_data/reg_input_Katrina/modis_sinusoidal_grid_world.shp" #param11
-#infile_modis_grid <- file.path(in_dir,"/reg_input_yucatan/modis_sinusoidal_grid_world.shp")
+infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 
 ## Other specific parameters
 
-MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
-#MODIS_product <- "MOD11A1.005"
+#MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
+#MODIS_product <- "MOD11A1.006"
+MODIS_product <- "MOD11A2.006"
 start_date <- "2001.01.01"  #param13
 end_date <- "2010.12.31"  #param14
 
-
+#/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
 list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
-list_tiles_modis<- c("h10v05,h10v06") 
+#ist_tiles_modis<- c("h10v05,h10v06")
+list_tiles_modis <- c("h08v05")
 
 file_format_download <- "hdf"  #param15
 product_version <- 5 #param16
-temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly) #param17
+#temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly) #param17
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done #param18 
 
-product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#product_type = c("LST") #can be LST, ALBEDO etc.
+#product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
+product_type = c("LST") #can be LST, ALBEDO etc.
 
-num_cores <- 10 #param 20
+num_cores <- 4 #param 20
 
 #Parameters/arguments not in use yet...
 #num_cores <- 10 #number of cores used in parallel processing...
@@ -149,7 +146,7 @@ if(create_out_dir_param==TRUE){
 #if(is.null(infile_reg_outline))
 #  reg_outline<- create_polygon_from_extent(ref_rast_name,out_suffix)
 #  #debug(get_modis_tiles_list)
-}
+#}
 #list_tiles_modis <- get_modis_tiles_list(modis_grid,reg_outline,CRS_reg)
 
 list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
