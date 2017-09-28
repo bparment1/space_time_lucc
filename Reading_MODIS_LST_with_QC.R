@@ -1,7 +1,8 @@
-########################################  MODIS TILES PROCESSING #######################################
+########################################  TILES PROCESSING #######################################
 ########################################### Read QC flags and mosaic tiles in R #####################################
-#The current version generat data forthe Arizona region
-#This script processes MODIS tiles using Quality Flag. Tiles are mosaiced and reprojected for a specific study region.
+#The current version generate data forthe Arizona region.
+#This script download and processes MODIS tiles using Quality Flag. 
+#Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
 #using for example gdalinfo to identify the relevant dataset and QC flag options. 
 #Note that QC flags are store bitpacks of 8bits (byte) in big endian!!!
@@ -18,13 +19,15 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 09/26/2017
+#MODIFIED ON : 09/28/2017
 #PROJECT: General MODIS processing of all projects
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
 #2)Add function to report statistics: missing files
 #3) Currently 20 input arguments (param), reduce to 15 or less
 #4) Make this script a function!!
+#5) This script can be transform to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
+#   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
 ###################################################################################################
 
 ###Loading R library and packages                                                      
@@ -51,7 +54,7 @@ library(reshape)
 
 #Functions used in the script:
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_09262017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_09282017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
@@ -96,7 +99,8 @@ infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis
 #MODIS_product <- "MOD11A1.006"
 MODIS_product <- "MOD11A2.006"
 start_date <- "2001.01.01"  #param13
-end_date <- "2010.12.31"  #param14
+#end_date <- "2010.12.31"  #param14
+end_date <- "2001.01.10"
 
 #/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
 list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
@@ -153,7 +157,7 @@ list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string i
 
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
-  debug(modis_product_download)
+  #debug(modis_product_download)
   download_modis_obj <- modis_product_download(MODIS_product,product_version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
@@ -182,7 +186,7 @@ if(product_type=="NDVI"){
 }
 if(product_type=="LST"){
   modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
-  modis_layer_str2 <- unlist(strsplit(modis_subdataset[2],"\""))[3] #Get day QC layer
+  modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
 }
 
 ### import list of files before mosaicing
@@ -207,7 +211,7 @@ if(steps_to_run$import==TRUE){
     out_suffix_s <- var_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
-    #debug(import_list_modis_layers_fun)
+    #undebug(import_list_modis_layers_fun)
     r1 <- import_list_modis_layers_fun(1,list_param_import_modis)    
     r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
@@ -250,7 +254,7 @@ if(product_type=="NDVI"){
 if(product_type=="LST"){
   QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
   names(QC_obj)
-  #For LST
+  #For LST: Use default value:
   QC_data_lst <- QC_obj$LST
   #Select level 1:
   qc_lst_valid <- subset(x=QC_data_lst,QA_word1 == "LST Good Quality" | QA_word1 =="LST Produced,Check QA")
