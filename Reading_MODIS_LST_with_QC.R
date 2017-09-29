@@ -71,7 +71,8 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84 #check if in use somewhere?
 #CRS_reg <- proj_modis_str #param3
 CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
-
+CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs" 
+#http://azgeo-azland.opendata.arcgis.com/
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
@@ -252,6 +253,7 @@ if(product_type=="NDVI"){
 
 ## Get QC information for lST/NDVI and mask values: imporove and automate this later
 if(product_type=="LST"){
+  #undebug(create_MODIS_QC_table)
   QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
   names(QC_obj)
   #For LST: Use default value:
@@ -278,26 +280,43 @@ r_stack <- vector("list",length(list_tiles_modis)) #to contain results
 if(steps_to_run$apply_QC_flag==TRUE){
   for(j in 1:length(list_tiles_modis)){
     #list all files first
-    out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    
     out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
     file_format_s <-file_format
     #undebug(create_raster_list_from_file_pat)
-    list_r_lst[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    list_r_lst[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",
+                                                        in_dir=out_dir_s,
+                                                        out_prefix="",
+                                                        file_format=file_format_s)
     
-    out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    
     out_suffix_s <- paste(qc_modis_name,sep="") #for qc flags
     list_r_qc[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
     
     ###
     
-    list_param_screen_qc <- list(qc_valid,list_r_qc[[j]], list_r_lst[[j]],rast_mask=TRUE,NA_flag_val,out_dir_s,out_suffix) 
-    names(list_param_screen_qc) <- c("qc_valid","rast_qc", "rast_var","rast_mask","NA_flag_val","out_dir","out_suffix") 
+    list_param_screen_qc <- list(qc_valid,
+                                 list_r_qc[[j]], 
+                                 list_r_lst[[j]],rast_mask=TRUE,
+                                 NA_flag_val,out_dir_s,out_suffix) 
+    names(list_param_screen_qc) <- c("qc_valid",
+                                     "rast_qc", 
+                                     "rast_var","rast_mask",
+                                     "NA_flag_val","out_dir","out_suffix") 
     #undebug(screen_for_qc_valid_fun)
     #r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
     #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
     #r_stack[[j]] <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
-    r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
+                            FUN=screen_for_qc_valid_fun,
+                            list_param=list_param_screen_qc,
+                            mc.preschedule=FALSE,
+                            mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
   }
 }
