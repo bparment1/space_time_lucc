@@ -422,13 +422,17 @@ screen_for_qc_valid_fun <-function(i,list_param){
 create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",file_format=".rst"){
   #create a list of raster files to creater R raster stacks
   if(file_pat==""){
-    list_raster_name <- list.files(path=in_dir,
-                                   pattern=paste(".*.",out_suffix_s,
-                                                 file_format,"$",sep=""),
-                                   full.names=T)
-  }else{
-    list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=T)
+    file_pat <- paste(".*.",out_suffix_s,file_format,"$",sep="")
+    #list_raster_name <- list.files(path=in_dir,pattern=,full.names=T)
   }
+  
+  list_raster_name <- list.files(path=in_dir,
+                                 pattern=file_pat,
+                                 full.names=T)
+  list_raster_name <- list.files(path=in_dir,
+                                 pattern=".*.LST_Day_1km.rst$",
+                                 full.names=T)
+  
   dat_list<-c(mixedsort(unlist(list_raster_name)))
   #dat_list <- sub("[.][^.]*$", "", dat_list, perl=TRUE) 
   #writeLines(dat_list,con=paste(out_prefix,out_suffix_s,".rgf",sep=""))
