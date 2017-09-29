@@ -422,7 +422,10 @@ screen_for_qc_valid_fun <-function(i,list_param){
 create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir=".",out_prefix="",file_format=".rst"){
   #create a list of raster files to creater R raster stacks
   if(file_pat==""){
-    list_raster_name <- list.files(path=in_dir,pattern=paste(".*.",out_suffix_s,file_format,"$",sep=""),full.names=T)
+    list_raster_name <- list.files(path=in_dir,
+                                   pattern=paste(".*.",out_suffix_s,
+                                                 file_format,"$",sep=""),
+                                   full.names=T)
   }else{
     list_raster_name <- list.files(path=in_dir,pattern=file_pat,full.names=T)
   }
@@ -610,6 +613,7 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   ll <- seq.Date(st, en, by="1 day") #sequence of dates
   dates_queried <- format(ll,"%Y.%m.%d") #formatting queried dates
   
+  #This is where it can be changed for other product
   url_product <-paste("https://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product,"/",sep="") #URL is a constant...
   #url_product <- file.path("http://e4ftl01.cr.usgs.gov/MOLT/",MODIS_product)
   #debug(extractFolders)
@@ -691,7 +695,8 @@ modis_product_download <- function(MODIS_product,version,start_date,end_date,lis
   
   #Prepare return object: list of files downloaded with http and list downloaded of files in tiles directories
   
-  list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles))) #Use mapply to pass multiple arguments
+  list_files_by_tiles <-mapply(1:length(out_dir_tiles),
+                               FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles))) #Use mapply to pass multiple arguments
   #list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T)) #Use mapply to pass multiple arguments
   
   colnames(list_files_by_tiles) <- list_tiles #note that the output of mapply is a matrix
