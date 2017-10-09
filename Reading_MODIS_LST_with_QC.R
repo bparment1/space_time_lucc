@@ -136,12 +136,12 @@ list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_ou
 list_tiles_modis <- c("h08v05")
 
 file_format_download <- "hdf"  #param15
-product_version <- 5 #param16
+product_version <- 6 #param16
 #temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly) #param17
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
+scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+#scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done #param18 
 
 #product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
@@ -160,8 +160,13 @@ selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check 
 steps_to_run <- list(download=FALSE,
                      import=TRUE,
                      apply_QC_flag=TRUE,
-                     moscaic=TRUE,
+                     mosaic=TRUE,
                      reproject=TRUE) #param21
+
+### Constants
+
+## Maybe add in_dir for all the outputs
+out_dir_mosaic <- NULL
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -404,6 +409,15 @@ if(steps_to_run$apply_QC_flag==TRUE){
 #debug(create_raster_list_from_file_pat)
 if(steps_to_run$mosaic==TRUE){
   
+  if(is.null(out_dir_mosaic)){
+
+    out_dir_tmp <- paste0("mosaic_",out_suffix)
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
+  }else{
+    out_dir_s <- out_dir_mosaic
+  }
+  
   list_m_var <- vector("list",length(list_tiles_modis))  
   l_df_raster_name <- vector("list",length(list_tiles_modis))  
 
@@ -452,7 +466,9 @@ if(steps_to_run$mosaic==TRUE){
     out_rastnames_var <- df_m_mosaics$out_rastnames_var
     j <- 1
     
-    list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
+    #list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
+    list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir_mosaic,file_format,NA_flag_val)
+    
     names(list_param_mosaic)<-c("j","mosaic_list","out_rastnames","out_path","file_format","NA_flag_val")
     #debug(mosaic_m_raster_list)
     list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
@@ -468,12 +484,15 @@ if(steps_to_run$mosaic==TRUE){
 }
 
 if(steps_to_run$mosaic==FALSE){
-  #
+  out_dir_s <- out_dir_mosaic
   #list_var_mosaiced <-    
   #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE) #inputs for moasics
-  list_var_mosaiced <-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE) #inputs for moasics
+  list_var_mosaiced <-list.files(pattern=paste(out_suffix_s,"$",sep=""),
+                                 path=out_dir_s,
+                                 full.names=TRUE) #inputs for moasics
   
 }
+
 #################################
 ##### STEP 5: REPROJECT AND CROP TO STUDY REGION  ###
 
