@@ -19,9 +19,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/08/2017
+#MODIFIED ON : 10/09/2017
 #PROJECT: General MODIS processing of all projects
-#COMMIT: testing import with separate outdir set
+#COMMIT: testing qc flags and masking with separate outdir set
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -77,7 +77,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_10082017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10092017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
@@ -335,7 +335,13 @@ if(steps_to_run$apply_QC_flag==TRUE){
   for(j in 1:length(list_tiles_modis)){
     #list all files first
     #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
-    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    #
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    
+    #out_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
     
     out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
     file_format_s <-file_format
@@ -346,23 +352,33 @@ if(steps_to_run$apply_QC_flag==TRUE){
                                                         file_format=file_format_s)
     
     #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
-    out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-    
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j] #same as above
+    #debug(create_raster_list_from_file_pat)
     out_suffix_s <- paste(qc_modis_name,sep="") #for qc flags
-    list_r_qc[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    list_r_qc[[j]] <- create_raster_list_from_file_pat(out_suffix_s,
+                                                       file_pat="",
+                                                       in_dir=out_dir_s,
+                                                       out_prefix="",
+                                                       file_format=file_format_s)
     
-    ###
+    ##### Now prepare the input for screening using QC flag values
+    
+    ##Set output dir
+    out_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
     
     list_param_screen_qc <- list(qc_valid,
                                  list_r_qc[[j]], 
-                                 list_r_lst[[j]],rast_mask=TRUE,
+                                 list_r_lst[[j]],
+                                 rast_mask=TRUE,
                                  NA_flag_val,out_dir_s,out_suffix) 
     names(list_param_screen_qc) <- c("qc_valid",
                                      "rast_qc", 
                                      "rast_var","rast_mask",
                                      "NA_flag_val","out_dir","out_suffix") 
     #undebug(screen_for_qc_valid_fun)
-    #r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+    r_stack <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
     #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
     #r_stack[[j]] <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
@@ -448,6 +464,7 @@ if(steps_to_run$mosaic==TRUE){
     #test_rast <- stack(list_var_mosaiced)
     #plot(test_rast,y=109:110)
     
+  }
 }
 
 if(steps_to_run$mosaic==FALSE){
