@@ -19,15 +19,19 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 09/30/2017
+#MODIFIED ON : 10/08/2017
 #PROJECT: General MODIS processing of all projects
+#COMMIT: testing import with separate outdir set
+#
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
-#2)Add function to report statistics: missing files
+#2) Add function to report statistics: missing files
 #3) Currently 20 input arguments (param), reduce to 15 or less
 #4) Make this script a function!!
 #5) This script can be transform to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
 #   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
+#
+
 ###################################################################################################
 
 ###Loading R library and packages                                                      
@@ -48,20 +52,43 @@ library(raster)                              # Hijmans et al. package for raster
 library(rasterVis)
 library(spgwr)
 library(reshape)
+library(sf)
 
-#############################
-### Parameters and arguments
+#################################
+### Functions used in the script:
 
-#Functions used in the script:
+create_dir_fun <- function(outDir,out_suffix=NULL){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    outDir <- file.path(outDir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(outDir)){
+    dir.create(outDir)
+  }
+  return(outDir)
+}
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_09282017.R"
+#Used to load RData object saved within the functions produced.
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
+
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10082017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Arizona" #param1
+
+################################
+###### Parameters and arguments
+
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
 #data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Arizona" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param2
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -76,7 +103,7 @@ CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=21336
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"arizona_09262017" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <-"arizona_10082017" #output suffix for the files that are masked for quality and for ...param6
 create_out_dir_param=FALSE #param7
 
 #in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
@@ -130,7 +157,7 @@ selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check 
 
 
 #run all processing steps
-steps_to_run <- list(download=TRUE,
+steps_to_run <- list(download=FALSE,
                      import=TRUE,
                      apply_QC_flag=TRUE,
                      moscaic=TRUE,
@@ -211,20 +238,43 @@ if(steps_to_run$import==TRUE){
     #infile_var <- download_modis_obj$list_files_by_tiles[,j] 
     infile_var <-list_files_by_tiles[,j] #note can be any variable even thought LST presented  here
     #infile_var <- list_files_by_tiles[[j]]
-    out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
     
     out_suffix_s <- var_modis_name
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
     #undebug(import_list_modis_layers_fun)
-    r1 <- import_list_modis_layers_fun(1,list_param_import_modis)    
-    r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    #r_var_s <- import_list_modis_layers_fun(1,list_param_import_modis)    
+    #r_var_s <- mclapply(1:12,
+    #                    FUN=import_list_modis_layers_fun,
+    #                    list_param=list_param_import_modis,
+    #                    mc.preschedule=FALSE,
+    #                    mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+
+    r_var_s <- mclapply(1:length(infile_var),
+                        FUN=import_list_modis_layers_fun,
+                        list_param=list_param_import_modis,
+                        mc.preschedule=FALSE,
+                        mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
     out_suffix_s <- qc_modis_name
-    list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
+    list_param_import_modis <- list(i=1,
+                                    hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
-    #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
-    r_qc_s <-mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+    #r_qc_s <-mclapply(1:12,
+    #                  FUN=import_list_modis_layers_fun,
+    #                  list_param=list_param_import_modis,
+    #                 mc.preschedule=FALSE,
+    #                  mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    
+    r_qc_s <-mclapply(1:length(infile_var),
+                      FUN=import_list_modis_layers_fun,
+                      list_param=list_param_import_modis,
+                      mc.preschedule=FALSE,
+                      mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
   }
 }
