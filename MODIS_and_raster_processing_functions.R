@@ -334,7 +334,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
   ##Function to assign NA given qc flag values from MODIS or other raster
   #Author: Benoit Parmentier
   #Created On: 09/20/2013
-  #Modified On: 12/31/2013
+  #Modified On: 10/09/2017
   
   #Parse arguments:
   
@@ -346,7 +346,12 @@ screen_for_qc_valid_fun <-function(i,list_param){
   out_dir <- list_param$out_dir #output dir
   out_suffix <- out_suffix # suffix used for raster files written as outputs
   
+  #########################
   #### Start script:
+  
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
   
   if(is.character(rast_qc)==TRUE){
     rast_name_qc <- rast_qc
@@ -385,7 +390,7 @@ screen_for_qc_valid_fun <-function(i,list_param){
     removeTmpFiles(h=0) #did not work if h is not set to 0
     ## end of remove section
     return(raster_name)
-  }else{
+  }else{ #if keep mask true
     raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     writeRaster(rast_var_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name)
