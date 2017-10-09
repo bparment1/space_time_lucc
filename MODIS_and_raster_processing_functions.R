@@ -4,8 +4,10 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 09/26/2017
-#PROJECT: None, general utility functions for raster (GIS) processing.     
+#MODIFIED ON: 10/09/2017
+#PROJECT: None, general utility functions for raster (GIS) processing. 
+#COMMIT: pdating import file function with separate outdir set
+#
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
 #2)Add plotting function for raster stack
@@ -302,12 +304,6 @@ assign_projection_crs <-function(i,list_param){
 #  }
 #}
 
-load_obj <- function(f){
-  env <- new.env()
-  nm <- load(f, env)[1]
-  env[[nm]]
-}
-
 extract_list_from_list_obj<-function(obj_list,list_name){
   #Create a list of an object from a given list of object using a name prodived as input
   list_tmp<-vector("list",length(obj_list))
@@ -429,9 +425,9 @@ create_raster_list_from_file_pat <- function(out_suffix_s,file_pat="",in_dir="."
   list_raster_name <- list.files(path=in_dir,
                                  pattern=file_pat,
                                  full.names=T)
-  list_raster_name <- list.files(path=in_dir,
-                                 pattern=".*.LST_Day_1km.rst$",
-                                 full.names=T)
+  #list_raster_name <- list.files(path=in_dir,
+  #                              pattern=".*.LST_Day_1km.rst$",
+  #                               full.names=T)
   
   dat_list<-c(mixedsort(unlist(list_raster_name)))
   #dat_list <- sub("[.][^.]*$", "", dat_list, perl=TRUE) 
@@ -478,18 +474,6 @@ create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
            driver="ESRI Shapefile",overwrite_layer="TRUE")
 
   return(reg_outline_poly)
-}
-
-create_dir_fun <- function(out_dir,out_suffix){
-  if(!is.null(out_suffix)){
-    out_name <- paste("output_",out_suffix,sep="")
-    out_dir <- file.path(out_dir,out_name)
-  }
-  #create if does not exists
-  if(!file.exists(out_dir)){
-    dir.create(out_dir)
-  }
-  return(out_dir)
 }
 
 #merge a list of data.frame 
@@ -737,13 +721,24 @@ import_list_modis_layers_fun <-function(i,list_param){
   hdf_file <- list_param$hdf_file
   subdataset <- list_param$subdataset
   NA_flag_val <- list_param$NA_flag_val
-  out_dir <- list_param$out_dir
+  out_dir_s <- list_param$out_dir
   out_suffix <- list_param$out_suffix
   file_format <- list_param$file_format
   scaling_factors <- list_param$scaling_factors
+  
+  ######## Begin script #####
+  
+  if(!file.exists(out_dir_s)){
+    dir.create(out_dir_s)
+  }
+  
+  #setwd(out_dir_s)
+
   #Now get file to import
-  hdf <-hdf_file[i] # must include input path!!
-  modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",hdf,subdataset,sep="")
+  hdf_filename <-hdf_file[i] # must include input path!!
+  modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",
+                                  hdf_filename,
+                                  subdataset,sep="")
   
   r <-readGDAL(modis_subset_layer_Day) 
   r  <-raster(r)
@@ -751,13 +746,20 @@ import_list_modis_layers_fun <-function(i,list_param){
     r <- scaling_factors[1]*r + scaling_factors[2]
   }
   #Finish this part...write out
-  names_hdf<-as.character(unlist(strsplit(x=basename(hdf), split="[.]")))
+  names_hdf<-as.character(unlist(strsplit(x=basename(hdf_filename), split="[.]")))
   
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
   raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
-  out_dir_str <-  dirname(hdf)
-  writeRaster(r, NAflag=NA_flag_val,filename=file.path(out_dir_str,raster_name),bylayer=TRUE,bandorder="BSQ",overwrite=TRUE)   
+  #out_dir_str <-  dirname(hdf)
+  #set output dir from input above
+  
+  writeRaster(r, 
+              NAflag=NA_flag_val,
+              filename=file.path(out_dir_s,raster_name),
+              bylayer=TRUE,
+              bandorder="BSQ",
+              overwrite=TRUE)   
   
   ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
   ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
@@ -775,7 +777,7 @@ import_list_modis_layers_fun <-function(i,list_param){
   #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   ## end of remove section
   
-  return(file.path(out_dir_str,raster_name)) 
+  return(file.path(out_dir_s,raster_name)) 
 }
 
 create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
