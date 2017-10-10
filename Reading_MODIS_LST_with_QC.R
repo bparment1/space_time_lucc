@@ -93,11 +93,10 @@ out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 
-#CRS_reg <- proj_modis_str
 
 proj_str<- CRS_WGS84 #check if in use somewhere?
 #CRS_reg <- proj_modis_str #param3
-CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
+#CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
 CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs" 
 #http://azgeo-azland.opendata.arcgis.com/
 file_format <- ".rst" #raster format used #param4
@@ -118,7 +117,7 @@ infile_reg_outline=NULL #param9
 
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
 ref_rast_name <- NULL
-
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 
@@ -301,7 +300,8 @@ if(steps_to_run$import==TRUE){
 
 
 if(steps_to_run$import==FALSE){
-  #
+  ## Need to deal with multiple tiles
+  j <-1
   #for(j in 1:length(list_tiles_modis)){
   if(is.null(import_dir)){
     out_dir_tmp <- paste0("import_",list_tiles_modis[j])
@@ -391,7 +391,7 @@ qc_valid<-qc_lst_valid$Integer_Value #value integer values
 #r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
 list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
 list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
-r_stack <- vector("list",length(list_tiles_modis)) #to contain results
+list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
 
 if(steps_to_run$apply_QC_flag==TRUE){
   for(j in 1:length(list_tiles_modis)){
@@ -577,8 +577,7 @@ if(steps_to_run$mosaic==FALSE){
 ##### STEP 5: REPROJECT AND CROP TO STUDY REGION  ###
 
 if(steps_to_run$reproject==TRUE){
-  d
-  d
+  
   # FIRST SET UP STUDY AREA ####
   
   # NOW PROJECT AND CROP WIHT REF REGION ####
@@ -610,6 +609,11 @@ if(steps_to_run$reproject==TRUE){
   r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
   r_tmp <- raster(unlist(list_var_mosaiced)[1])
   r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
+  
+  ###
+  "gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
+  ###
+  ### Now run for all:
   reg_var_list <-mclapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
   #reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region) 
   
@@ -618,17 +622,18 @@ if(steps_to_run$reproject==TRUE){
   test<-stack(reg_var_list[1:4])
   r_reg_var<- stack(reg_var_list)
   plot(test)
-  r_mosaiced <- stack(list_var_mosaiced_tmp)
-  plot(r_mosaiced,y=1)
-  plot(reg_outline,add=T)
+  #r_mosaiced <- stack(list_var_mosaiced_tmp)
+  #plot(r_mosaiced,y=1)
+  #plot(reg_outline,add=T)
   
   #reg_var_list <-list.files(path=out_dir,pattern="^reg.*.rst$") 
-  reg_var_list <- mixedsort(list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/output_Katrina_04082015",pattern="^reg2.*.rst$",full.names=T)) #use IDRISI reprojected...
-  r_srtm_list <-list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/",pattern="^r_sr.*.rst$",full.names=T) #use IDRISI reprojected...
-  r_srtm <- stack(r_srtm_list)
+  #reg_var_list <- mixedsort(list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/output_Katrina_04082015",pattern="^reg2.*.rst$",full.names=T)) #use IDRISI reprojected...
+  #r_srtm_list <-list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/",pattern="^r_sr.*.rst$",full.names=T) #use IDRISI reprojected...
+  #r_srtm <- stack(r_srtm_list)
   
-  r_reg_var <- stack(reg_var_list)
-  r_stack <- stack(r_reg_var,r_srtm)
+  #r_reg_var <- stack(reg_var_list)
+  #r_stack <- stack(r_reg_var,r_srtm)
+  
   if(save_textfile==TRUE){
     dat_reg_var_spdf <- as(r_stack,"SpatialPointsDataFrame")
     dat_reg_var <- as.data.frame(dat_reg_var_spdf) 
