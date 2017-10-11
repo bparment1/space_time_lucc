@@ -10,7 +10,7 @@
 #Inspiration and some code for the MODIS flag function originates from Steve Mosher:
 #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
 ## MODIS WORKFLOW
-# Processing of MODIS HDF files is done in 5 steps:c
+# Processing of MODIS HDF files is done in 5 steps:
 # Step 1: download modis tiles for specified product and version (e.g. version 5)
 # Step 2: import modis tiles for specified file format (e.g. ".tif",".rst)
 # Step 3: deal with modis flags (multiple levels)
@@ -19,18 +19,19 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/10/2017
+#MODIFIED ON : 10/11/2017
 #PROJECT: General MODIS processing of all projects
-#COMMIT: generating masked files AZ using QC flags
+#COMMIT: changing projection function
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
 #2) Add function to report statistics: missing files
 #3) Currently 20 input arguments (param), reduce to 15 or less
-#4) Make this script a function!!
+#4) Make this script a function callable from shell!!
 #5) This script can be transform to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
 #   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
-#
+#6) Update mosaicing to use gdal for large areas
+
 
 ###################################################################################################
 
@@ -77,7 +78,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_10092017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10112017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
@@ -97,8 +98,10 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84 #check if in use somewhere?
 #CRS_reg <- proj_modis_str #param3
 #CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
-CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs" 
+#CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs" 
 #http://azgeo-azland.opendata.arcgis.com/
+CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+#http://www.spatialreference.org/ref/?search=Arizona
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
@@ -155,6 +158,7 @@ selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check 
 #Select level 2:
 #qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
 
+agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param 11
 
 #run all processing steps
 #param21
@@ -444,7 +448,7 @@ if(steps_to_run$apply_QC_flag==TRUE){
     #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
     #r_stack[[j]] <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
-    r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
+    list_r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
                             FUN=screen_for_qc_valid_fun,
                             list_param=list_param_screen_qc,
                             mc.preschedule=FALSE,
@@ -582,6 +586,21 @@ if(steps_to_run$reproject==TRUE){
   
   # NOW PROJECT AND CROP WIHT REF REGION ####
   
+  if(is.null(project_dir)){
+    out_dir_tmp <- paste0("project_output_",out_suffix)
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
+    if(!file.exists(out_dir_s)){
+      dir.create(out_dir_s)
+    }
+  }else{
+    out_dir_s <- project_dir
+    #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
+    if(!file.exists(out_dir_s)){
+      dir.create(out_dir_s)
+    }
+  }
+  
   if (is.null(ref_rast_name)){
     #Use one mosaiced modis tile as reference image...We will need to add a function 
     ref_rast_temp <-raster(list_var_mosaiced[[1]]) 
@@ -589,6 +608,9 @@ if(steps_to_run$reproject==TRUE){
     #to define a local reference system and reproject later!!
     #Assign new projection system here in the argument CRS_reg (!it is used later)
   }else{
+    
+    az_sf <- st_read(ref_rast_name)
+    test_sf <- st_transform(az_sf,crs=CRS_reg)
     ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
     projection(ref_rast) <- CRS_reg #Assign given reference system from master script...
   }
@@ -606,9 +628,48 @@ if(steps_to_run$reproject==TRUE){
   
   #undebug(create__m_raster_region)
   
+  ### need to change this:
   r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
   r_tmp <- raster(unlist(list_var_mosaiced)[1])
   r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
+  ### need to set the resolution
+  r_test2 <- projectRaster(r_tmp,crs=CRS_reg, res=res(r_tmp),method="ngb")
+  test_sp <- as(test_sf, "Spatial") 
+  r_crop <- crop(r_test2,test_sp)
+  ## Now turn the polygon file to mask using the reprojected and crop area.
+  r_az <- rasterize(test_sp,r_crop)
+  compareCRS(r_az,r_crop)
+  projection(r_az) <- projection(r_crop)
+  compareCRS(r_az,CRS_reg) #TRUE
+  projection(r_az) <- CRS_reg
+  #https://www.nceas.ucsb.edu/scicomp/recipes/projections
+  NAvalue(r_az) <- -9999
+  writeRaster(r_az,file.path("reference_region_study_area_AZ.rst"),
+              overwrite=T)
+  writeRaster(r_az,file.path("reference_region_study_area_AZ.tif"),
+              overwrite=T)
+  
+  #### pasted from other file:
+  out_rast_name <- NULL
+  lf_r <- list_var_mosaiced
+  list_param_create_region <- list(as.list(lf_r),
+                                   ref_rast, out_rast_name,agg_param,
+                                   file_format,NA_flag_val,
+                                   input_proj_str=NULL,out_suffix="",out_dir_s)
+  names(list_param_create_region) <- c("raster_name",
+                                       "reg_ref_rast", "out_rast_name","agg_param",
+                                       "file_format","NA_flag_val",
+                                       "input_proj_str","out_suffix","out_dir")
+  #debug(create__m_raster_region)
+  test <- create__m_raster_region(1,list_param=list_param_create_region)
+  lf_r_reg <- mclapply(1:length(lf_r),
+                       FUN=create__m_raster_region,
+                       list_param=list_param_create_region,
+                       mc.preschedule=FALSE,
+                       mc.cores = num_cores)
+  #Currently we use only this:
+  
+  
   
   ###
   "gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
@@ -644,7 +705,6 @@ if(steps_to_run$reproject==TRUE){
     
     #write.table(dat_reg_var)
   }
-  
   
 }
 
