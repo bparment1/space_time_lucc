@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 10/09/2017
+#MODIFIED ON: 10/11/2017
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: pdating import file function with separate outdir set
 #
@@ -116,36 +116,98 @@ mosaic_m_raster_list<-function(j,list_param){
 
 ## Function to reproject and crop modis tile or other raster images
 
+### This is a very general function to process raster to match a raster of reference,
 create__m_raster_region <-function(j,list_param){
-  #This functions returns a subset of tiles from the modis grdid.
-  #Arguments: raster name of the file,reference file with
-  #Output: spatial grid data frame of the subset of tiles
-  
+  #This processes a list of raster to match to a region of interest defined by a reference raster
+  #INPUT Arguments: raster name of the file,reference file with
+  # j: file to be processed with input parameters
+  # raster_name: list of raster to process i.e. match the region of interest
+  # reg_ref_rast: reference raster used to defined the region of interest and spatial parameters
+  # out_rast_name: output raster name, if NULL then use out_suffix to the input name to generate output name
+  # agg_param: aggregation parameters: this is a vector used in in the aggregate function. It has three items:
+  #                                     -TRUE/FALSE: if true then aggregate
+  #                                     -agg_fact: aggregation factor, if NULL compute on the fly
+  #                                     -agg_fun: aggregation function to use, the default is mean
+  # file_format: output format used in the raster e.g. .tif, .rst
+  # NA_flag_val: flag value used for no data
+  # input_proj_str: defined projection,default null in which case it is extract from the input raster
+  # out_suffix : output suffix added to output names if no output raster name is given
+  # out_dir:  <- list_param$out_dir
+  # Output: spatial grid data frame of the subset of tiles
+  #
+  # Authors: Benoit Parmentier
+  # Created: 10/01/2015
+  # Modified: 01/20/2016
+  #TODO:
+  # - Add option to disaggregate...
+  # - Modify agg param to be able to use different ones by file j for the mcapply function
+  #
+  ################################################
   ## Parse input arguments
   raster_name <- list_param$raster_name[[j]] #list of raster ot project and crop, this is a list!!
   reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
-  out_rast_name <- list_param$out_rast_name[j]
-  NA_flag_val <- list_param$NA_flag_val
+  out_rast_name <- list_param$out_rast_name[j] #if NULL then use out_suffix to add to output name
+  agg_param <- list_param$agg_param #TRUE,agg_fact,agg_fun
+  file_format <- list_param$file_format #.tif, .rst
+  NA_flag_val <- list_param$NA_flag_val #flag value used for no data
   input_proj_str <- list_param$input_proj_str #default null?
+  out_suffix <- list_param$out_suffix
+  out_dir <- list_param$out_dir
   
   ## Start #
-  layer_rast<-raster(raster_name)
-  if(is.null(input_proj_str)){
-    input_proj_str <-projection(layer_rast)                  #Extract current coordinates reference system in PROJ4 format
+  
+  ## Create raster object if not already present
+  if(class(raster_name)!="RasterLayer"){
+    layer_rast<-raster(raster_name)
   }else{
-    
+    layer_rast <- raster_name
+    raster_name <- filename(layer_rast)
+  }
+  
+  ## Create output raster name if out_rast_name is null
+  if(is.null(out_rast_name)){
+    extension_str <- extension(raster_name)
+    raster_name_tmp <- gsub(extension_str,"",basename(raster_name))
+    if(out_suffix!=""){
+      out_rast_name <- file.path(out_dir,paste(raster_name_tmp,"_crop_proj_reg_",out_suffix,file_format,sep="")) #for use in function later...
+    }else{
+      out_rast_name <- file.path(out_dir,paste(raster_name_tmp,"_crop_proj_reg",out_suffix,file_format,sep="")) #for use in function later...
+    }
+  }
+  
+  ## Get the input raster projection information if needed
+  if(is.null(input_proj_str)){
+    input_proj_str <-projection(layer_rast)   #Extract current coordinates reference system in PROJ4 format
+  }else{
     projection(layer_rast) <- input_proj_str #assign projection info
   }
-  region_temp_projected<-projectExtent(reg_ref_rast,CRS(input_proj_str))     #Project from ref to current region coord. system
+  region_temp_projected <- projectExtent(reg_ref_rast,CRS(input_proj_str))     #Project from ref to current region coord. system
   
-  layer_crop_rast<-crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
+  layer_crop_rast <- crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
   #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
-  layer_projected_rast<-projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb")
+  if(agg_param[1]==TRUE){
+    agg_fact <- as.numeric(agg_param[2]) #in case we have a string/char type
+    agg_fun <- agg_param[3]
+    #debug(aggregate_raster)
+    r_agg_raster_name <- aggregate_raster(reg_ref_rast, #reference raster with the desired resolution
+                                          agg_fact=agg_fact, #given aggregation factor
+                                          r_in=layer_crop_rast, #raster to be aggregated
+                                          agg_fun="mean", #aggregation function
+                                          out_suffix=out_suffix,
+                                          file_format=".tif",
+                                          out_dir=out_dir)
+    layer_crop_rast <- raster(r_agg_raster_name)
+  }
+  #Should check if different projection!!!
+  layer_projected_rast <- projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb",
+                                        filename=out_rast_name,overwrite=TRUE)
   
-  writeRaster(layer_projected_rast,NAflag=NA_flag_val,filename=out_rast_name,overwrite=TRUE)  
+  #Need cleanup of tmp files here!!! building up to 19gb!
+  removeTmpFiles(h=0)
   
   return(out_rast_name)
 }
+
 
 #####
 
