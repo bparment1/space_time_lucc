@@ -119,8 +119,9 @@ infile_reg_outline=NULL #param9
 #local raster name defining resolution, exent: oregon
 
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
-ref_rast_name <- NULL
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
+#ref_rast_name <- NULL #if null use the first image to define projection area
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
+#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 
@@ -166,7 +167,6 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 steps_to_run <- list(download=FALSE,       #1
                      import=FALSE,         #2
                      apply_QC_flag=FALSE,  #3
-                     mosaic=FALSE,         #4
                      reproject=TRUE)       #5 
 ### Constants
 
@@ -603,14 +603,17 @@ if(steps_to_run$reproject==TRUE){
   
   if (is.null(ref_rast_name)){
     #Use one mosaiced modis tile as reference image...We will need to add a function 
-    ref_rast_temp <-raster(list_var_mosaiced[[1]]) 
-    ref_rast <-projectRaster(from=ref_rast_temp,crs=CRS_reg,method="ngb")
+    ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
+    ref_rast <-projectRaster(from=ref_rast_temp,
+                             res=res=res(ref_rast_tmp),
+                             crs=CRS_reg,
+                             method="ngb")
     #to define a local reference system and reproject later!!
     #Assign new projection system here in the argument CRS_reg (!it is used later)
   }else{
     
-    az_sf <- st_read(ref_rast_name)
-    test_sf <- st_transform(az_sf,crs=CRS_reg)
+    #az_sf <- st_read(ref_rast_name)
+    #test_sf <- st_transform(az_sf,crs=CRS_reg)
     ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
     projection(ref_rast) <- CRS_reg #Assign given reference system from master script...
   }
@@ -622,32 +625,11 @@ if(steps_to_run$reproject==TRUE){
   var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,out_suffix_var,"reg_",file_format,out_path=out_dir)     
   
   #list_param_create_region<-list(j,raster_name=list_var_mosaiced,reg_ref_rast=ref_rast,out_rast_name=var_list_outnames)
-  j<-1
-  list_param_create_region<-list(j,list_var_mosaiced,ref_rast,var_list_outnames,NA_flag_val)
-  names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_name","NA_flag_val")
+  #j<-1
+  #list_param_create_region<-list(j,list_var_mosaiced,ref_rast,var_list_outnames,NA_flag_val)
+  #names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_name","NA_flag_val")
   
   #undebug(create__m_raster_region)
-  
-  ### need to change this:
-  r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
-  r_tmp <- raster(unlist(list_var_mosaiced)[1])
-  r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
-  ### need to set the resolution
-  r_test2 <- projectRaster(r_tmp,crs=CRS_reg, res=res(r_tmp),method="ngb")
-  test_sp <- as(test_sf, "Spatial") 
-  r_crop <- crop(r_test2,test_sp)
-  ## Now turn the polygon file to mask using the reprojected and crop area.
-  r_az <- rasterize(test_sp,r_crop)
-  compareCRS(r_az,r_crop)
-  projection(r_az) <- projection(r_crop)
-  compareCRS(r_az,CRS_reg) #TRUE
-  projection(r_az) <- CRS_reg
-  #https://www.nceas.ucsb.edu/scicomp/recipes/projections
-  NAvalue(r_az) <- -9999
-  writeRaster(r_az,file.path("reference_region_study_area_AZ.rst"),
-              overwrite=T)
-  writeRaster(r_az,file.path("reference_region_study_area_AZ.tif"),
-              overwrite=T)
   
   #### pasted from other file:
   out_rast_name <- NULL
@@ -662,27 +644,31 @@ if(steps_to_run$reproject==TRUE){
                                        "input_proj_str","out_suffix","out_dir")
   #debug(create__m_raster_region)
   test <- create__m_raster_region(1,list_param=list_param_create_region)
-  lf_r_reg <- mclapply(1:length(lf_r),
+  reg_var_list <- mclapply(1:length(lf_r),
                        FUN=create__m_raster_region,
                        list_param=list_param_create_region,
                        mc.preschedule=FALSE,
                        mc.cores = num_cores)
-  #Currently we use only this:
+
+  #reg_var_list <- mclapply(1:12,
+  #                         FUN=create__m_raster_region,
+  #                         list_param=list_param_create_region,
+  #                         mc.preschedule=FALSE,
+  #                         mc.cores = num_cores)
   
-  
-  
-  ###
-  "gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
   ###
   ### Now run for all:
-  reg_var_list <-mclapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+  #reg_var_list <-mclapply(1:length(var_list_outnames), 
+  #                        list_param=list_param_create_region, 
+  #                        create__m_raster_region,
+  #                        mc.preschedule=FALSE,
+  #                        mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
   #reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region) 
   
   #Still need to deal with rescaling !!!
   
-  test<-stack(reg_var_list[1:4])
-  r_reg_var<- stack(reg_var_list)
-  plot(test)
+  #test<-stack(reg_var_list[1:12])
+  #plot(test)
   #r_mosaiced <- stack(list_var_mosaiced_tmp)
   #plot(r_mosaiced,y=1)
   #plot(reg_outline,add=T)
@@ -696,12 +682,17 @@ if(steps_to_run$reproject==TRUE){
   #r_stack <- stack(r_reg_var,r_srtm)
   
   if(save_textfile==TRUE){
-    dat_reg_var_spdf <- as(r_stack,"SpatialPointsDataFrame")
+    r_reg_var<- stack(reg_var_list)
+    
+    dat_reg_var_spdf <- as(r_reg_var,"SpatialPointsDataFrame")
     dat_reg_var <- as.data.frame(dat_reg_var_spdf) 
     
     #dat_out <- as.data.frame(r_reg_var)
     #dat_out <- na.omit(dat_out)
-    write.table(dat_reg_var,file=paste("dat_reg2_var_list_",product_type,"_",out_suffix,".txt",sep=""),row.names=F,sep=",",col.names=T)
+    out_filename <- paste0("dat_reg_var_list_",product_type,"_",out_suffix,".txt")
+    write.table(dat_reg_var,
+                file.path(out_dir_s,out_filename),
+                row.names=F,sep=",",col.names=T)
     
     #write.table(dat_reg_var)
   }
@@ -709,3 +700,30 @@ if(steps_to_run$reproject==TRUE){
 }
 
 ########################## END OF SCRIPT ##############################
+
+### need to change this:
+#r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
+#r_tmp <- raster(unlist(list_var_mosaiced)[1])
+# r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
+# ### need to set the resolution
+# r_test2 <- projectRaster(r_tmp,crs=CRS_reg, res=res(r_tmp),method="ngb")
+# test_sp <- as(test_sf, "Spatial") 
+# r_crop <- crop(r_test2,test_sp)
+# ## Now turn the polygon file to mask using the reprojected and crop area.
+# r_az <- rasterize(test_sp,r_crop)
+# compareCRS(r_az,r_crop)
+# projection(r_az) <- projection(r_crop)
+# compareCRS(r_az,CRS_reg) #TRUE
+# projection(r_az) <- CRS_reg
+# #https://www.nceas.ucsb.edu/scicomp/recipes/projections
+# NAvalue(r_az) <- -9999
+# writeRaster(r_az,file.path("reference_region_study_area_AZ.rst"),
+#             overwrite=T)
+# writeRaster(r_az,file.path("reference_region_study_area_AZ.tif"),
+#             overwrite=T)
+
+#Currently we use only this:
+
+
+###
+#"gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
