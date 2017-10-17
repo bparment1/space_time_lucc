@@ -199,9 +199,14 @@ create__m_raster_region <-function(j,list_param){
     layer_crop_rast <- raster(r_agg_raster_name)
   }
   #Should check if different projection!!!
-  layer_projected_rast <- projectRaster(from=layer_crop_rast,to=reg_ref_rast,method="ngb",
-                                        filename=out_rast_name,overwrite=TRUE)
+  layer_projected_rast <- projectRaster(from=layer_crop_rast,
+                                        to=reg_ref_rast,
+                                        method="ngb",
+                                        NAflag=NA_flag_val,
+                                        filename=out_rast_name,
+                                        overwrite=TRUE)
   
+  #NAvalue() #set above
   #Need cleanup of tmp files here!!! building up to 19gb!
   removeTmpFiles(h=0)
   
