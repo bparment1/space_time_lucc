@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/11/2017
+#MODIFIED ON : 10/17/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: changing projection function
 #
@@ -78,7 +78,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_10112017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10172017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
@@ -167,6 +167,7 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 steps_to_run <- list(download=FALSE,       #1
                      import=FALSE,         #2
                      apply_QC_flag=FALSE,  #3
+                     mosaic=FALSE,         #4
                      reproject=TRUE)       #5 
 ### Constants
 
@@ -601,11 +602,11 @@ if(steps_to_run$reproject==TRUE){
     }
   }
   
-  if (is.null(ref_rast_name)){
+  if(is.null(ref_rast_name)){
     #Use one mosaiced modis tile as reference image...We will need to add a function 
     ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
     ref_rast <-projectRaster(from=ref_rast_temp,
-                             res=res=res(ref_rast_tmp),
+                             res=res(ref_rast_tmp), #set resolution to the same as input
                              crs=CRS_reg,
                              method="ngb")
     #to define a local reference system and reproject later!!
@@ -643,7 +644,7 @@ if(steps_to_run$reproject==TRUE){
                                        "file_format","NA_flag_val",
                                        "input_proj_str","out_suffix","out_dir")
   #debug(create__m_raster_region)
-  test <- create__m_raster_region(1,list_param=list_param_create_region)
+  #test <- create__m_raster_region(1,list_param=list_param_create_region)
   reg_var_list <- mclapply(1:length(lf_r),
                        FUN=create__m_raster_region,
                        list_param=list_param_create_region,
