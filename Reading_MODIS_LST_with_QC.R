@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/17/2017
+#MODIFIED ON : 10/18/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: changing projection function
 #
@@ -87,9 +87,10 @@ source(file.path(script_path,function_analyses_paper)) #source all functions use
 ################################
 ###### Parameters and arguments
 
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
+#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston"
 #data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston" #param2
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -105,7 +106,7 @@ CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=21336
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"arizona_10092017" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <-"arizona_10182017" #output suffix for the files that are masked for quality and for ...param6
 create_out_dir_param=FALSE #param7
 
 #in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
@@ -113,6 +114,7 @@ create_out_dir_param=FALSE #param7
 
 #infile_reg_outline=""  #input region outline defined by polygon: none Katrina
 infile_reg_outline=NULL #param9
+infilfe_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 #infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
@@ -120,7 +122,8 @@ infile_reg_outline=NULL #param9
 
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
 #ref_rast_name <- NULL #if null use the first image to define projection area
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
@@ -135,21 +138,21 @@ start_date <- "2001.01.01"  #param13
 end_date <- "2001.01.10"
 
 #/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
-list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
-#ist_tiles_modis<- c("h10v05,h10v06")
-list_tiles_modis <- c("h08v05")
+#list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
+list_tiles_modis<- c("h10v05,h10v06") # for Rita
+#list_tiles_modis <- c("h08v05")
 
 file_format_download <- "hdf"  #param15
 product_version <- 6 #param16
 #temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly) #param17
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-#scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
+#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done #param18 
 
-#product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-product_type = c("LST") #can be LST, ALBEDO etc.
+product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
+#product_type = c("LST") #can be LST, ALBEDO etc.
 
 num_cores <- 4 #param 20
 
@@ -165,9 +168,9 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 #param21
 
 steps_to_run <- list(download=FALSE,       #1
-                     import=FALSE,         #2
-                     apply_QC_flag=FALSE,  #3
-                     mosaic=FALSE,         #4
+                     import=TRUE,          #2
+                     apply_QC_flag=TRUE,   #3
+                     mosaic=TRUE,          #4
                      reproject=TRUE)       #5 
 ### Constants
 
@@ -177,8 +180,8 @@ steps_to_run <- list(download=FALSE,       #1
 download_dir <- NULL #step 1, multiple folders
 import_dir <- NULL # step 2, multiple folders
 mask_qc_dir <- NULL # step 3, this should be a list?, better as a text input
-#mosaic_dir <- NULL # step 4
-mosaic_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05"
+mosaic_dir <- NULL # step 4
+#mosaic_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05"
 
 project_dir <- NULL # step 5
 
@@ -258,6 +261,7 @@ qc_modis_name <- gsub(" ","_",qc_modis_name)
 ##loop over tiles:
 #Took 10 minutes for 506 files and one tile
 if(steps_to_run$import==TRUE){
+  list_imported_files <- vector("list",length=length(list_tiles_modis))
   for(j in 1:length(list_tiles_modis)){
     #infile_var <- download_modis_obj$list_files_by_tiles[,j] 
     infile_var <-list_files_by_tiles[,j] #note can be any variable even thought LST presented  here
@@ -270,7 +274,8 @@ if(steps_to_run$import==TRUE){
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
     #undebug(import_list_modis_layers_fun)
-    #r_var_s <- import_list_modis_layers_fun(1,list_param_import_modis)    
+    #r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
+    #r_var_s <- raster(r_var_s_filename)
     #r_var_s <- mclapply(1:12,
     #                    FUN=import_list_modis_layers_fun,
     #                    list_param=list_param_import_modis,
@@ -283,11 +288,12 @@ if(steps_to_run$import==TRUE){
                         mc.preschedule=FALSE,
                         mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
+    ##### Now do the qc flags
     out_suffix_s <- qc_modis_name
     list_param_import_modis <- list(i=1,
                                     hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
-    r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+    #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
     #r_qc_s <-mclapply(1:12,
     #                  FUN=import_list_modis_layers_fun,
     #                  list_param=list_param_import_modis,
@@ -299,14 +305,18 @@ if(steps_to_run$import==TRUE){
                       list_param=list_param_import_modis,
                       mc.preschedule=FALSE,
                       mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
-    
+    l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
+    list_imported_files[[j]] <- l_files
   }
 }
 
 
 if(steps_to_run$import==FALSE){
   ## Need to deal with multiple tiles
-  j <-1
+  list_imported_files <- vector("list",length=length(list_tiles_modis))
+  for(j in 1:length(list_tiles_modis)){
+    d
+    j <-1
   #for(j in 1:length(list_tiles_modis)){
   if(is.null(import_dir)){
     out_dir_tmp <- paste0("import_",list_tiles_modis[j])
@@ -350,6 +360,8 @@ list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
 list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
 plot(raster(list_r_qc_s[1]))
 plot(raster(list_r_var_s[2]))
+plot(raster(list_r_var_s[1]))
+
 #print(r_var_s)
 #print(r_qc_s)
 
