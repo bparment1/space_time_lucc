@@ -315,40 +315,44 @@ if(steps_to_run$import==FALSE){
   ## Need to deal with multiple tiles
   list_imported_files <- vector("list",length=length(list_tiles_modis))
   for(j in 1:length(list_tiles_modis)){
-    d
-    j <-1
-  #for(j in 1:length(list_tiles_modis)){
-  if(is.null(import_dir)){
-    out_dir_tmp <- paste0("import_",list_tiles_modis[j])
-    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-    out_dir_s <- file.path(out_dir,out_dir_tmp)
-  }else{
-    out_dir_s <- import_dir
-  }
+    
+    #j <-1
+    #for(j in 1:length(list_tiles_modis)){
+    if(is.null(import_dir)){
+      out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+      #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+      out_dir_s <- file.path(out_dir,out_dir_tmp)
+    }else{
+      out_dir_s <- import_dir
+    }
   
-  #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
-  #drwxrwxr-x 2 bparmentier bparmentier 401408 Oct  9 17:27 mask_qc_h08v05
+    #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
+    #drwxrwxr-x 2 bparmentier bparmentier 401408 Oct  9 17:27 mask_qc_h08v05
   
-  #LST_Day_1km_arizona_10092017.rst
-  #MOD11A2_A2012361_h08v05_006_LST_Day_1km.rst
+    #LST_Day_1km_arizona_10092017.rst
+    #MOD11A2_A2012361_h08v05_006_LST_Day_1km.rst
   
-  #strsplit(x=MODIS_product, split="[.]")
-  #list_r_var_s <- list.files(path=out_dir_s,
-  #                     pattern=".*.LST_Day_1km.rst$")
+    #strsplit(x=MODIS_product, split="[.]")
+    #list_r_var_s <- list.files(path=out_dir_s,
+    #                     pattern=".*.LST_Day_1km.rst$")
   
   
-  #file_pattern <- paste0(sub("[.]","_",MODIS_product),".*.",product_type,".*",file_format,"$")
-  file_pattern <- paste0(".*.",product_type,".*",file_format,"$")
+    #file_pattern <- paste0(sub("[.]","_",MODIS_product),".*.",product_type,".*",file_format,"$")
+    file_pattern <- paste0(".*.",product_type,".*",file_format,"$")
   
-  list_r_var_s <- list.files(path=out_dir_s,
+    list_r_var_s <- list.files(path=out_dir_s,
                              pattern=file_pattern,
                              full.names=T)
-  file_pattern <- paste0(".*.","QC",".*",file_format,"$")
-  #MOD11A2_A2002001_h08v05_006_QC_Day.rst
+    file_pattern <- paste0(".*.","QC",".*",file_format,"$")
+    #MOD11A2_A2002001_h08v05_006_QC_Day.rst
   
-  list_r_qc_s <- list.files(path=out_dir_s,
+    list_r_qc_s <- list.files(path=out_dir_s,
                             pattern=file_pattern,
                             full.names=T)
+    
+    l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
+    list_imported_files[[j]] <- l_files
+  }
 }
 
 ### Should report on errors:
@@ -358,9 +362,12 @@ if(steps_to_run$import==FALSE){
 
 list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
 list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
+list_r_var_s1 <- list_imported_files[[1]]$var #first
+list_r_var_s2 <- list_imported_files[[2]]$var #first
+
 plot(raster(list_r_qc_s[1]))
-plot(raster(list_r_var_s[2]))
-plot(raster(list_r_var_s[1]))
+plot(raster(list_r_var_s1[[2]]))
+plot(raster(list_r_var_s2[[2]]))
 
 #print(r_var_s)
 #print(r_qc_s)
@@ -410,6 +417,7 @@ list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
 list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
 list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
 
+#26 minutes for 230 files to apply NDVI mask
 if(steps_to_run$apply_QC_flag==TRUE){
   for(j in 1:length(list_tiles_modis)){
     #list all files first
@@ -459,7 +467,7 @@ if(steps_to_run$apply_QC_flag==TRUE){
     #undebug(screen_for_qc_valid_fun)
     #r_stack[[1]] <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
     #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
-    #r_stack[[j]] <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
     list_r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
                             FUN=screen_for_qc_valid_fun,
@@ -469,6 +477,7 @@ if(steps_to_run$apply_QC_flag==TRUE){
     
   }
 }
+#26 minutes for 230 for NDVI
 #19minutes for 505 files
 #r_lst_by_tiles <-mapply(1:length(list_tiles_modis),FUN=list.files,pattern=paste".*.day_LST.*.rst$",path=out_dir_s,full.names=T) #Use mapply to pass multiple arguments
 #r_lst <- mapply(1:length(out_suffix_s),FUN=create_raster_list_from_file_pat,
@@ -501,60 +510,120 @@ if(steps_to_run$mosaic==TRUE){
 
   for (j in 1:length(list_tiles_modis)){
     #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
-    file_format_s <-file_format
-    out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
-    out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
-    list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE) #inputs for moasics
+    #file_format_s <-file_format
+    #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),
+    #                            path=out_dir_s,
+    #                            full.names=TRUE) #inputs for moasics
+    file_pattern <- paste0(".*.",product_type,".*.",
+                           out_suffix,file_format,"$")
+    
+    in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
+    
+    #list_r_var_s <- list.files(path=out_dir_s,
+    #                           pattern=file_pattern,
+    #                           full.names=T)
+    
+    #MOD11A2_A2012353_h08v05_006_LST_Day_1km_arizona_10092017.rst
+    #list_var_mosaiced <-list.files(pattern=".*.LST_Day_1km_arizona_10092017.rst$",
+    #                               path=out_dir_s,
+    #                               full.names=TRUE) #inputs for moasics
+    
+    list_r_var_s <-list.files(pattern=file_pattern,
+                                   #patter=".*.NDVI.*.arizona_10182017.rst$",
+                                   path=in_dir_s,
+                                   full.names=TRUE) #inputs for moasics
+    list_m_var[[j]] <- list_r_var_s
     #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
-    df_m_var <- lapply(1:length(list_m_var[[j]]),FUN=extract_dates_from_raster_name,list_files=list_m_var[[j]])
-    df_m_var <- do.call(rbind,df_m_var)
-    names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
-    df_m_var[,1] <- as.character(df_m_var[,1])
-    l_df_raster_name[[j]] <- df_m_var
-    
-    
-    #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
-    #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
-    df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
-    x <- subset(df_m_mosaics,select= -c(date)) 
-    
-    #report on missing dates:
-    #st <- as.Date(start_date,format="%Y.%m.%d")
-    #en <- as.Date(end_date,format="%Y.%m.%d")
-    #ll <- seq.Date(st, en, by="1 day")
-    #dates_queried <- format(ll,"%Y.%m.%d")
-    #mosaic_list_var <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
-    #x <-mapply(FUN=as.matrix,list_m_var,SIMPLIFY=T)
-    
-    #x <-mapply(FUN="c",x,SIMPLIFY=T)
-    #MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
-    #strsplit(MODIS_product,"[.]")
-    #MODIS_product <- "MOD11A1.005"
-    MODIS_product_name <- gsub("[.]","_",MODIS_product)
-    date_str <- df_m_mosaics$date
-    df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
-    mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
-    #Prepare list of output names without extension
-    #out_rastnames_var <- (basename(gsub(list_tiles_modis[1],"",list_m_var[[1]])))
-    #out_rastnames_var <- gsub(extension(out_rastnames_var),"",out_rastnames_var)
-    out_rastnames_var <- df_m_mosaics$out_rastnames_var
-    j <- 1
-    
-    #list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
-    list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir_mosaic,file_format,NA_flag_val)
-    
-    names(list_param_mosaic)<-c("j","mosaic_list","out_rastnames","out_path","file_format","NA_flag_val")
-    #debug(mosaic_m_raster_list)
-    list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
-    #Parallelization,this works on MAC laptop too
-    list_var_mosaiced <-mclapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
-    
-    #list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list) #This is the end bracket from mclapply(...) statement
-    
-    #test_rast <- stack(list_var_mosaiced)
-    #plot(test_rast,y=109:110)
-    
   }
+  
+  df_m_var <- lapply(1:length(list_m_var[[j]]),
+                       FUN=extract_dates_from_raster_name,
+                       list_files=list_m_var[[j]])
+  df_m_var <- do.call(rbind,df_m_var)
+  names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
+  df_m_var[,1] <- as.character(df_m_var[,1])
+  l_df_raster_name[[j]] <- df_m_var
+    
+    
+  #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
+  #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
+  df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
+  x <- subset(df_m_mosaics,select= -c(date)) 
+    
+  #report on missing dates:
+  #st <- as.Date(start_date,format="%Y.%m.%d")
+  #en <- as.Date(end_date,format="%Y.%m.%d")
+  #ll <- seq.Date(st, en, by="1 day")
+  #dates_queried <- format(ll,"%Y.%m.%d")
+  #mosaic_list_var <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
+  #x <-mapply(FUN=as.matrix,list_m_var,SIMPLIFY=T)
+    
+  #x <-mapply(FUN="c",x,SIMPLIFY=T)
+  #MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
+  #strsplit(MODIS_product,"[.]")
+  #MODIS_product <- "MOD11A1.005"
+  MODIS_product_name <- gsub("[.]","_",MODIS_product)
+  date_str <- df_m_mosaics$date
+  df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
+  mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
+  #Prepare list of output names without extension
+  out_rastnames_var <- (basename(gsub(list_tiles_modis[1],"",list_m_var[[1]])))
+  out_rastnames_var <- gsub(extension(out_rastnames_var),"",out_rastnames_var)
+  #out_rastnames_var <- df_m_mosaics$out_rastnames_var
+    
+  j <- 1
+  
+  #out_dir_mosaic <-     
+  #out_dir_tmp <- paste0("mosaic_output_",out_suffix)
+  out_dir_tmp <- paste0("mosaic_output")
+  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+  out_dir_s <- file.path(out_dir,out_dir_tmp)
+  if(!file.exists(out_dir_s)){
+    dir.create(out_dir_s)
+  }
+  
+  out_dir_mosaic <- out_dir_s
+  #list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
+  list_param_mosaic<-list(j,
+                          mosaic_list_var,
+                          out_rastnames_var,
+                          out_dir_mosaic,
+                          file_format,
+                          NA_flag_val)
+    
+  names(list_param_mosaic)<-c("j",
+                              "mosaic_list",
+                              "out_rastnames",
+                              "out_path",
+                              "file_format",
+                              "NA_flag_val")
+  #debug(mosaic_m_raster_list)
+  #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
+  #list_var_mosaiced <-mclapply(1:11, 
+  #                             list_param=list_param_mosaic, 
+  #                             mosaic_m_raster_list,
+  #                             mc.preschedule=FALSE,
+  #                             mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+  
+  #Parallelization
+  #started at 22:07 -22:11
+  list_var_mosaiced <-mclapply(1:length(mosaic_list_var), 
+                               list_param=list_param_mosaic, 
+                               mosaic_m_raster_list,
+                               mc.preschedule=FALSE,
+                               mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    
+  #list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list) #This is the end bracket from mclapply(...) statement
+    
+  #r_test <- stack(list_var_mosaiced)
+  #plot(r_test,y=1:2)
+    
+
 }
 
 if(steps_to_run$mosaic==FALSE){
