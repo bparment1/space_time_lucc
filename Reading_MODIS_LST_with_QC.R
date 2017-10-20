@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/18/2017
+#MODIFIED ON : 10/20/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: changing projection function
 #
@@ -83,7 +83,6 @@ script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #p
 
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
-
 ################################
 ###### Parameters and arguments
 
@@ -97,16 +96,13 @@ proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.18
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 
 
 proj_str<- CRS_WGS84 #check if in use somewhere?
-#CRS_reg <- proj_modis_str #param3
-#CRS_reg <- CRS_WGS84 #param3 #this is the region projection fromt ref image
-#CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs" 
-#http://azgeo-azland.opendata.arcgis.com/
-CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-#http://www.spatialreference.org/ref/?search=Arizona
+#http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
+CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" #http://www.spatialreference.org/ref/?search=Arizona
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"arizona_10182017" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <-"houston_10202017" #output suffix for the files that are masked for quality and for ...param6
+#out_suffix <- "arizona_10182017"
 create_out_dir_param=FALSE #param7
 
 #in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
@@ -114,7 +110,7 @@ create_out_dir_param=FALSE #param7
 
 #infile_reg_outline=""  #input region outline defined by polygon: none Katrina
 infile_reg_outline=NULL #param9
-infilfe_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 #infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
@@ -167,11 +163,11 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 #run all processing steps
 #param21
 
-steps_to_run <- list(download=FALSE,       #1
-                     import=TRUE,          #2
-                     apply_QC_flag=TRUE,   #3
-                     mosaic=TRUE,          #4
-                     reproject=TRUE)       #5 
+steps_to_run <- list(download=FALSE,       #1rst step
+                     import=TRUE,          #2nd step
+                     apply_QC_flag=TRUE,   #3rd step
+                     mosaic=TRUE,          #4th step
+                     reproject=TRUE)       #5th step 
 ### Constants
 
 ## Maybe add in_dir for all the outputs
@@ -494,7 +490,9 @@ if(steps_to_run$mosaic==TRUE){
   
   if(is.null(mosaic_dir)){
 
-    out_dir_tmp <- paste0("mosaic_",out_suffix)
+    #out_dir_tmp <- paste0("mosaic_",out_suffix)
+    out_dir_tmp <- paste0("mosaic_output")
+    
     #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
     out_dir_s <- file.path(out_dir,out_dir_tmp)
   }else{
@@ -539,21 +537,24 @@ if(steps_to_run$mosaic==TRUE){
                                    full.names=TRUE) #inputs for moasics
     list_m_var[[j]] <- list_r_var_s
     #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
-  }
-  
-  df_m_var <- lapply(1:length(list_m_var[[j]]),
+    df_m_var <- lapply(1:length(list_m_var[[j]]),
                        FUN=extract_dates_from_raster_name,
                        list_files=list_m_var[[j]])
-  df_m_var <- do.call(rbind,df_m_var)
-  names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
-  df_m_var[,1] <- as.character(df_m_var[,1])
-  l_df_raster_name[[j]] <- df_m_var
+    #df_m_var <- lapply(1:length(list_m_var),
+    #                   FUN=extract_dates_from_raster_name,
+    #                   list_files=list_m_var)
+    df_m_var <- do.call(rbind,df_m_var)
+    names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
     
+    df_m_var[,1] <- as.character(df_m_var[,1])
+    l_df_raster_name[[j]] <- df_m_var
     
+  }
+  
   #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
   #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
   df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
-  x <- subset(df_m_mosaics,select= -c(date)) 
+  x <- subset(df_m_mosaics,select= -c(date))# drop column with name "date"
     
   #report on missing dates:
   #st <- as.Date(start_date,format="%Y.%m.%d")
@@ -669,7 +670,9 @@ if(steps_to_run$reproject==TRUE){
   # NOW PROJECT AND CROP WIHT REF REGION ####
   
   if(is.null(project_dir)){
-    out_dir_tmp <- paste0("project_output_",out_suffix)
+    #out_dir_tmp <- paste0("project_output_",out_suffix)
+    out_dir_tmp <- paste0("project_output")
+    
     #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
     out_dir_s <- file.path(out_dir,out_dir_tmp)
     if(!file.exists(out_dir_s)){
@@ -684,14 +687,26 @@ if(steps_to_run$reproject==TRUE){
   }
   
   if(is.null(ref_rast_name)){
+    
+#    infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+                                                                                                                 
+    
     #Use one mosaiced modis tile as reference image...We will need to add a function 
     ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
-    ref_rast <-projectRaster(from=ref_rast_temp,
+    ref_rast <-projectRaster(from=ref_rast_tmp,
                              res=res(ref_rast_tmp), #set resolution to the same as input
                              crs=CRS_reg,
                              method="ngb")
     #to define a local reference system and reproject later!!
     #Assign new projection system here in the argument CRS_reg (!it is used later)
+    if(!is.null(infile_reg_outline)){
+      reg_sf <- st_read(infile_reg_outline)
+      reg_sf <- st_transform(reg_sf,CRS_reg)
+
+      reg_sp <-as(reg_sf, "Spatial") 
+      ref_rast <- crop(ref_rast,reg_sp)    
+    }
+    
   }else{
     
     #az_sf <- st_read(ref_rast_name)
