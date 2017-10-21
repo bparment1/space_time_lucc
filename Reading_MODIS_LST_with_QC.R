@@ -688,12 +688,10 @@ if(steps_to_run$reproject==TRUE){
   
   if(is.null(ref_rast_name)){
     
-#    infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
-                                                                                                                 
-    
+    #infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
     #Use one mosaiced modis tile as reference image...We will need to add a function 
     ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
-    ref_rast <-projectRaster(from=ref_rast_tmp,
+    ref_rast_prj <-projectRaster(from=ref_rast_tmp,
                              res=res(ref_rast_tmp), #set resolution to the same as input
                              crs=CRS_reg,
                              method="ngb")
@@ -701,16 +699,13 @@ if(steps_to_run$reproject==TRUE){
     #Assign new projection system here in the argument CRS_reg (!it is used later)
     if(!is.null(infile_reg_outline)){
       reg_sf <- st_read(infile_reg_outline)
-      reg_sf <- st_transform(reg_sf,CRS_reg)
-
+      reg_sf <- st_transform(reg_sf,crs=CRS_reg)
       reg_sp <-as(reg_sf, "Spatial") 
-      ref_rast <- crop(ref_rast,reg_sp)    
+      ref_rast <- crop(ref_rast_prj,reg_sp)    
     }
-    
-  }else{
-    
-    #az_sf <- st_read(ref_rast_name)
-    #test_sf <- st_transform(az_sf,crs=CRS_reg)
+
+  #Use the reference raster
+  if(!is.null(ref_rast_name)){
     ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
     projection(ref_rast) <- CRS_reg #Assign given reference system from master script...
   }
@@ -740,7 +735,8 @@ if(steps_to_run$reproject==TRUE){
                                        "file_format","NA_flag_val",
                                        "input_proj_str","out_suffix","out_dir")
   #debug(create__m_raster_region)
-  #test <- create__m_raster_region(1,list_param=list_param_create_region)
+  #r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
+  #r <- raster(r_filename)
   reg_var_list <- mclapply(1:length(lf_r),
                        FUN=create__m_raster_region,
                        list_param=list_param_create_region,
