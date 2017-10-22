@@ -19,9 +19,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/20/2017
+#MODIFIED ON : 10/22/2017
 #PROJECT: General MODIS processing of all projects
-#COMMIT: changing projection function
+#COMMIT: modification of dowloading function
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other product
@@ -78,18 +78,17 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_10172017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_10222017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
-
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 ################################
 ###### Parameters and arguments
 
 #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI"
 #data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI" #param2
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -97,11 +96,11 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 
 proj_str<- CRS_WGS84 #check if in use somewhere?
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
-CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" #http://www.spatialreference.org/ref/?search=Arizona
+CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"houston_10202017" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <-"houston_10222017" #output suffix for the files that are masked for quality and for ...param6
 #out_suffix <- "arizona_10182017"
 create_out_dir_param=FALSE #param7
 
@@ -110,15 +109,15 @@ create_out_dir_param=FALSE #param7
 
 #infile_reg_outline=""  #input region outline defined by polygon: none Katrina
 infile_reg_outline=NULL #param9
-infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 #infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
 #local raster name defining resolution, exent: oregon
 
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
-#ref_rast_name <- NULL #if null use the first image to define projection area
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+ref_rast_name <- NULL #if null use the first image to define projection area
+#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
@@ -126,17 +125,18 @@ infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis
 
 ## Other specific parameters
 
-#MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
+MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
 #MODIS_product <- "MOD11A1.006"
-MODIS_product <- "MOD11A2.006" #should be product name
+#MODIS_product <- "MOD11A2.006" #should be product name
 start_date <- "2001.01.01"  #param13
-#end_date <- "2010.12.31"  #param14
-end_date <- "2001.01.10"
+end_date <- "2010.12.31"  #param14
+#end_date <- "2001.01.10"
 
 #/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
 #list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
-list_tiles_modis<- c("h10v05,h10v06") # for Rita
+#list_tiles_modis<- c("h10v05,h10v06") # for Rita
 #list_tiles_modis <- c("h08v05")
+list_tiles_modis <- NULL #if NULL determine the tiles to download
 
 file_format_download <- "hdf"  #param15
 product_version <- 6 #param16
@@ -162,8 +162,9 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 
 #run all processing steps
 #param21
+save_textfile <- TRUE
 
-steps_to_run <- list(download=FALSE,       #1rst step
+steps_to_run <- list(download=TRUE,       #1rst step
                      import=TRUE,          #2nd step
                      apply_QC_flag=TRUE,   #3rd step
                      mosaic=TRUE,          #4th step
@@ -180,9 +181,6 @@ mosaic_dir <- NULL # step 4
 #mosaic_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05"
 
 project_dir <- NULL # step 5
-
-#drwxrwxr-x 2 bparmentier bparmentier 303104 Oct  9 14:49 import_h08v05
-#drwxrwxr-x 2 bparmentier bparmentier 401408 Oct  9 17:27 mask_qc_h08v05
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -206,6 +204,14 @@ if(create_out_dir_param==TRUE){
 #}
 #list_tiles_modis <- get_modis_tiles_list(modis_grid,reg_outline,CRS_reg)
 
+if(is.null(list_tiles_modis)){
+  #
+  #debug(get_modis_tiles_list)
+  list_tiles_modis <- get_modis_tiles_list(modis_grid,
+                                           reg_outline=infile_reg_outline,
+                                           CRS_reg)
+  
+}
 list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
 
 #debug(modis_product_download)
@@ -473,6 +479,7 @@ if(steps_to_run$apply_QC_flag==TRUE){
     
   }
 }
+#33 minutes for 4 tiles of NDVI 230 images
 #26 minutes for 230 for NDVI
 #19minutes for 505 files
 #r_lst_by_tiles <-mapply(1:length(list_tiles_modis),FUN=list.files,pattern=paste".*.day_LST.*.rst$",path=out_dir_s,full.names=T) #Use mapply to pass multiple arguments
@@ -749,36 +756,25 @@ if(steps_to_run$reproject==TRUE){
   #                         mc.preschedule=FALSE,
   #                         mc.cores = num_cores)
   
-  ###
-  ### Now run for all:
-  #reg_var_list <-mclapply(1:length(var_list_outnames), 
-  #                        list_param=list_param_create_region, 
-  #                        create__m_raster_region,
-  #                        mc.preschedule=FALSE,
-  #                        mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
-  #reg_var_list <-lapply(1:length(var_list_outnames), list_param=list_param_create_region, create__m_raster_region) 
+  ###Note: add x,y raster and mask defining the study area for the stack below!!
   
-  #Still need to deal with rescaling !!!
-  
-  #test<-stack(reg_var_list[1:12])
-  #plot(test)
-  #r_mosaiced <- stack(list_var_mosaiced_tmp)
-  #plot(r_mosaiced,y=1)
-  #plot(reg_outline,add=T)
-  
-  #reg_var_list <-list.files(path=out_dir,pattern="^reg.*.rst$") 
-  #reg_var_list <- mixedsort(list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/output_Katrina_04082015",pattern="^reg2.*.rst$",full.names=T)) #use IDRISI reprojected...
-  #r_srtm_list <-list.files(path="~/Data/Space_beats_time/Case2_data_NDVI/",pattern="^r_sr.*.rst$",full.names=T) #use IDRISI reprojected...
-  #r_srtm <- stack(r_srtm_list)
-  
-  #r_reg_var <- stack(reg_var_list)
-  #r_stack <- stack(r_reg_var,r_srtm)
+  lf <- list.files(path=out_dir_s,
+                   pattern=paste0("*.",file_format,"$"),
+                   full.names = T)
+  write.table(lf,
+              "raster_list_data.txt",
+              sep=",",
+              rownames=F)
   
   if(save_textfile==TRUE){
+    
     r_reg_var<- stack(reg_var_list)
     
     dat_reg_var_spdf <- as(r_reg_var,"SpatialPointsDataFrame")
+    ##66,806
+    #drop NA
     dat_reg_var <- as.data.frame(dat_reg_var_spdf) 
+    #Now
     
     #dat_out <- as.data.frame(r_reg_var)
     #dat_out <- na.omit(dat_out)
@@ -788,6 +784,8 @@ if(steps_to_run$reproject==TRUE){
                 row.names=F,sep=",",col.names=T)
     
     #write.table(dat_reg_var)
+  }
+  
   }
   
 }
