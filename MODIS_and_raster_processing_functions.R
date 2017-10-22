@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 10/11/2017
+#MODIFIED ON: 10/22/2017
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: pdating import file function with separate outdir set
 #
@@ -583,28 +583,48 @@ get_modis_tiles_list <-function(modis_grid,reg_outline,CRS_interp){
   #Usage:This function finds the matching modis tiles given a vector polygon in shapefile format.
   #Inputs:
   #modis_grid: shapefiles of modis grid.
-  #reg_outline: file name or Spatial Polygons Data Frame of processing region with extent
+  #reg_outline: file name or sf object of processing region with extent
   #CRS_interp: projection system
   #Outputs:
   #list of modis tiles in the hxxvxx format eg h09v06
   
   ## SCRIPT BEGIN ##
   
-  if(class(reg_outline)!="SpatialPolygonsDataFrame"){
-    filename<-sub(extension(basename(reg_outline)),"",basename(reg_outline))       #Removing path and the extension from file name.
-    reg_outline <- readOGR(dsn=dirname(reg_outline), filename)
+  #class(reg_outline) %in% c("SpatialPolygonsDataFrame","sf")
+  if((class(reg_outline)[1]!="sf")){
+    #filename<-sub(extension(basename(reg_outline)),"",basename(reg_outline))       #Removing path and the extension from file name.
+    #reg_outline <- readOGR(dsn=dirname(reg_outline), filename)
+    reg_outline <- st_read(reg_outline)
   }
-  filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
-  modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
+  #filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
+  #modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
+  modis_grid<-st_read(infile_modis_grid)    #Reading shape file using rgdal library
+  
   #proj4string(reg_outline) <- CRS_interp
   
   #modis_WGS84 <- spTransform(modis_grid,CRS_locs_WGS84) #get cooddinates of center of region in lat, lon
-  reg_outline_sin <- spTransform(reg_outline,CRS(proj4string(modis_grid))) #get cooddinates of center of region in lat, lon
-  reg_outline_dissolved <- gUnionCascaded(reg_outline_sin)  #dissolve polygons
+  reg_outline_sin <- st_transform(reg_outline,st_crs(modis_grid)$proj4string)
+  #reg_outline_sin <- spTransform(reg_outline,CRS(proj4string(modis_grid))) #get cooddinates of center of region in lat, lon
+  #reg_outline <- as(reg_outline_sin,"Spatial")
+  #reg_outline_dissolved <- gUnionCascaded(reg_outline_sin)  #dissolve polygons
+  
+  l_poly <- st_intersects(reg_outline_sin,modis_grid) #intersected poly
+  modis_grid_selected <- modis_grid[unlist(l_poly),]
+  #franconia %>%  
+  #  split(.$district) %>% 
+  # lapply(st_union) %>% 
+  # do.call(c, .) %>% # bind the list element to a single sfc
+    #st_cast() %>% # mapview doesn't like GEOMETRY -> cast to MULTIPOLYGON
+    #mapview()
+  
+  plot(modis_grid_selected$geometry)
+  plot(reg_outline_sin,col="red",add=T)
   
   #tiles<-gIntersection(reg_outline_dissolved, modis_grid, byid=FALSE, id=NULL)
-  l_poly <- over(reg_outline_dissolved, modis_grid)
-  df_tmp <- as.data.frame(modis_grid[l_poly,])
+  
+  #l_poly <- over(reg_outline_dissolved, modis_grid)
+  df_tmp <- as.data.frame(modis_grid_selected)
+  
   #df_tmp <- as.data.frame(modis_grid[555:60,])
 
   #now format...
