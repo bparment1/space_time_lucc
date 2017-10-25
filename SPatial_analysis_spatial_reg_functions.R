@@ -167,14 +167,41 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
     r_s <- projectRaster(r_s,crs=proj_str) #project to latlong
   }
   
+  r_ID <- r_s
+  r_ID[] <- 1:ncell(r_s) 
+  
+  r_ID <- mask(r_ID,r_s)
   #convert to polygon...for input in model
-  r_poly <- rasterToPolygons(r_s, fun=NULL, n=4, na.rm=TRUE, 
-                             digits=12, dissolve=FALSE)
+  #r_poly <- rasterToPolygons(r_s, fun=NULL, n=4, na.rm=TRUE, 
+  #                           digits=12, dissolve=FALSE)
+  
+  r_poly <- rasterToPolygons(stack(r_ID,r_s), 
+                             fun=NULL, 
+                             n=4, 
+                             na.rm=TRUE, 
+                             digits=12, 
+                             dissolve=FALSE)
+  
+  #test <- cell2nb(nrow(r_s),ncol(r_var),type="queen")
+  r_nb_tmp <- cell2nb(nrow(r_ID),ncol(r_ID),type="queen")
   
   #Now find polygons wiht no neighbours..
   r_poly$UNIQID <- 1:nrow(r_poly) #assign unique ID
+  names(r_poly) <- c("pix_ID","v1","UNIQID")
+  
   ## THis is using queen contiguity definition
-  r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
+  #r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
+  # r_nb<- r_nb_tmp[r_poly$pix_ID]
+  r_nb <- subset(r_nb_tmp,
+                 (1:length(r_nb_tmp) %in% r_poly$pix_ID))
+  #r_nb <- r_nb_tmp
+  #r_nb_tmp <- r_nb
+  #r_listw<-nb2listw(r_nb, style="W") #get the list of weights
+  #names(r_listw)
+  #length(r_listw$neighbours)
+  #ncell(r_ID)
+  #names(r_nb)
+  # now(select only the one with specific id)
   
   ID_selected <- which(card(r_nb)==0)  #Find entities with zero neighbour i.e. cardinality==0
   
