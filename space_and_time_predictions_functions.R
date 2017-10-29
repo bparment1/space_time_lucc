@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 09/22/2017
+#DATE MODIFIED: 10/29/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -227,7 +227,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                   "out_suffix","file_format","estimator","estimation_method","previous_step")
   n_pred <- nlayers(r_spat_var) - 1 # minus one because the first date is not predicted
   #debug(predict_spat_reg_fun)
-  #predict_spat_reg_fun(1,list_param=list_param_spat_reg)
+  test <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
   #browser()
   
   pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
