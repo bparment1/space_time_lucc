@@ -7,7 +7,7 @@
 # Event type: Rita from 09/18 to 09/26
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 10/25/2017
+#DATE MODIFIED: 10/30/2017
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -54,12 +54,12 @@ library(sf)
 ###### Functions used in this script
 
 #function_space_and_time_predictions <- "space_and_time_predictions_functions_08112017.R"
-function_space_and_time_predictions <- "space_and_time_predictions_functions_10222017.R"
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_08112017.R" #PARAM 1
+function_space_and_time_predictions <- "space_and_time_predictions_functions_10302017.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_10302017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
-#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
+script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_data_figures_reporting)) #source all functions used in this script 1.
@@ -67,7 +67,7 @@ source(file.path(script_path,function_space_and_time_predictions))
 
 #Aggregation code
 function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
-script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
+#script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
@@ -76,8 +76,8 @@ args<-commandArgs(TRUE)
 
 args_table <- args[1]
 
-args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10252017.csv"
-#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_sample_data1_08042017.csv"
+#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
+args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -265,9 +265,9 @@ s_raster <- stack(l_rast)
 #method_time <- c("lm","ols",FALSE)
 
 #debug(run_space_and_time_models)
-#function_space_and_time_predictions <- "space_and_time_predictions_functions_08082017.R"
-#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
-#source(file.path(script_path,function_space_and_time_predictions))
+function_space_and_time_predictions <- "space_and_time_predictions_functions_10302017.R"
+script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts"
+source(file.path(script_path,function_space_and_time_predictions))
 
 run_space_and_time_models(s_raster,
                           n_time_event,
