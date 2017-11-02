@@ -1,43 +1,19 @@
-####################################    Space Time Analyses Project   #######################################
-############################  Yucatan case study: SAR, SARMA etc -PART 2  #######################################
-#This script functions to produce predictions for the dates following the Hurricane Dean event.       
-#The script uses spatial regression with weight matrix to predict NDVI values in the MOORE EDGY region. 
-#Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
+####################################    General utility functions   #######################################
+############################          Processing data tile by tile        #######################################
+# This script contains general function to process spatial data tile by tile
 #AUTHORS: Benoit Parmentier                                             
-#DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/08/2017
-#Version: 2
-#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
-#PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
-#PROJECT: Geocomputation and AAG 2015
-#PROJECT: Space beats time paper
+#DATE CREATED: 10/31/2017 
+#DATE MODIFIED: 11/02/2017
+#Version: 
+#PROJECT: General
 
 #TO DO:
-# modify the rasterize_df_fun function to allow ref image
-# add the ARIMA method to run more efficiently
 #
-#COMMIT: checking arima code
+#COMMIT: 
 #
 #################################################################################################
 
 #This script currently contains 7 functions:
-
-#[1] "calc_ac_stat_fun" : compute MAE for predictions wiht or without regions/zones
-#[2] "create_dir_fun"   : create an output directory                    
-#[3] "create_sp_poly_spatial_reg" : create a list of weights and polygon file for spatial regression
-#[4] "create_uniform_mask_fun" : harmonize NA values given input layers with different valid values            
-#[5] "load_obj" : load R object                          
-#[6] "predict_spat_reg_fun" : function to perform spatial regresssion prediction
-#[7] "predict_temp_reg_fun : function to preform temporal  predictions       
-#[8] "rasterize_df_fun" : create raster from textfile with location information
-#
-#Add arima functions
-#[9] "convert_arima_pred_to_raster"         
-#[10] "extract_arima_mod_info"              
-#[11] "pixel_ts_arima_predict"              
-#[12] "raster_NA_image"                     
-#[13] "raster_ts_arima"                      
-#[14] "raster_ts_arima_predict"                         
 
 ###Loading R library and packages                                                      
 
@@ -58,29 +34,9 @@ library(rgeos)
 library(sphet) #contains spreg
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
+library(sf)
 
 ###### Functions used in this script
-#debug(generate_outline_and_grid)
-r_val <- subset(s_raster,1)
-r_test <- generate_outline_and_grid(r_val)
-debug(generate_outline_and_grid)
-r_test <- generate_outline_and_grid(r_val,n_grid=c(2,1))
-tile_sf <- subset(r_test,1)
-tile_sf <- r_test[1,]
-
-tile_sf <- r_test 
-tile_sp <- as(tile_sf,"Spatial")
-
-num_cores <- 2
-out_file <- mclapply(1:nrow(tile_sp),
-         FUN=cropping_raster_stack,
-         tile_sp = tile_sp,
-         r_stack = s_raster,
-         file_format = ".tif",
-         out_dir = out_dir,
-         out_suffix_s = out_suffix,
-         mc.cores = num_cores,
-         mc.preschedule = FALSE)
 
 cropping_raster_stack <- function(i,tile_sp,r_stack,file_format,out_dir,out_suffix_s){
   ## This functions crops a stack of raster using a set of polygons.
@@ -89,15 +45,15 @@ cropping_raster_stack <- function(i,tile_sp,r_stack,file_format,out_dir,out_suff
   
   out_dir_tile <- paste("tile_",i,sep="")
   
-  if(!dir.exists(out_dir_tile)){
-    dir.create(out_dir_tile)
+  if(!dir.exists(file.path(out_dir,out_dir_tile))){
+    dir.create(file.path(out_dir,out_dir_tile))
   }
   #out_dir_tile <- dir.create(paste("tile_",i,sep=""))
   r_s_crop <- crop(r_stack,
                    tile_poly_sp,
-                   filename=file.path(out_dir_tile,paste0("crop",file_format)),
+                   filename=file.path(out_dir,out_dir_tile,paste0("crop",file_format)),
                    bylayer=T,
-                   suffix=paste(names(r_stack),out_suffix_s),
+                   suffix=paste0(names(r_stack),"_",paste("tile_",i,sep=""),out_suffix_s),
                    overwrite=T)
   
   lf <- list.files(path=file.path(out_dir,out_dir_tile),
@@ -110,7 +66,7 @@ cropping_raster_stack <- function(i,tile_sp,r_stack,file_format,out_dir,out_suff
   return(out_list_filename)
 }
 
-  
+
 ##
 #To make overlapping grid, buffer teh region outline by % of area 
 ##and then generate grid.
@@ -138,7 +94,7 @@ generate_outline_and_grid <- function(reg_layer,n_grid=NULL,out_suffix="",out_di
   }
   #reg_grid <- st_make_grid(reg_layer,n=n_grid,offset = n_distance)
   reg_grid <- st_make_grid(reg_layer,n=n_grid)
-
+  
   reg_sf <- st_sf(tile_id=1:length(reg_grid),reg_grid)
   
   ## save grid figures
@@ -157,5 +113,47 @@ generate_outline_and_grid <- function(reg_layer,n_grid=NULL,out_suffix="",out_di
   return(reg_sf)
 }
 
+#############################################
 
+in_dir <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output"
+out_dir <- in_dir
+
+lf <- list.files(path=in_dir,
+                 pattern=".rst$",
+                 full.names=T)
+r_stack <- stack(lf) #input stack
+r_val <- subset(r_stack,1)
+
+file_format <- ".tif"
+ 
+#debug(generate_outline_and_grid)
+tile_sf <- generate_outline_and_grid(r_val,n_grid=c(2,1))
+
+#tile_sf <- r_test 
+tile_sp <- as(tile_sf,"Spatial")
+
+num_cores <- 2
+out_suffix <- ""
+
+debug(cropping_raster_stack)
+out_file_test <- cropping_raster_stack(2,
+                     tile_sp = tile_sp,
+                     r_stack = r_stack,
+                     file_format =file_format,
+                     out_dir = out_dir,
+                     out_suffix_s = out_suffix)
+
+
+out_file <- mclapply(1:nrow(tile_sp),
+         FUN=cropping_raster_stack,
+         tile_sp = tile_sp,
+         r_stack = r_stack,
+         file_format = ".tif",
+         out_dir = out_dir,
+         out_suffix_s = out_suffix,
+         mc.cores = num_cores,
+         mc.preschedule = FALSE)
+
+
+############################# END OF SCRIPT ###########################
     
