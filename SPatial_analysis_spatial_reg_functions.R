@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 08/11/2017
+#DATE MODIFIED: 11/03/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -167,41 +167,14 @@ create_sp_poly_spatial_reg <- function(r_var,r_clip=NULL,proj_str=NULL,out_suffi
     r_s <- projectRaster(r_s,crs=proj_str) #project to latlong
   }
   
-  r_ID <- r_s
-  r_ID[] <- 1:ncell(r_s) 
-  
-  r_ID <- mask(r_ID,r_s)
   #convert to polygon...for input in model
-  #r_poly <- rasterToPolygons(r_s, fun=NULL, n=4, na.rm=TRUE, 
-  #                           digits=12, dissolve=FALSE)
-  
-  r_poly <- rasterToPolygons(stack(r_ID,r_s), 
-                             fun=NULL, 
-                             n=4, 
-                             na.rm=TRUE, 
-                             digits=12, 
-                             dissolve=FALSE)
-  
-  #test <- cell2nb(nrow(r_s),ncol(r_var),type="queen")
-  r_nb_tmp <- cell2nb(nrow(r_ID),ncol(r_ID),type="queen")
+  r_poly <- rasterToPolygons(r_s, fun=NULL, n=4, na.rm=TRUE, 
+                             digits=12, dissolve=FALSE)
   
   #Now find polygons wiht no neighbours..
   r_poly$UNIQID <- 1:nrow(r_poly) #assign unique ID
-  names(r_poly) <- c("pix_ID","v1","UNIQID")
-  
   ## THis is using queen contiguity definition
-  #r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
-  # r_nb<- r_nb_tmp[r_poly$pix_ID]
-  r_nb <- subset(r_nb_tmp,
-                 (1:length(r_nb_tmp) %in% r_poly$pix_ID))
-  #r_nb <- r_nb_tmp
-  #r_nb_tmp <- r_nb
-  #r_listw<-nb2listw(r_nb, style="W") #get the list of weights
-  #names(r_listw)
-  #length(r_listw$neighbours)
-  #ncell(r_ID)
-  #names(r_nb)
-  # now(select only the one with specific id)
+  r_nb <-poly2nb(r_poly,row.names=r_poly$UNIQID,queen=TRUE)
   
   ID_selected <- which(card(r_nb)==0)  #Find entities with zero neighbour i.e. cardinality==0
   
@@ -270,10 +243,15 @@ raster_ts_arima_predict <- function(pixel,na.rm=T,arima_order=NULL,n_ahead=2){
 #This is the main function!!!
 
 pixel_ts_arima_predict <- function(i,list_param){
-  #store coordinates???
-  #change function to check for coordinates...it is better to use a data.frame...
-  #V1 should be var and x, y can be coordinates...
-  #extract parameters                                  
+  # This function fits an ARIMA model and generate predictions
+  # This is done using one single time series extracted pixels by pixels.
+  #
+  #
+  
+  ###### Start function
+  
+  ## Extract parameters
+  
   pixel <-list_param$pix_val[i]
   arima_order <-list_param$arima_order
   n_ahead <- list_param$n_ahead
@@ -282,13 +260,14 @@ pixel_ts_arima_predict <- function(i,list_param){
   pixel_xy <- try(list_param$df_xy[i,])
   na.rm=T
   
-  #Start
+  #####
+  # Fit and predict
 
   if(is.null(arima_order)){
-    arima_mod <- auto.arima(pixel)
+    arima_mod <- try(auto.arima(pixel))
     p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
   }else{
-    arima_mod<-arima(pixel,order=arima_order)
+    arima_mod<- try(arima(pixel,order=arima_order))
     p_arima<- try(predict(arima_mod,n.ahead=n_ahead))
   }
   if (!inherits(p_arima,"try-error")){
@@ -298,7 +277,8 @@ pixel_ts_arima_predict <- function(i,list_param){
   }
   if (inherits(p_arima,"try-error")){
     y <- rep(NA,n_ahead)
-    y_error <- rep(1,n_ahead)
+    #y_error <- rep(1,n_ahead)
+    y_error <- rep(NA,n_ahead)
   }
   
   arima_mod_filename <- file.path(out_dir,paste("arima_mod_","pixel_",i,"_",out_suffix,".RData",sep=""))
@@ -313,8 +293,8 @@ pixel_ts_arima_predict <- function(i,list_param){
     pred_obj <- list(y,y_error,arima_mod_filename,pixel_xy)
     names(pred_obj)<-c("pred","error","arima_mod_filename","pixel_xy")
   }else{
-    pred_obj <- list(y,y_error,arima_mod_filename)
-    names(pred_obj)<-c("pred","error","arima_mod_filename")
+    pred_obj <- list(y,y_error,arima_mod_filename,pixel_xy)
+    names(pred_obj)<-c("pred","error","arima_mod_filename","pixel_xy")
   }
   
   return(pred_obj)
@@ -625,14 +605,65 @@ predict_temp_reg_fun <-function(i,list_param){
     list_param_predict_arima_2 <- list(pix_val=pix_val2,arima_order=arima_order,n_ahead=n_pred_ahead,out_dir=out_dir_arima,out_suffix=out_suffix,na.rm=T,df_xy=df_xy)
 
     #debug(pixel_ts_arima_predict)
-    test_pix_obj <- pixel_ts_arima_predict(1,list_param=list_param_predict_arima_2)
+    #test_pix_obj <- pixel_ts_arima_predict(7904,list_param=list_param_predict_arima_2)
     #test_pixel_pred_obj <- mclapply(1:66, FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
+    #note that we are subsetting by column!!
     arima_pixel_pred_obj <- mclapply(1:length(pix_val2), 
                                      FUN=pixel_ts_arima_predict,
                                      list_param=list_param_predict_arima_2,
                                      mc.preschedule=FALSE,
                                      mc.cores = num_cores) 
+    
+    #find error here:
+    #names(arima_pixel_pred_obj) <- 1:length
+    
+    #list_error <-lapply(1:length(arima_pixel_pred_obj),
+    #                    function(i){inherits(arima_pixel_pred_obj[[i]],"try-error")})
+    #list_error <- as.numeric(unlist(list_error))
+    #index_error <- which(list_error==1)
+    
+    #for(1:length(index_error)){
+    #  d
+    #  d
+    #}
+    
+    #i <- index_error[1]
+    #generate_NA_arima_obj <- function(i,df_xy,out_suffix){
+    #  coords_pix <- df_xy[i,]
+    #  val_arima_pixel_pred_obj <-  list(pred=NA, #note this should be a matrix
+    #       error=NA, #note this should be a matrix
+    #       arima_mod_filename=NA,
+    #       pixel_xy=coord_pix) #find coordinates
+    #  #out_filename_obj <- "arima_mod_pixel_10945_t_107_tile_1_NDVI_Rita_11032017.RData"
+    #  out_filename_obj <- paste0("arima_mod_pixel_",i,"_",out_suffix,".RData")
+      
+    #  save(val_arima_pixel_pred_obj,out_filename_obj)
+    #}
+    
+    #ref_test<- mclapply(1:length(shps_tiles),
+    #                    FUN=generate_raster_tile_ref,
+    #                    shps_tiles = shps_tiles,
+    #                    r_mask=r_mask,
+    #                    list_r_ref_error=list_r_ref_error,
+    #                    mc.preschedule=FALSE,
+    #                    mc.cores = num_cores)
+    
+    #find try-error: missing raster
+    #list_r_ref_error <- as.numeric(unlist(lapply(list_r_ref,function(x){class(x)=="try-error"})))
+    
+    ## Select tiles without raster, generate raster and from r_mask
+    
+    #ref_test<- mclapply(1:length(shps_tiles),
+    #                   FUN=generate_raster_tile_ref,
+    #                    shps_tiles = shps_tiles,
+    #                    r_mask=r_mask,
+    #                    list_r_ref_error=list_r_ref_error,
+    #                    mc.preschedule=FALSE,
+    #                    mc.cores = num_cores)
+    
+    #now fill in list_r_ref with ref_test
+    
     
     #pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
    
@@ -664,7 +695,11 @@ predict_temp_reg_fun <-function(i,list_param){
     #pred_t_l<-lapply(1:1,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
 
     #pred_t_l <- lapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert) #,mc.preschedule=FALSE,mc.cores = num_cores)
-    pred_t_l <- mclapply(1:n_pred_ahead,FUN=convert_arima_pred_to_raster,list_param=list_param_arima_convert,mc.preschedule=FALSE,mc.cores = num_cores)
+    pred_t_l <- mclapply(1:n_pred_ahead,
+                         FUN=convert_arima_pred_to_raster,
+                         list_param=list_param_arima_convert,
+                         mc.preschedule=FALSE,
+                         mc.cores = num_cores)
 
     #arima_pixel_pred_obj <- mclapply(1:length(pix_val2), FUN=pixel_ts_arima_predict,list_param=list_param_predict_arima_2,mc.preschedule=FALSE,mc.cores = num_cores) 
 
