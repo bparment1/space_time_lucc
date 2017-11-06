@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 10/29/2017
+#DATE MODIFIED: 11/06/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -227,8 +227,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                   "out_suffix","file_format","estimator","estimation_method","previous_step")
   n_pred <- nlayers(r_spat_var) - 1 # minus one because the first date is not predicted
   #debug(predict_spat_reg_fun)
-  test <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
   #browser()
+  #test <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
+  
   
   pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
                                                  list_param=list_param_spat_reg,
@@ -399,9 +400,12 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         #out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
         
         #fix the output dir
-        list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s[i],file_format,estimator,estimation_method,
-                                    num_cores_tmp,time_step,n_pred_ahead,r_stack,arima_order,NA_flag_val)
-        names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
+        list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,
+                                    out_suffix_s[i],file_format,estimator,estimation_method,
+                                    num_cores_tmp,time_step,n_pred_ahead,
+                                    r_stack,arima_order,NA_flag_val)
+        names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models",
+                                        "out_suffix_s","file_format","estimator","estimation_method",
                                         "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
         #undebug(predict_temp_reg_fun)
         pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
