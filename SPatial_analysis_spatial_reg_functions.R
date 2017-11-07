@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/03/2017
+#DATE MODIFIED: 11/07/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -16,7 +16,7 @@
 # modify the rasterize_df_fun function to allow ref image
 # add the ARIMA method to run more efficiently
 #
-#COMMIT: checking arima code
+#COMMIT: testing changes to arima and documentation
 #
 #################################################################################################
 
