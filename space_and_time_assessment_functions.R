@@ -5,14 +5,14 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 11/07/2017
+#DATE MODIFIED: 11/08/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
 
 #TO DO:
 #
-#COMMIT: initial commit space and time predictions assessment
+#COMMIT: more changes and testing of code with tiles space and time predictions assessment
 #
 
 #################################################################################################
@@ -37,23 +37,40 @@ library(sphet) #contains spreg
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 
+
+
+r_temp_pred <-
+r_spat_pred <-
+s_raster <-
+time_window_predicted <-
+r_zonal <-
+r_ref <-
+methods_name <- c("mle_eigen","arima") #method for space and time used to predict space and time respectively
+out_suffix <-
+out_dir <-
+  
 ###### Functions used in this script
 
-
-
-
-
-
-############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
-#browser()
-#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-
-accuracy_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,r_ref,out_suffix,out_dir){
+accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
+                                     r_zonal,methods_name,r_ref,out_suffix,out_dir){
   
-  #
+  ##INPUTS
+  #1)r_temp_pred
+  #2) r_spat_pred
+  #3) s_raster
+  #4) time_window_predicted
+  #5) r_zonal
+  #6) r_ref
+  #7) methods_name
+  #7) out_suffix
+  #8) out_dir
+  ##OUTPUTS
+  #1)
+  #2)
   #
   
-  #r_huric_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
+  ######## Start script #####
+  
   r_obs <- subset(s_raster,time_window_predicted) #remove 99 because not considred in the prediction!!
   
   #plot(r_huric_obs)
@@ -102,28 +119,15 @@ accuracy_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted
   res_temp_s <- temp_pred_rast - r_obs
   res_spat_s <- spat_pred_rast_mle_eigen_no_previous - r_obs
 
-  #names(res_temp_s_lm) <- sub("pred","res",names(res_temp_s_lm))
-  #names(res_temp_s_arima) <- sub("pred","res",names(res_temp_s_arima))
   names(res_temp_s) <- sub("pred","res",names(res_temp_s))
-  
-  #names(res_spat_mle_s) <- sub("pred","res",names(res_spat_mle_s))
   names(res_spat_s) <- sub("pred","res",names(res_spat_s))
-  #names(res_temp_s) <- paste("r_res_s_",1:nlayers(res_temp_s),"_",out_suffix,sep="")
-  
-  #r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-  #                   spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s_arima,res_temp_s_lm,res_spat_s)
-  
+
   #browser()
+  ### Compute residuals by zones
   rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
   
-  #r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-  #                   spat_pred_rast_mle_eigen_no_previous,
-  #                   spat_pred_rast_mle_eigen_with_previous,
-  #                   res_temp_s_arima,res_spat_s)
   r_results <- stack(s_raster,rast_zonal,temp_pred_rast,
-                     spat_pred_rast_mle_eigen_no_previous,
-                     spat_pred_rast_mle_eigen_with_previous,
-                     res_temp_s,res_spat_s)
+                                          res_temp_s,res_spat_s)
   
   dat_out <- as.data.frame(r_results)
   dat_out <- na.omit(dat_out)
@@ -136,39 +140,23 @@ accuracy_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted
   
   method_time
   out_suffix_s <- paste("temp_",method_time[1],"_",out_suffix,sep="")
-  
-  
+
   #undebug(calc_ac_stat_fun)
-  #ac_temp_arima_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast_arima,
-  #                                      r_var_s=r_huric_obs,
-  #                                      r_zones=rast_zonal,
-  #                                      file_format=file_format,
-  #                                      out_suffix=out_suffix_s)
-  #browser()
+
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,
-                                  r_var_s=r_huric_obs,
+                                  r_var_s=r_obs,
                                   r_zones=rast_zonal,
                                   file_format=file_format,
                                   out_suffix=out_suffix_s)  
   
-  #out_suffix_s <- paste("temp_lm_",out_suffix,sep="_")
-  
-  #ac_temp_lm_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast_lm,r_var_s=r_huric_obs,r_zones=rast_zonal,
-  #                                file_format=file_format,out_suffix=out_suffix_s)
-  
-  out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
-  ac_spat_mle_eigen_with_previous_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_mle_eigen_with_previous,
-                                                          r_var_s=r_huric_obs,
-                                                          r_zones=rast_zonal,
-                                                          file_format=file_format,
-                                                          out_suffix=out_suffix_s)
-  
-  out_suffix_s <- paste("spat_mle_eigen_no_previous",out_suffix,sep="_")  
-  ac_spat_mle_eigen_no_previous_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_mle_eigen_no_previous,
-                                                        r_var_s=r_huric_obs,
-                                                        r_zones=rast_zonal,
-                                                        file_format=file_format,
-                                                        out_suffix=out_suffix_s)
+  method_spatial
+  #out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
+  out_suffix_s <- paste("spat_",method_spatial,out_suffix,sep="_")
+  ac_spat <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,
+                              r_var_s=r_huric_obs,
+                              r_zones=rast_zonal,
+                              file_format=file_format,
+                              out_suffix=out_suffix_s)
   
   #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
   #mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
@@ -177,8 +165,8 @@ accuracy_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted
   #ac_temp_arima_obj$mae_tb
   #,ac_temp_lm_obj$mae_tb))
   
-  mae_tot_tb <- cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
-                      ac_spat_mle_eigen_with_previous_obj$mae_tb,
+  mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
+                      ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
   name_method_time <- paste0("temp_",method_time[1])
@@ -267,5 +255,5 @@ accuracy_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted
   space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
   names(space_and_time_prediction_obj) <- c("filename_dat_out","s_raster","mae_tot_tb","mae_zones_tb")
   
-  return()
+  return(space_and_time_prediction_obj)
 }
