@@ -5,11 +5,10 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 11/08/2017
+#DATE MODIFIED: 11/09/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
-
 #TO DO:
 #
 #COMMIT: more changes and testing of code with tiles space and time predictions assessment
@@ -37,22 +36,37 @@ library(sphet) #contains spreg
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 
+#Should use the data that is mosaiced!!
 
+in_dir <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
+r_temp_pred <- list.files(path=in_dir,
+                          pattern="r_temp_pred_arima_arima_.*._tile_2_NDVI_Rita_11062017.tif",
+                          full.names=T)
+r_spat_pred <- r_temp_pred <- list.files(path=in_dir,
+                                         pattern="r_spat_.*._tile_2_NDVI_Rita_11062017.tif",
+                                         full.names=T)
+r_spat_pred <- r_temp_pred <- list.files(path=in_dir,
+                                         pattern="r_spat_pred_mle_eigen_no_previous_step_.*._tile_2_NDVI_Rita_11062017.tif",
+                                         full.names=T)
 
-r_temp_pred <-
-r_spat_pred <-
-s_raster <-
-time_window_predicted <-
-r_zonal <-
-r_ref <-
-methods_name <- c("mle_eigen","arima") #method for space and time used to predict space and time respectively
-out_suffix <-
-out_dir <-
+#r_spat_pred_mle_eigen_no_previous_step__t_113_tile_2_NDVI_Rita_11062017.tif
+s_raster <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_files_list_tile_2.txt"
   
+time_window_predicted <- 105;114
+r_zonal <- "crop_r_zonal_rev_tile_2"
+r_ref <- NULL
+methods_name <- c("mle_eigen","arima") #method for space and time used to predict space and time respectively
+out_suffix <- "assessment_tile_2_NDVI_Rita_11062017"
+out_dir <- "output_tile_1_2_combined_NDVI_Rita_11062017"
+create_out_dir <- FALSE  
 ###### Functions used in this script
 
+debug(accuracy_space_time_calc)
+test <- accuracy_space_time_calc(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
+                                     r_zonal,methods_name,r_ref,out_suffix,out_dir,create_out_dir)
+  
 accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
-                                     r_zonal,methods_name,r_ref,out_suffix,out_dir){
+                                     r_zonal,methods_name,r_ref,out_suffix,out_dir,create_out_dir){
   
   ##INPUTS
   #1)r_temp_pred
