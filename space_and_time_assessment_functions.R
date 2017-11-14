@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 11/13/2017
+#DATE MODIFIED: 11/09/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -51,16 +51,14 @@ r_spat_pred <- r_temp_pred <- list.files(path=in_dir,
 
 #r_spat_pred_mle_eigen_no_previous_step__t_113_tile_2_NDVI_Rita_11062017.tif
 s_raster <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_files_list_tile_2.txt"
-date_range <- "2001.01.01;2010.12.31;16"
-time_window_predicted <- "105;114"
+  
+time_window_predicted <- 105;114
 r_zonal <- "crop_r_zonal_rev_tile_2"
 r_ref <- NULL
-method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
-method_time <- "arima;arima;TRUE"
+methods_name <- c("mle_eigen","arima") #method for space and time used to predict space and time respectively
 out_suffix <- "assessment_tile_2_NDVI_Rita_11062017"
 out_dir <- "output_tile_1_2_combined_NDVI_Rita_11062017"
 create_out_dir <- FALSE  
-
 ###### Functions used in this script
 
 debug(accuracy_space_time_calc)
@@ -89,49 +87,62 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   
   
   ###  Load data if needed:
-  if(class(r_temp_pred)=="character"){
-    lf <-r_temp_pred 
-    r_temp_pred <- stack(lf)
-  }
-  if(class(s_raster)=="character"){
-    df_lf <- read.table(s_raster,sep=",",stringsAsFactors = F,header=T) 
-    s_raster <- stack(df_lf[,1])
+  if(class(r_temp_pred)=="RasterStack"){
+    r_temp_pred <- stack(r_pred_temp)
   }
   
-  date_range <- (unlist(strsplit(date_range,";")))
-  NA_flag_val <- as.integer(NA_flag_val)
-  coord_names <- unlist(strsplit(coord_names,";"))
-  num_cores <- as.integer(num_cores)
-  var_names <- as.integer(unlist(strsplit(var_names,";")))
-  var_names <- seq(var_names[1],var_names[2])
-  n_time_event <- as.integer(n_time_event)
-  time_window_selected <-  as.integer(unlist(strsplit(time_window_selected,";")))
-  time_window_selected <- seq(time_window_selected[1],time_window_selected[2])
-  
-  method_space <- (unlist(strsplit(method_space,";")))
-  method_time <- (unlist(strsplit(method_time,";")))
-  
-  date_range <- (unlist(strsplit(date_range,";")))
-  
-  r_obs <- subset(s_raster,time_window_predicted[1]:time_window_predicted[2]) #remove 99 because not considred in the prediction!!
+  r_obs <- subset(s_raster,time_window_predicted) #remove 99 because not considred in the prediction!!
   
   #plot(r_huric_obs)
   #r_huric_w <- crop(r_huric_w,rast_ref)
-  levelplot(r_obs,col.regions=matlab.like(25))
-  levelplot(r_temp_pred,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-  projection(r_temp_pred) <- proj_str
+  levelplot(r_huric_obs,col.regions=matlab.like(25))
+  #levelplot(r_temp_pred_rast_arima,col.regions=matlab.like(25))
+  
+  method_time[1]=="arima"
+  r_temp_pred_rast <- stack(unlist(lapply(1:length(l_pred_temp_arima),
+                                                FUN=function(i,x){obj<-x[[i]];
+                                                obj$raster_pred},
+                                                x=l_pred_temp_arima)))
+  
+  #r_temp_res_rast <- stack(unlist(lapply(1:length(l_pred_temp_arima),
+  #                                       FUN=function(i,x){obj<-x[[i]];
+  #                                       obj$raster_res},
+  #                                       x=l_pred_temp_arima)))
+  levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+  levelplot(r_temp_res_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+  projection(r_temp_pred_rast_arima) <- proj_str
+  projection(r_temp_res_rast_arima) <- proj_str
+  temp_pred_rast <- subset(r_temp_pred_rast_arima,1:length(time_window_predicted))
+    
+  
+  
 
+
+  levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
+  levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
+  
+  levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+  levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+  
+  projection(spat_pred_rast_mle_eigen_no_previous) <- proj_str
+  projection(spat_res_rast_mle_eigen_no_previous) <- proj_str
   projection(spat_pred_rast_mle_eigen_with_previous) <- proj_str
-
+  projection(spat_res_rast_mle_eigen_with_previous) <- proj_str
+  
+  
+  #r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
+  #res_temp_s_lm <- temp_pred_rast_lm - r_huric_obs
+  #res_temp_s_arima <- temp_pred_rast_arima - r_huric_obs
   
   #### Step 2: compute residuals
   
-  res_temp_s <- r_temp_pred - r_obs
-  res_spat_s <- r_spat_pred - r_obs
+  res_temp_s <- temp_pred_rast - r_obs
+  res_spat_s <- spat_pred_rast_mle_eigen_no_previous - r_obs
 
   names(res_temp_s) <- sub("pred","res",names(res_temp_s))
   names(res_spat_s) <- sub("pred","res",names(res_spat_s))
 
+  #browser()
   ### Compute residuals by zones
   rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
   
@@ -147,35 +158,45 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   
   ### Now accuracy assessment using MAE
   
+  method_time
   out_suffix_s <- paste("temp_",method_time[1],"_",out_suffix,sep="")
 
   #undebug(calc_ac_stat_fun)
 
-  ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
+  ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,
                                   r_var_s=r_obs,
                                   r_zones=rast_zonal,
                                   file_format=file_format,
                                   out_suffix=out_suffix_s)  
   
+  method_spatial
   #out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
   out_suffix_s <- paste("spat_",method_spatial,out_suffix,sep="_")
-  ac_spat <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
+  ac_spat <- calc_ac_stat_fun(r_pred_s=spat_pred_rast,
                               r_var_s=r_huric_obs,
                               r_zones=rast_zonal,
                               file_format=file_format,
                               out_suffix=out_suffix_s)
   
+  #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+  #mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
+  #mae_tot_tb <- (cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
+  #ac_spat_mle_eigen_with_previous_obj$mae_tb,
+  #ac_temp_arima_obj$mae_tb
+  #,ac_temp_lm_obj$mae_tb))
+  
   mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
+                      ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
-  name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
-  name_method_space <- paste0("spat_",method_time[1],"_",method_space[2])
+  name_method_time <- paste0("temp_",method_time[1])
+  
   mae_tot_tb <- as.data.frame(mae_tot_tb)
   row.names(mae_tot_tb) <- NULL
-  #names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
+  names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
   #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
   #mae_tot_tb$time <- 2:n_pred
-  mae_tot_tb$time <- 1:nlayers(r_obs)
+  mae_tot_tb$time <- 1:nlayers(r_huric_obs)
   y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
   
   res_pix<-960
