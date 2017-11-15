@@ -19,16 +19,16 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 10/22/2017
+#MODIFIED ON : 11/15/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: modification of dowloading function
 #
 #TODO: 
-#1)Test additional Quality Flag levels for ALBEDO and other product
+#1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
 #2) Add function to report statistics: missing files
 #3) Currently 20 input arguments (param), reduce to 15 or less
 #4) Make this script a function callable from shell!!
-#5) This script can be transform to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
+#5) This script can be transformed to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
 #   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
 #6) Update mosaicing to use gdal for large areas
 
@@ -54,6 +54,7 @@ library(rasterVis)
 library(spgwr)
 library(reshape)
 library(sf)
+library(dplyr)
 
 #################################
 ### Functions used in the script:
@@ -78,17 +79,17 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_10222017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_11152017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 ################################
 ###### Parameters and arguments
 
-#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param1
+#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI"
 #data_fname <- file.path("~/Data/Space_beats_time/stu/Katrina/run2/csv","Katrina2.csv")
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob" #param2
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" 
 #CRS_reg <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -100,34 +101,32 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
-out_suffix <-"houston_10222017" #output suffix for the files that are masked for quality and for ...param6
-#out_suffix <- "arizona_10182017"
+#out_suffix <-"houston_10222017" #output suffix for the files that are masked for quality and for ...param6
+out_suffix <- "arizona_11152017"
 create_out_dir_param=FALSE #param7
 
-#in_dir <- "/data/project/layers/commons/modis/MOD11A1_tiles" #ATLAS SERVER 
-#out_dir <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/" #ATLAS SERVER 
-
 #infile_reg_outline=""  #input region outline defined by polygon: none Katrina
-infile_reg_outline=NULL #param9
-infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
+#infile_reg_outline <- NULL #param9
+#infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
+infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
+
 #This is the shape file of outline of the study area                                                      #It is an input/output of the covariate script
 #infile_reg_outline <- "/data/project/layers/commons/Oregon_interpolation/MODIS_processing_07072014/region_outlines_ref_files/OR83M_state_outline.shp" #input region outline defined by polygon: Oregon
 
-#local raster name defining resolution, exent: oregon
+#local raster name defining resolution, extent
 
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
-ref_rast_name <- NULL #if null use the first image to define projection area
+#ref_rast_name <- NULL #if null use the first image to define projection area
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/Arizona_Outline_State_Plane/Arizona_Outlline_State_Plane.shp"
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 
 ## Other specific parameters
 
-MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
+#MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
 #MODIS_product <- "MOD11A1.006"
-#MODIS_product <- "MOD11A2.006" #should be product name
+MODIS_product <- "MOD11A2.006" #should be product name
 start_date <- "2001.01.01"  #param13
 end_date <- "2010.12.31"  #param14
 #end_date <- "2001.01.10"
@@ -135,21 +134,22 @@ end_date <- "2010.12.31"  #param14
 #/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
 #list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
 #list_tiles_modis<- c("h10v05,h10v06") # for Rita
-#list_tiles_modis <- c("h08v05")
-list_tiles_modis <- NULL #if NULL determine the tiles to download
+list_tiles_modis <- c("h08v05")
+#list_tiles_modis <- NULL #if NULL determine the tiles to download
 
 file_format_download <- "hdf"  #param15
 product_version <- 6 #param16
 #temporal_granularity <- "Daily" #deal with options( 16 day, 8 day and monthly) #param17
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done #param18 
 
-product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#product_type = c("LST") #can be LST, ALBEDO etc.
-
+#product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
+product_type = c("LST") #can be LST, ALBEDO etc.
+var_name <- "LST_Night_1km" #can be LST_Day_1km
+qc_name <- "QC_Night"
 num_cores <- 4 #param 20
 
 #Parameters/arguments not in use yet...
@@ -164,11 +164,11 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 #param21
 save_textfile <- TRUE
 
-steps_to_run <- list(download=TRUE,       #1rst step
-                     import=TRUE,          #2nd step
-                     apply_QC_flag=TRUE,   #3rd step
-                     mosaic=TRUE,          #4th step
-                     reproject=TRUE)       #5th step 
+steps_to_run <- list(download=FALSE,        #1rst step
+                     import=TRUE,          #2nd  step
+                     apply_QC_flag=TRUE,   #3rd  step
+                     mosaic=TRUE,          #4th  step
+                     reproject=TRUE)       #5th  step 
 ### Constants
 
 ## Maybe add in_dir for all the outputs
@@ -179,7 +179,6 @@ import_dir <- NULL # step 2, multiple folders
 mask_qc_dir <- NULL # step 3, this should be a list?, better as a text input
 mosaic_dir <- NULL # step 4
 #mosaic_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05"
-
 project_dir <- NULL # step 5
 
 ######################################################
@@ -226,9 +225,12 @@ if(steps_to_run$download==TRUE){
   ### Add download_dir here
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   #list_files_by_tiles <- mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T),SIMPLIFY=T) #Use mapply to pass multiple arguments 
-  list_files_by_tiles <-mapply(1:length(out_dir_tiles),FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles)),SIMPLIFY=T) #Use mapply to pass multiple arguments
+  list_files_by_tiles <-mapply(1:length(out_dir_tiles),
+                               FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles)),SIMPLIFY=T) #Use mapply to pass multiple arguments
   colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
 }
+
+##### Add a check for missing here??
 
 ####################################
 ##### STEP 2: IMPORT MODIS LAYERS ###
@@ -240,20 +242,37 @@ str(GDALinfo_hdf)
 modis_subdataset <- attributes(GDALinfo_hdf)$subdsmdata
 print(modis_subdataset)
 
+hdf_df <- (strsplit(modis_subdataset,":"))
+#length(modis_subdataset)
+hdf_df <- as.data.frame(do.call(rbind,hdf_df),stringsAsFactors=F)
+#hdf_df <- data.frame(lapply(hdf_df, as.character))
+#hdf_df %>% 
+#  mutate_all(as.character)
+
+names(hdf_df) <- c("subdataset_name","description","dir","product","var_name")
 #Select automatically QC flag!!
+View(hdf_df)
+
+write.table(hdf_df,"hdf_subdataset.txt",sep=",")
+
 if(product_type=="NDVI"){
   modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day NDVI layer
   modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
 }
 if(product_type=="LST"){
-  modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
-  modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
+  #var_name, make a data.frame and pick the correct line...
+  var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
+  qc_name_index <- which(hdf_df$var_name==qc_name)
+  #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
+  #modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
+  modis_layer_str1 <- unlist(strsplit(modis_subdataset[var_name_index],"\""))[3] #Get day LST layer
+  modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
+  
 }
 
 ### import list of files before mosaicing
 
 file_format_import <- file_format
-#NA_flag_val=-9999
 var_modis_name <- unlist(strsplit(modis_layer_str1,":"))[3]
 qc_modis_name <- unlist(strsplit(modis_layer_str2,":"))[3]
 
