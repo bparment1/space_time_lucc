@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 10/22/2017
+#MODIFIED ON: 11/15/2017
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: pdating import file function with separate outdir set
 #
@@ -1015,16 +1015,20 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
 }
 
 #This function extract dates from MODIS exported raster files, used in the mosaics stage... 
-extract_dates_from_raster_name <- function(i,list_files){
+extract_dates_from_raster_name <- function(i,list_files,split_char="_"){
   #Prepare list of modis tiles to mosaic
   raster_name <- list_files[i]
   #raster_name <- list_m_var[[1]][1]
-  names_part_raster <- as.character(unlist(strsplit(x=basename(raster_name), split="[_]")))
+  split_char_val <- paste0("[",split_char,"]")
+  
+  #names_part_raster <- as.character(unlist(strsplit(x=basename(raster_name), split="[_]")))
+  #names_part_raster <- as.character(unlist(strsplit(x=basename(raster_name), split="[.]")))
+  names_part_raster <- as.character(unlist(strsplit(x=basename(raster_name), split=split_char_val)))
   
   char_nb<-length(names_part_raster)-2
   #names_hdf <- names_hdf[1:char_nb]
 
-  date_raster <- names_part_raster[2]
+  date_raster <- names_part_raster[2] #this is MODIS DOY (day of year)
   date_raster <- strsplit(date_raster,"A")[[1]][[2]]
   df_raster_name <- data.frame(raster_name=raster_name,date=date_raster)
   return(df_raster_name)
