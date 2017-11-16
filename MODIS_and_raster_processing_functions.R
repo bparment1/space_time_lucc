@@ -34,16 +34,17 @@
 #[10] "define_crs_from_extent_fun"       
 #[11] "extract_list_from_list_obj"
 #[12] "extract_dates_from_raster_name"
-#[13] "get_modis_tiles_list"             
-#[14] "import_list_modis_layers_fun"     
-#[15] "import_modis_layer_fun"           
-#[16] "load_obj" 
-#[17] "merge_multiple_df"
-#[18] "modis_product_download"           
-#[19] "mosaic_m_raster_list"             
-#[20] "remove_from_list_fun"             
-#[21] "screen_for_qc_valid_fun"         
-#[22] "screening_val_r_stack_fun" 
+#[13] "generate_dates_by_step"
+#[14] "get_modis_tiles_list"             
+#[15] "import_list_modis_layers_fun"     
+#[16] "import_modis_layer_fun"           
+#[17] "load_obj" 
+#[18] "merge_multiple_df"
+#[19] "modis_product_download"           
+#[20] "mosaic_m_raster_list"             
+#[21] "remove_from_list_fun"             
+#[22] "screen_for_qc_valid_fun"         
+#[23] "screening_val_r_stack_fun" 
 
    
 ###Loading R library and packages                                                      
@@ -58,6 +59,7 @@ library(bitops)
 require(RCurl)
 require(stringr)
 require(XML)
+library(lubridate)
 
 ## Function to mosaic modis or other raster images
 
@@ -1028,9 +1030,10 @@ extract_dates_from_raster_name <- function(i,list_files,split_char="_"){
   char_nb<-length(names_part_raster)-2
   #names_hdf <- names_hdf[1:char_nb]
 
-  date_raster <- names_part_raster[2] #this is MODIS DOY (day of year)
-  date_raster <- strsplit(date_raster,"A")[[1]][[2]]
-  df_raster_name <- data.frame(raster_name=raster_name,date=date_raster)
+  doy_raster <- names_part_raster[2] #this is MODIS DOY (day of year)
+  doy_raster <- strsplit(doy_raster,"A")[[1]][[2]]
+  date_val <- 
+  df_raster_name <- data.frame(raster_name=raster_name,doy=doy_raster,date=)
   return(df_raster_name)
 }
 
@@ -1046,5 +1049,41 @@ extract_dates_from_raster_name <- function(i,list_files,split_char="_"){
 #  x <- calc(rast_s, f, progress='text', filename='output.tif')
 #}
 
-
+generate_dates_by_step <-function(start_date,end_date,step_date){
+  #library(xts) declare out of this function
+  #library(zoo)
+  #library(lubridate)
+  
+  st <- as.Date(start_date,format="%Y.%m.%d")
+  en <- as.Date(end_date,format="%Y.%m.%d")
+  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
+  year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
+  
+  ll_list <- vector("list",length=length(year_list))
+  for (i in 1:length(year_list)){
+    if(i==1){
+      first_date <-st
+    }else{
+      first_date<-paste(year_list[[i]],"-01","-01",sep="")
+    }
+    if(i==length(year_list)){
+      last_date <-en
+    }else{
+      last_date<-paste(year_list[[i]],"-12","-31",sep="")
+    }
+    #ll <- seq.Date(st, en, by=step)
+    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
+    ll_list[[i]]<-as.character(ll)
+    #paste(yday(ll,)
+  }
+  
+  #
+  dates_modis <-as.Date(unlist((ll_list))) 
+  
+  dates_DOY_modis <- as.character(paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep=""))
+  dates_obj <- list(dates_modis,dates_DOY_modis)
+  names(dates_obj) <- c("dates","doy")  
+  return(dates_obj)
+}
+ ################################## END OF SCRIPT #######################################
 
