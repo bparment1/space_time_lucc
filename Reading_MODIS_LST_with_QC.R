@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 11/15/2017
+#MODIFIED ON : 11/16/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: modification of dowloading function
 #
@@ -55,6 +55,7 @@ library(spgwr)
 library(reshape)
 library(sf)
 library(dplyr)
+library(lubridate)
 
 #################################
 ### Functions used in the script:
@@ -79,7 +80,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_11152017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_11162017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
@@ -127,9 +128,10 @@ infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis
 #MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
 #MODIS_product <- "MOD11A1.006"
 MODIS_product <- "MOD11A2.006" #should be product name
-start_date <- "2001.01.01"  #param13
-end_date <- "2010.12.31"  #param14
-#end_date <- "2001.01.10"
+#start_date <- "2002.01.01"  #param13
+#end_date <- "2012.12.31"  #param14
+date_param <- "2002.01.01;2012.12.31;8" #start date, end date, time_step
+
 
 #/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid
 #list_tiles_modis<- NULL #if NULL, determine tiles using the raster ref or reg_outline file  #param14
@@ -143,7 +145,7 @@ product_version <- 6 #param16
 #temporal_granularity <- "16 Day" #deal with options( 16 day, 8 day and monthly), unused at this stage...
 
 scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
+#scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #scaling_factors <- NULL #set up as slope (a) and intercept (b), if NULL, no scaling done #param18 
 
 #product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
@@ -196,6 +198,12 @@ if(create_out_dir_param==TRUE){
 #####################################
 #### STEP 1:  DOWNLOAD MODIS PRODUCT  ####
 
+date_param <- unlist(strsplit(date_param,";"))
+start_date <- date_param[1] 
+end_date <- date_param[2]
+time_step <- as.integer(date_param[3])
+#date_param <- "2001.01.01;2012.12.31;8" #start date, end date, time_step
+
 #Note that files are downloaded in the ouput directory in subdirectory with tile_name (e.g. h08v04)
 #if(is.null(infile_reg_outline))
 #  reg_outline<- create_polygon_from_extent(ref_rast_name,out_suffix)
@@ -216,7 +224,14 @@ list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string i
 #debug(modis_product_download)
 if(steps_to_run$download==TRUE){
   #debug(modis_product_download)
-  download_modis_obj <- modis_product_download(MODIS_product,product_version,start_date,end_date,list_tiles_modis,file_format_download,out_dir,temporal_granularity)
+  download_modis_obj <- modis_product_download(MODIS_product,
+                                               product_version,
+                                               start_date,
+                                               end_date,
+                                               list_tiles_modis,
+                                               file_format_download,
+                                               out_dir,
+                                               temporal_granularity)
   out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
   list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
   colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
@@ -231,6 +246,54 @@ if(steps_to_run$download==TRUE){
 }
 
 ##### Add a check for missing here??
+#df_m_list_hdf <- lapply(1:length(list_m_var[[j]]),
+#                   FUN=extract_dates_from_raster_name,
+#                   list_files=list_m_var[[j]])
+#df_m_var <- lapply(1:length(list_m_var),
+#j<-1
+undebug(extract_dates_from_raster_name)
+df_m_list_hdf <- extract_dates_from_raster_name(1,list_files_by_tiles,split_char=".")
+df_m_list_hdf <- lapply(1:nrow(list_files_by_tiles),
+                        FUN=extract_dates_from_raster_name,
+                        list_files=list_files_by_tiles,
+                        split_char=".")
+df_m_list_hdf <- do.call(rbind,df_m_list_hdf)
+df_m_list_hdf <- data.frame(lapply(df_m_list_hdf , as.character), stringsAsFactors=FALSE)
+
+#df_m_list_hdf <- as.data.frame(df_m_list_hdf,StringAsFactor=F)
+str(df_m_list_hdf)
+names(df_m_list_hdf) <- c("raster_name","doy")
+names(df_m_list_hdf)
+df_m_list_hdf$doy
+df_m_list_hdf$dates <- as.Date(strptime(as.character(df_m_list_hdf$doy), format="%Y %j"))
+
+df_dates <- as.data.frame(generate_dates_by_step(start_date,end_date,time_step))
+df_dates$missing <- 0
+#missing_dates <- setdiff(as.character(df_dates$doy),as.character(df_m_list_hdf$doy))
+missing_dates <- setdiff(as.character(df_dates$dates),as.character(df_m_list_hdf$dates))
+### Assign 1 if a date is missing
+df_dates$missing[df_dates$date %in% missing_dates] <- 1
+
+df_dates
+#wiht 001
+as.Date(189, origin = "2016-01-01")
+df_dates[5,]
+test <- as.character(df_dates[5,]$doy)
+year(test)
+year_val <- substr(test,1,4)
+doy_val <- substr(test,5,7)
+as.character(df_dates$doy)
+test <- strptime(as.character(df_dates$doy), format="%Y %j") 
+df_dates[499,]
+test[499]
+strptime(paste("2008", dayofyear), format="%Y %j") 
+
+str(df_dates)
+df_hdf_products <- merge(dates_df,df_m_list_hdf,by="doy",all=T)
+class(df_hdf_products)
+
+### Create data.frame
+df_dates <- data.frame(date=as.character(dates_range),missing = 0) 
 
 ####################################
 ##### STEP 2: IMPORT MODIS LAYERS ###
