@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 11/18/2017
+#MODIFIED ON : 11/16/2017
 #PROJECT: General MODIS processing of all projects
 #COMMIT: modification of dowloading function
 #
@@ -98,11 +98,7 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 
 proj_str<- CRS_WGS84 #check if in use somewhere?
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
-#CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-#http://azgeo-azland.opendata.arcgis.com/
-CRS_reg <- "+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-#http://www.spatialreference.org/ref/?search=Arizona
-
+CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".rst" #raster format used #param4
 NA_value <- -9999 #param5
 NA_flag_val <- NA_value
@@ -123,9 +119,7 @@ infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data
 #ref_rast_name <- "~/Data/Space_beats_time/Case2_data_NDVI/ref_rast_New_Orleans.rst"
 #ref_rast_name <- NULL #if null use the first image to define projection area
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reg_MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017_arizona_10092017.rst"
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/project_output_arizona_10092017/MOD11A2_A2012305_h08v05_006_LST_Day_1km_arizona_10092017_crop_proj_reg.rst"
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/reference_region_study_area_AZ.rst"
 #ref_rast_name<-"/home/parmentier/Data/IPLANT_project/MODIS_processing_0970720134/region_outlines_ref_files/mean_day244_rescaled.rst" #local raster name defining resolution, exent: oregon
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 
@@ -175,7 +169,7 @@ save_textfile <- TRUE
 steps_to_run <- list(download=FALSE,        #1rst step
                      import=TRUE,          #2nd  step
                      apply_QC_flag=TRUE,   #3rd  step
-                     mosaic=FALSE,          #4th  step
+                     mosaic=TRUE,          #4th  step
                      reproject=TRUE)       #5th  step 
 ### Constants
 
@@ -391,19 +385,21 @@ if(steps_to_run$import==TRUE){
                       mc.preschedule=FALSE,
                       mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
     
-    #### Report on errors when importing data
-    
-    df_import <- data.frame(var=unlist(list_r_var_s),qc=unlist(list_r_qc_s))
-    list_error <- unlist(lapply(list_r_var_s, FUN=function(x){class(x)=="try-error"}))
-    index_error <- which(list_error==TRUE)
-    df_import$var[index_error] <- NA
+    test <- unlist(lapply(list_r_var_s, FUN=function(x){class(x)=="try-error"}))
+    sum(as.numeric(test))
+    which(test==TRUE)
+    list_r_var_s[100]
     list_error <- unlist(lapply(list_r_qc_s, FUN=function(x){class(x)=="try-error"}))
     index_error <- which(list_error==TRUE)
+    list_r_qc_s[100]
+    test2<- unlist(list_r_var_s)
+    
+    df_import <- data.frame(var=unlist(list_r_var_s),qc=unlist(list_r_qc_s))
+    df_import$var[index_error] <- NA
     df_import$qc[index_error] <- NA
-    #View(df_import)
-    out_file <- paste0("df_import",".txt")
-    write.table(df_import,file.path(out_dir,out_file))
-                
+    
+    
+    
     l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
     list_imported_files[[j]] <- l_files
   }
@@ -459,10 +455,10 @@ if(steps_to_run$import==FALSE){
 #import_error_list[as.numeric(import_error_list)==1]
 #sum(as.numeric(import_error_list))
 
-#list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
-#list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
-list_r_var_s1 <- list_imported_files[[1]]$var[1] #first
-#list_r_var_s2 <- list_imported_files[[1]]$var #first
+list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
+list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
+list_r_var_s1 <- list_imported_files[[1]]$var #first
+list_r_var_s2 <- list_imported_files[[2]]$var #first
 
 plot(raster(list_r_qc_s[1]))
 plot(raster(list_r_var_s1[[2]]))
@@ -564,7 +560,7 @@ if(steps_to_run$apply_QC_flag==TRUE){
                                      "rast_var","rast_mask",
                                      "NA_flag_val","out_dir","out_suffix") 
     #undebug(screen_for_qc_valid_fun)
-    #test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+    #r_stack[[1]] <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
     #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
     #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
     
@@ -818,11 +814,7 @@ if(steps_to_run$reproject==TRUE){
   list_var_mosaiced_tmp <- remove_from_list_fun(list_var_mosaiced,condition_class ="try-error")$list
   
   out_suffix_var <-paste(out_suffix,file_format,sep="")          
-  var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,
-                                              out_suffix_var,
-                                              "reg_",
-                                              file_format,
-                                              out_path=out_dir)     
+  var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,out_suffix_var,"reg_",file_format,out_path=out_dir)     
   
   #list_param_create_region<-list(j,raster_name=list_var_mosaiced,reg_ref_rast=ref_rast,out_rast_name=var_list_outnames)
   #j<-1
@@ -835,24 +827,15 @@ if(steps_to_run$reproject==TRUE){
   out_rast_name <- NULL
   lf_r <- list_var_mosaiced
   list_param_create_region <- list(as.list(lf_r),
-                                   ref_rast, 
-                                   out_rast_name,
-                                   agg_param,
-                                   file_format,
-                                   NA_flag_val,
-                                   input_proj_str=NULL,
-                                   out_suffix="",
-                                   out_dir_s)
+                                   ref_rast, out_rast_name,agg_param,
+                                   file_format,NA_flag_val,
+                                   input_proj_str=NULL,out_suffix="",out_dir_s)
   names(list_param_create_region) <- c("raster_name",
-                                       "reg_ref_rast", 
-                                       "out_rast_name","agg_param",
-                                       "file_format",
-                                       "NA_flag_val",
-                                       "input_proj_str",
-                                       "out_suffix",
-                                       "out_dir")
-  #undebug(create__m_raster_region)
-  r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
+                                       "reg_ref_rast", "out_rast_name","agg_param",
+                                       "file_format","NA_flag_val",
+                                       "input_proj_str","out_suffix","out_dir")
+  #debug(create__m_raster_region)
+  #r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
   #r <- raster(r_filename)
   reg_var_list <- mclapply(1:length(lf_r),
                        FUN=create__m_raster_region,
