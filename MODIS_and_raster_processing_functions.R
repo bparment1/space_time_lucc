@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 11/15/2017
+#MODIFIED ON: 11/17/2017
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: pdating import file function with separate outdir set
 #
@@ -13,8 +13,7 @@
 #2)Add plotting function for raster stack
 #3)Add procedures to fill in missing values using temporal and spatial interpolation for raster time series.
 #4)Add proper documentation for general use.
-#5)get_modis_tiles_list is not working yet...need to solve issues related to rgeos library
-#6)Test additional Quality Flag levels for LST,ALBEDO and other product
+#4)Test additional Quality Flag levels for Reflectand, Fire, LST,ALBEDO and other products
 #7)Add function to report statistics: missing files in modis time series downloaded (make it general)
 #
 ###################################################################################################
@@ -1032,8 +1031,8 @@ extract_dates_from_raster_name <- function(i,list_files,split_char="_"){
 
   doy_raster <- names_part_raster[2] #this is MODIS DOY (day of year)
   doy_raster <- strsplit(doy_raster,"A")[[1]][[2]]
-  date_val <- 
-  df_raster_name <- data.frame(raster_name=raster_name,doy=doy_raster,date=)
+  dates_val <- as.Date(strptime(as.character(doy_raster), format="%Y %j"))
+  df_raster_name <- data.frame(raster_name=raster_name,doy=doy_raster,dates=dates_val)
   return(df_raster_name)
 }
 
