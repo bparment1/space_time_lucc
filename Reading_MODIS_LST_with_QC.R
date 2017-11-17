@@ -80,7 +80,7 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_11162017.R"
+function_analyses_paper <-"MODIS_and_raster_processing_functions_11172017.R"
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
@@ -252,6 +252,7 @@ if(steps_to_run$download==TRUE){
 #df_m_var <- lapply(1:length(list_m_var),
 #j<-1
 undebug(extract_dates_from_raster_name)
+##This assumes MODIS data!!!
 df_m_list_hdf <- extract_dates_from_raster_name(1,list_files_by_tiles,split_char=".")
 df_m_list_hdf <- lapply(1:nrow(list_files_by_tiles),
                         FUN=extract_dates_from_raster_name,
@@ -259,41 +260,35 @@ df_m_list_hdf <- lapply(1:nrow(list_files_by_tiles),
                         split_char=".")
 df_m_list_hdf <- do.call(rbind,df_m_list_hdf)
 df_m_list_hdf <- data.frame(lapply(df_m_list_hdf , as.character), stringsAsFactors=FALSE)
-
+#View(df_m_list_hdf)
 #df_m_list_hdf <- as.data.frame(df_m_list_hdf,StringAsFactor=F)
 str(df_m_list_hdf)
-names(df_m_list_hdf) <- c("raster_name","doy")
+#names(df_m_list_hdf) <- c("raster_name","doy")
 names(df_m_list_hdf)
 df_m_list_hdf$doy
-df_m_list_hdf$dates <- as.Date(strptime(as.character(df_m_list_hdf$doy), format="%Y %j"))
+#df_m_list_hdf$dates <- as.Date(strptime(as.character(df_m_list_hdf$doy), format="%Y %j"))
 
 df_dates <- as.data.frame(generate_dates_by_step(start_date,end_date,time_step))
+df_dates$doy <- as.character(df_dates$doy)
+df_dates$dates <- as.character(df_dates$dates)
 df_dates$missing <- 0
 #missing_dates <- setdiff(as.character(df_dates$doy),as.character(df_m_list_hdf$doy))
 missing_dates <- setdiff(as.character(df_dates$dates),as.character(df_m_list_hdf$dates))
 ### Assign 1 if a date is missing
 df_dates$missing[df_dates$date %in% missing_dates] <- 1
-
-df_dates
-#wiht 001
-as.Date(189, origin = "2016-01-01")
-df_dates[5,]
-test <- as.character(df_dates[5,]$doy)
-year(test)
-year_val <- substr(test,1,4)
-doy_val <- substr(test,5,7)
-as.character(df_dates$doy)
-test <- strptime(as.character(df_dates$doy), format="%Y %j") 
-df_dates[499,]
-test[499]
-strptime(paste("2008", dayofyear), format="%Y %j") 
+class(df_dates$doy)
+class(df_m_list_hdf$doy)
 
 str(df_dates)
-df_hdf_products <- merge(dates_df,df_m_list_hdf,by="doy",all=T)
-class(df_hdf_products)
-
+df_hdf_products <- merge(df_dates,df_m_list_hdf,by="doy",all=T)
+#df_time_series <- merge(df_time_series,df_files,by="date",all=T) #outer join to keep missing dates
+df_hdf_products <- merge(df_dates,df_m_list_hdf,by="dates",all=T)
+#df_hdf_products <- merge(df_dates[,-c("doy")],df_m_list_hdf[,-c("doy")],by="dates",all=T)
+#View(df_hdf_products)
+#class(df_hdf_products)
+#str(df_hdf_products)
 ### Create data.frame
-df_dates <- data.frame(date=as.character(dates_range),missing = 0) 
+#df_dates <- data.frame(date=as.character(dates_range),missing = 0) 
 
 ####################################
 ##### STEP 2: IMPORT MODIS LAYERS ###
@@ -358,7 +353,7 @@ if(steps_to_run$import==TRUE){
     list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                     out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
     #undebug(import_list_modis_layers_fun)
-    #r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
+    #r_var_s_filename <- import_list_modis_layers_fun(100,list_param_import_modis)    
     #r_var_s <- raster(r_var_s_filename)
     #r_var_s <- mclapply(1:12,
     #                    FUN=import_list_modis_layers_fun,
@@ -389,6 +384,22 @@ if(steps_to_run$import==TRUE){
                       list_param=list_param_import_modis,
                       mc.preschedule=FALSE,
                       mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    
+    test <- unlist(lapply(list_r_var_s, FUN=function(x){class(x)=="try-error"}))
+    sum(as.numeric(test))
+    which(test==TRUE)
+    list_r_var_s[100]
+    list_error <- unlist(lapply(list_r_qc_s, FUN=function(x){class(x)=="try-error"}))
+    index_error <- which(list_error==TRUE)
+    list_r_qc_s[100]
+    test2<- unlist(list_r_var_s)
+    
+    df_import <- data.frame(var=unlist(list_r_var_s),qc=unlist(list_r_qc_s))
+    df_import$var[index_error] <- NA
+    df_import$qc[index_error] <- NA
+    
+    
+    
     l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
     list_imported_files[[j]] <- l_files
   }
