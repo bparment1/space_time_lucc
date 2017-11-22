@@ -43,13 +43,13 @@ args<-commandArgs(TRUE)
 args_table <- args[1]
 
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
-args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_11072017.csv"
-
+#args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_11072017.csv"
+args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_assessment_script_NDVI_Rita_11152017.csv"
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
 ### use column 2,3,4 etc.
 #index_val <- 2 #this is set up for parallelization, if we have multiple regions/tiles, tile1
-index_val <- 3 #this is set up for parallelization, if we have multiple regions/tiles, tile 2 rita
+index_val <- 2 #this is set up for parallelization, if we have multiple regions/tiles, tile 2 rita
 
 in_dir <- df_args[1,index_val]
 out_dir <- df_args[2,index_val]
@@ -63,6 +63,7 @@ coord_names <- df_args[9,index_val]
 zonal_colnames <- df_args[10,index_val] 
 var_names <- df_args[11,index_val] 
 num_cores <- df_args[12,index_val] 
+
 n_time_event <- df_args[13,index_val]
 time_window_selected <- df_args[14,index_val] 
 #previous_step <- df_args[15,index_val] 
