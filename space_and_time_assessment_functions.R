@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 11/14/2017
+#DATE MODIFIED: 11/27/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -69,8 +69,8 @@ time_window_selected <- df_args[14,index_val]
 #previous_step <- df_args[15,index_val] 
 date_range <- df_args[15,index_val]  
 r_ref <- df_args[16,index_val]  
-temp_fname <- df_args[17,index_val]
-spat_fname <- df_args[18,index_val]
+r_temp_pred <- df_args[17,index_val]
+r_spat_pred <- df_args[18,index_val]
 method_space <- df_args[19,index_val] 
 method_time <- df_args[20,index_val] 
 pixel_index <- df_args[21,index_val] 
@@ -80,7 +80,7 @@ in_dir <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rit
 r_temp_pred <- list.files(path=in_dir,
                           pattern="r_temp_pred_arima_arima_.*._tile_2_NDVI_Rita_11062017.tif",
                           full.names=T)
-out_file <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_1/raster_spat_files_list_tile_2.txt"
+out_file <- file.path(in_dir,"raster_temp_files_list_tile_2.txt")
 write.table(r_temp_pred,out_file)
 #r_spat_pred <- list.files(path=in_dir,
 #                                         pattern="r_spat_.*._tile_2_NDVI_Rita_11062017.tif",
@@ -88,7 +88,9 @@ write.table(r_temp_pred,out_file)
 r_spat_pred <- list.files(path=in_dir,
                                          pattern="r_spat_pred_mle_eigen_no_previous_step_.*._tile_2_NDVI_Rita_11062017.tif",
                                          full.names=T)
-out_file <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_spat_files_list_tile_2.txt"
+out_file <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017/raster_spat_files_list_tile_2.txt"
+#/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017
+write.table(r_spat_pred,out_file)
 #r_spat_pred_mle_eigen_no_previous_step__t_113_tile_2_NDVI_Rita_11062017.tif
 s_raster <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_files_list_tile_2.txt"
 date_range <- "2001.01.01;2010.12.31;16"
@@ -99,20 +101,32 @@ method_space <- "mle;eigen" #method for space and time used to predict space and
 method_time <- "arima;arima;TRUE"
 out_suffix <- "assessment_tile_2_NDVI_Rita_11062017"
 out_dir <- "output_tile_1_2_combined_NDVI_Rita_11062017"
-create_out_dir <- FALSE  
+create_out_dir_param <- FALSE  
 
 ###### Functions used in this script
 
 debug(accuracy_space_time_calc)
-test <- accuracy_space_time_calc(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
-                                     r_zonal,methods_space,method_time,r_ref,out_suffix,
-                                     var_names,NA_flag_val,file_format, date_range,
-                                   out_dir,create_out_dir)
+
+test <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
+                                 r_spat_pred=r_spat_pred,
+                                 s_raster=data_fname,
+                                 time_window_predicted=time_window_predicted,
+                                 r_zonal=zonal_colnames,
+                                 method_space=method_space,
+                                 method_time=method_time,
+                                 r_ref=r_ref,
+                                 out_suffix=out_suffix,
+                                 var_names=var_names,
+                                 NA_flag_val=NA_flag_val,
+                                 file_format=file_format, 
+                                 date_range=date_range,
+                                 out_dir=out_dir,
+                                 create_out_dir_param=create_out_dir_param)
   
 accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
-                                     r_zonal,methods_space,method_time,r_ref,out_suffix,
-                                     var_names,NA_flag_val,file_format,
-                                     out_dir,create_out_dir){
+                                     r_zonal,method_space,method_time,r_ref,out_suffix,
+                                     var_names,NA_flag_val,file_format,date_range,
+                                     out_dir,create_out_dir_param){
   
   ##INPUTS
   #1)r_temp_pred
@@ -123,7 +137,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   #6) r_ref
   #7) methods_name
   #7) out_suffix
-  #8) out_dir
+  #8) out_dir_param
   ##OUTPUTS
   #1)
   #2)
@@ -133,11 +147,14 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   
   ###  Load data if needed:
   if(class(r_temp_pred)=="character"){
-    lf <-r_temp_pred 
+    #/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2
+    r_temp_pred_df <- read.table(r_temp_pred,stringsAsFactors = F)
+    lf <-r_temp_pred_df[,1] 
     r_temp_pred <- stack(lf)
   }
   if(class(r_spat_pred)=="character"){
-    lf <-r_spat_pred 
+    r_spat_pred_df <- read.table(r_spat_pred,stringsAsFactors = F)
+    lf <-r_spat_pred_df[,1] 
     r_spat_pred <- stack(lf)
   }
   if(class(s_raster)=="character"){
@@ -158,21 +175,27 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   method_space <- (unlist(strsplit(method_space,";")))
   method_time <- (unlist(strsplit(method_time,";")))
   
-  date_range <- (unlist(strsplit(date_range,";")))
+  #date_range <- (unlist(strsplit(date_range,";")))
   
-  r_obs <- subset(s_raster,time_window_predicted[1]:time_window_predicted[2]) #remove 99 because not considred in the prediction!!
+  #r_obs <- subset(s_raster,time_window_predicted[1]:time_window_predicted[2]) #remove 99 because not considred in the prediction!!
+  r_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
+  projection(r_obs) <- proj_str
+  projection(r_temp_pred) <- proj_str
+  projection(r_spat_pred) <- proj_str
   
+  #### Step 1: generate plot
   #plot(r_huric_obs)
   #r_huric_w <- crop(r_huric_w,rast_ref)
+  
   levelplot(r_obs,col.regions=matlab.like(25))
   levelplot(r_temp_pred,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-  projection(r_temp_pred) <- proj_str
-
-  projection(spat_pred_rast_mle_eigen_with_previous) <- proj_str
 
   #### Step 2: compute residuals
-  
+  browser()
+  res_temp_s <- calc(r_temp_pred,r_obs,fun=function(x,y){x-y})
+  test<-r_temp_pred*r_robs
   res_temp_s <- r_temp_pred - r_obs
+  r_obs+r_temp_pred
   res_spat_s <- r_spat_pred - r_obs
 
   names(res_temp_s) <- sub("pred","res",names(res_temp_s))
