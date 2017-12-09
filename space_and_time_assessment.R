@@ -72,9 +72,9 @@ args<-commandArgs(TRUE)
 
 args_table <- args[1]
 
-#args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
-#args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_11072017.csv"
-args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_assessment_script_NDVI_Rita_11152017.csv"
+#args_table <- "/home/parmentier/Data/Space_beats_time/Data/input_arguments_sbt_assessment_script_NDVI_Rita_11152017.csv"
+args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_assessment_script_NDVI_Rita_12092017.csv"
+
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
 ### use column 2,3,4 etc.
@@ -104,35 +104,45 @@ r_spat_pred <- df_args[18,index_val]
 method_space <- df_args[19,index_val] 
 method_time <- df_args[20,index_val] 
 pixel_index <- df_args[21,index_val] 
+## Always check args 22, col 2:
+mosaic_fname  <- df_args[22,2] #if not null then mosaic based on input by column inputs
 
-#P1
-in_dir <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
-r_temp_pred <- list.files(path=in_dir,
-                          pattern="r_temp_pred_arima_arima_.*._tile_2_NDVI_Rita_11062017.tif",
-                          full.names=T)
-out_file <- file.path(in_dir,"raster_temp_files_list_tile_2.txt")
-write.table(r_temp_pred,out_file)
+#### Example of inputs:
+#in_dir <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_1_NDVI_Rita_11062017"
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
+
+#r_temp_pred <- list.files(path=in_dir,
+#                          pattern="r_temp_pred_arima_arima_.*._tile_1_NDVI_Rita_11062017.tif",
+#                          full.names=T)
+#out_file <- file.path(in_dir,"raster_temp_files_list_tile_1.txt")
+#write.table(r_temp_pred,out_file)
 #r_spat_pred <- list.files(path=in_dir,
-#                                         pattern="r_spat_.*._tile_2_NDVI_Rita_11062017.tif",
+#                                         pattern="r_spat_.*._tile_1_NDVI_Rita_11062017.tif",
+#                                         full.names=T)
+#r_spat_pred <- list.files(path=in_dir,
+#                                         pattern="r_spat_pred_mle_eigen_no_previous_step_.*._tile_1_NDVI_Rita_11062017.tif",
 #                                         full.names=T)
 r_spat_pred <- list.files(path=in_dir,
-                                         pattern="r_spat_pred_mle_eigen_no_previous_step_.*._tile_2_NDVI_Rita_11062017.tif",
-                                         full.names=T)
-out_file <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017/raster_spat_files_list_tile_2.txt"
-#/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017
+                          pattern="r_spat_pred_mle_eigen_no_previous_step_.*.tif",
+                          full.names=T)
+
+#out_file <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_1_NDVI_Rita_11062017/raster_spat_files_list_tile_1.txt"
+#out_file <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017/raster_spat_files_list_tile_2.txt"
+
+##/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017
 write.table(r_spat_pred,out_file)
 #r_spat_pred_mle_eigen_no_previous_step__t_113_tile_2_NDVI_Rita_11062017.tif
-s_raster <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_files_list_tile_2.txt"
-date_range <- "2001.01.01;2010.12.31;16"
-time_window_predicted <- "105;114"
-r_zonal <- "crop_r_zonal_rev_tile_2"
-r_ref <- NULL
-method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
-method_time <- "arima;arima;TRUE"
-out_suffix <- "assessment_tile_2_NDVI_Rita_11062017"
-out_dir <- "output_tile_1_2_combined_NDVI_Rita_11062017"
-create_out_dir_param <- FALSE  
-
+#s_raster <- "/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2/raster_files_list_tile_2.txt"
+#date_range <- "2001.01.01;2010.12.31;16"
+#time_window_predicted <- "105;114"
+#r_zonal <- "crop_r_zonal_rev_tile_2"
+#r_ref <- NULL
+#method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
+#method_time <- "arima;arima;TRUE"
+#out_suffix <- "assessment_tile_2_NDVI_Rita_11062017"
+#out_dir <- "output_tile_1_2_combined_NDVI_Rita_11062017"
+#create_out_dir_param <- FALSE  
 
 ######################################################
 ########################  BEGIN SCRIPT  #############
@@ -150,67 +160,73 @@ if(create_out_dir_param==TRUE){
 #### STEP 1:  MOSAIC   ####
 
 
-if(steps_to_run$mosaic==TRUE){
+if(!is.null(mosaic_fname)){
   
-  if(is.null(mosaic_dir)){
+  #if(is.null(mosaic_dir)){
     
-    #out_dir_tmp <- paste0("mosaic_",out_suffix)
-    out_dir_tmp <- paste0("mosaic_output")
+  #out_dir_tmp <- paste0("mosaic_",out_suffix)
+  #out_dir_tmp <- paste0("mosaic_output")
     
-    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-    out_dir_s <- file.path(out_dir,out_dir_tmp)
-  }else{
-    out_dir_s <- mosaic_dir
-  }
+  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+  #out_dir_s <- file.path(out_dir,out_dir_tmp)
+  #}else{
+  #out_dir_s <- mosaic_dir
+  out_dir_s <- mosaic_fname
   
-  list_m_var <- vector("list",length(list_tiles_modis))  
-  l_df_raster_name <- vector("list",length(list_tiles_modis))  
+  #}
+  #list_r_var_s <-list.files(pattern=file_pattern,
+  #                          #patter=".*.NDVI.*.arizona_10182017.rst$",
+  #                         path=in_dir_s,
+  #                         full.names=TRUE) #inputs for moasics
   
-  names(list_m_var)<- list_tiles_modis
-  list_m_qc <- vector("list",length(list_tiles_modis))  
-  names(list_m_qc)<- list_tiles_modis
+  ## list to mosaic should be read from input data.frame with all the data
+  n_tiles <- ncol(df_args) - 1 
+  list_m_var <- vector("list",n_tiles)  
+  l_df_raster_name <- vector("list",length=n_tiles) 
   
-  for (j in 1:length(list_tiles_modis)){
-    #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
-    #file_format_s <-file_format
-    #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
-    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
-    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-    #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),
-    #                            path=out_dir_s,
-    #                            full.names=TRUE) #inputs for moasics
-    file_pattern <- paste0(".*.",product_type,".*.",
-                           out_suffix,file_format,"$")
-    
-    in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
-    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-    in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
-    
-    #list_r_var_s <- list.files(path=out_dir_s,
-    #                           pattern=file_pattern,
-    #                           full.names=T)
-    
-    #MOD11A2_A2012353_h08v05_006_LST_Day_1km_arizona_10092017.rst
-    #list_var_mosaiced <-list.files(pattern=".*.LST_Day_1km_arizona_10092017.rst$",
-    #                               path=out_dir_s,
-    #                               full.names=TRUE) #inputs for moasics
-    
-    list_r_var_s <-list.files(pattern=file_pattern,
-                              #patter=".*.NDVI.*.arizona_10182017.rst$",
-                              path=in_dir_s,
-                              full.names=TRUE) #inputs for moasics
-    list_m_var[[j]] <- list_r_var_s
-    #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
-    df_m_var <- lapply(1:length(list_m_var[[j]]),
+  index_tiles_temp <- 
+  lapply(1:n_tiles,function(i){read.table(df_args[17,i+1])})
+  index_tiles_spat <- 
+    lapply(1:n_tiles,function(i){read.table(df_args[18,i+1])})
+  
+  tiles_temp_df <- do.call(cbind,index_tiles_temp)
+  tiles_spat_df <- do.call(cbind,index_tiles_spat)
+  #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_1_NDVI_Rita_11062017"
+  #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
+  
+  #r_temp_pred <- list.files(path=in_dir,
+  #                          pattern="r_temp_pred_arima_arima_.*._tile_1_NDVI_Rita_11062017.tif",
+  #                          full.names=T)
+  #out_file <- file.path(in_dir,"raster_temp_files_list_tile_1.txt")
+  #write.table(r_temp_pred,out_file)
+  #r_spat_pred <- list.files(path=in_dir,
+  #                                         pattern="r_spat_.*._tile_1_NDVI_Rita_11062017.tif",
+  #                                         full.names=T)
+  #r_spat_pred <- list.files(path=in_dir,
+  #                                         pattern="r_spat_pred_mle_eigen_no_previous_step_.*._tile_1_NDVI_Rita_11062017.tif",
+  #                                         full.names=T)
+  #r_spat_pred <- list.files(path=in_dir,
+  #                          pattern="r_spat_pred_mle_eigen_no_previous_step_.*.tif",
+  #                          full.names=T)
+  
+  #out_file <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017/raster_spat_files_list_tile_2.txt"
+  ##/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017
+  #write.table(r_spat_pred,out_file)
+  
+  #r_temp_pred <- df_args[17,index_val]
+  #r_spat_pred <- df_args[18,index_val]
+  
+  
+  df_m_var <- lapply(1:length(list_m_var[[j]]),
                        FUN=extract_dates_from_raster_name,
                        list_files=list_m_var[[j]])
-    #df_m_var <- lapply(1:length(list_m_var),
-    #                   FUN=extract_dates_from_raster_name,
-    #                   list_files=list_m_var)
-    df_m_var <- do.call(rbind,df_m_var)
-    names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
+  #df_m_var <- lapply(1:length(list_m_var),
+  #                   FUN=extract_dates_from_raster_name,
+  #                   list_files=list_m_var)
+  df_m_var <- do.call(rbind,df_m_var)
+  names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
     
-    df_m_var[,1] <- as.character(df_m_var[,1])
+  df_m_var[,1] <- as.character(df_m_var[,1])
     l_df_raster_name[[j]] <- df_m_var
     
   }
