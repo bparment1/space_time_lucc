@@ -163,6 +163,17 @@ if(create_out_dir_param==TRUE){
 
 if(!is.null(mosaic_dir)){
   
+  #out_dir_mosaic <-     
+  #out_dir_tmp <- paste0("mosaic_output_",out_suffix)
+  out_dir_tmp <- paste0("mosaic_output")
+  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+  out_dir_s <- mosaic_dir
+  
+  if(!file.exists(out_dir_s)){
+    dir.create(out_dir_s)
+  }
+  
+  out_dir_mosaic <- out_dir_s
   
   #list_r_var_s <-list.files(pattern=file_pattern,
   #                          #patter=".*.NDVI.*.arizona_10182017.rst$",
@@ -175,9 +186,9 @@ if(!is.null(mosaic_dir)){
   l_df_raster_name <- vector("list",length=n_tiles) 
   
   index_tiles_temp <- 
-  lapply(1:n_tiles,function(i){read.table(df_args[17,i+1])})
+  lapply(1:n_tiles,function(i){read.table(df_args[17,i+1],stringsAsFactors = F)})
   index_tiles_spat <- 
-    lapply(1:n_tiles,function(i){read.table(df_args[18,i+1])})
+    lapply(1:n_tiles,function(i){read.table(df_args[18,i+1],stringsAsFactors = F)})
   index_out_suffix <- lapply(1:n_tiles,function(i){(df_args[6,i+1])})
     
   tiles_temp_df <- do.call(cbind,index_tiles_temp)
@@ -188,9 +199,6 @@ if(!is.null(mosaic_dir)){
   tiles_temp_df$out_rast_names <- out_rastnames_temp
   out_rastnames_spat <- gsub(index_out_suffix[[1]],mosaic_out_suffix,tiles_spat_df[,1])
   tiles_spat_df$out_rast_names <- out_rastnames_spat
-  
-  #df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
-  #mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
   
   #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_1_NDVI_Rita_11062017"
   #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
@@ -222,36 +230,19 @@ if(!is.null(mosaic_dir)){
   #en <- as.Date(end_date,format="%Y.%m.%d")
   #ll <- seq.Date(st, en, by="1 day")
   #dates_queried <- format(ll,"%Y.%m.%d")
-  #mosaic_list_var <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
-  #x <-mapply(FUN=as.matrix,list_m_var,SIMPLIFY=T)
-  
-  #x <-mapply(FUN="c",x,SIMPLIFY=T)
-  #MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
-  #strsplit(MODIS_product,"[.]")
-  #MODIS_product <- "MOD11A1.005"
-  date_str <- df_m_mosaics$date
-  df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
-  mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
-  #Prepare list of output names without extension
-  out_rastnames_var <- (basename(gsub(list_tiles_modis[1],"",list_m_var[[1]])))
-  out_rastnames_var <- gsub(extension(out_rastnames_var),"",out_rastnames_var)
-  #out_rastnames_var <- df_m_mosaics$out_rastnames_var
-  
+  #date_str <- df_m_mosaics$date
   j <- 1
   
-  #out_dir_mosaic <-     
-  #out_dir_tmp <- paste0("mosaic_output_",out_suffix)
-  out_dir_tmp <- paste0("mosaic_output")
-  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-  out_dir_s <- mosaic_dir
+  out_rastnames_var <- tiles_temp_df$out_rast_names
+  #mosaic_list_var <- tiles_temp_df[,1:n_tiles]
+  #xy.list <- split(xy.df, seq(nrow(xy.df)))
+  mosaic_list_var <- split(tiles_temp_df[,1:n_tiles], seq(nrow(tiles_temp_df[,1:n_tiles])))
+  names(mosaic_list_var) <- NULL
+  mosaic_list_var <- lapply(mosaic_list_var,function(x){as.character(x)})
+  input.rasters <- lapply((mosaic_list_var[[1]]), raster)
   
-  if(!file.exists(out_dir_s)){
-    dir.create(out_dir_s)
-  }
-  
-  out_dir_mosaic <- out_dir_s
   #list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
-  list_param_mosaic<-list(j,
+  list_param_mosaic <- list(j,
                           mosaic_list_var,
                           out_rastnames_var,
                           out_dir_mosaic,
@@ -265,7 +256,7 @@ if(!is.null(mosaic_dir)){
                               "file_format",
                               "NA_flag_val")
   #debug(mosaic_m_raster_list)
-  #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
+  list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
   #list_var_mosaiced <-mclapply(1:11, 
   #                             list_param=list_param_mosaic, 
   #                             mosaic_m_raster_list,
