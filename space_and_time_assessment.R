@@ -105,7 +105,8 @@ method_space <- df_args[19,index_val]
 method_time <- df_args[20,index_val] 
 pixel_index <- df_args[21,index_val] 
 ## Always check args 22, col 2:
-mosaic_fname  <- df_args[22,2] #if not null then mosaic based on input by column inputs
+mosaic_dir  <- df_args[22,2] #if not null then mosaic based on input by column inputs
+mosaic_out_suffix  <- df_args[23,2] #if not null then mosaic based on input by column inputs
 
 #### Example of inputs:
 #in_dir <- "/home/parmentier/Data/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
@@ -160,20 +161,9 @@ if(create_out_dir_param==TRUE){
 #### STEP 1:  MOSAIC   ####
 
 
-if(!is.null(mosaic_fname)){
+if(!is.null(mosaic_dir)){
   
-  #if(is.null(mosaic_dir)){
-    
-  #out_dir_tmp <- paste0("mosaic_",out_suffix)
-  #out_dir_tmp <- paste0("mosaic_output")
-    
-  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-  #out_dir_s <- file.path(out_dir,out_dir_tmp)
-  #}else{
-  #out_dir_s <- mosaic_dir
-  out_dir_s <- mosaic_fname
   
-  #}
   #list_r_var_s <-list.files(pattern=file_pattern,
   #                          #patter=".*.NDVI.*.arizona_10182017.rst$",
   #                         path=in_dir_s,
@@ -188,9 +178,20 @@ if(!is.null(mosaic_fname)){
   lapply(1:n_tiles,function(i){read.table(df_args[17,i+1])})
   index_tiles_spat <- 
     lapply(1:n_tiles,function(i){read.table(df_args[18,i+1])})
-  
+  index_out_suffix <- lapply(1:n_tiles,function(i){(df_args[6,i+1])})
+    
   tiles_temp_df <- do.call(cbind,index_tiles_temp)
   tiles_spat_df <- do.call(cbind,index_tiles_spat)
+  #out_suffix <- df_args[6,index_val]
+  
+  out_rastnames_temp <- gsub(index_out_suffix[[1]],mosaic_out_suffix,tiles_temp_df[,1])
+  tiles_temp_df$out_rast_names <- out_rastnames_temp
+  out_rastnames_spat <- gsub(index_out_suffix[[1]],mosaic_out_suffix,tiles_spat_df[,1])
+  tiles_spat_df$out_rast_names <- out_rastnames_spat
+  
+  #df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
+  #mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
+  
   #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_1_NDVI_Rita_11062017"
   #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017"
   
@@ -216,26 +217,6 @@ if(!is.null(mosaic_fname)){
   #r_temp_pred <- df_args[17,index_val]
   #r_spat_pred <- df_args[18,index_val]
   
-  
-  df_m_var <- lapply(1:length(list_m_var[[j]]),
-                       FUN=extract_dates_from_raster_name,
-                       list_files=list_m_var[[j]])
-  #df_m_var <- lapply(1:length(list_m_var),
-  #                   FUN=extract_dates_from_raster_name,
-  #                   list_files=list_m_var)
-  df_m_var <- do.call(rbind,df_m_var)
-  names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
-    
-  df_m_var[,1] <- as.character(df_m_var[,1])
-    l_df_raster_name[[j]] <- df_m_var
-    
-  }
-  
-  #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
-  #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
-  df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
-  x <- subset(df_m_mosaics,select= -c(date))# drop column with name "date"
-  
   #report on missing dates:
   #st <- as.Date(start_date,format="%Y.%m.%d")
   #en <- as.Date(end_date,format="%Y.%m.%d")
@@ -248,7 +229,6 @@ if(!is.null(mosaic_fname)){
   #MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
   #strsplit(MODIS_product,"[.]")
   #MODIS_product <- "MOD11A1.005"
-  MODIS_product_name <- gsub("[.]","_",MODIS_product)
   date_str <- df_m_mosaics$date
   df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
   mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
@@ -263,7 +243,8 @@ if(!is.null(mosaic_fname)){
   #out_dir_tmp <- paste0("mosaic_output_",out_suffix)
   out_dir_tmp <- paste0("mosaic_output")
   #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
-  out_dir_s <- file.path(out_dir,out_dir_tmp)
+  out_dir_s <- mosaic_dir
+  
   if(!file.exists(out_dir_s)){
     dir.create(out_dir_s)
   }
