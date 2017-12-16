@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 12/09/2017
+#DATE MODIFIED: 12/16/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -37,6 +37,61 @@ library(BMS) #contains hex2bin and bin2hex
 library(bitops)
 
 #Should use the data that is mosaiced!!
+
+## Function to mosaic modis or other raster images
+
+mosaic_m_raster_list<-function(j,list_param){
+  #This functions returns a subset of tiles from the modis grid.
+  #Arguments: modies grid tile,list of tiles
+  #Output: spatial grid data frame of the subset of tiles
+  #Note that rasters are assumed to be in the same projection system!!
+  
+  #rast_list<-vector("list",length(mosaic_list))
+  #for (i in 1:length(mosaic_list)){  
+  # read the individual rasters into a list of RasterLayer objects
+  # this may be changed so that it is not read in the memory!!!
+  
+  #parse output...
+  
+  #j<-list_param$j
+  mosaic_list<-list_param$mosaic_list
+  out_path<-list_param$out_path
+  out_names<-list_param$out_rastnames
+  file_format <- list_param$file_format
+  NA_flag_val <- list_param$NA_flag_val
+  ## Start
+  
+  input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
+  mosaiced_rast<-input.rasters[[1]]
+  
+  for (k in 2:length(input.rasters)){
+    mosaiced_rast<-mosaic(mosaiced_rast,input.rasters[[k]], fun=mean)
+    #mosaiced_rast<-mosaic(mosaiced_rast,raster(input.rasters[[k]]), fun=mean)
+  }
+  
+  data_name<-paste("mosaiced_",sep="") #can add more later...
+  #raster_name<-paste(data_name,out_names[j],".tif", sep="")
+  raster_name<-paste(data_name,out_names[j],file_format, sep="")
+  
+  writeRaster(mosaiced_rast, NAflag=NA_flag_val,filename=file.path(out_path,raster_name),overwrite=TRUE)  
+  #Writing the data in a raster file format...  
+  rast_list<-file.path(out_path,raster_name)
+  
+  ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+  ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+  ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+  ## Start remove
+  tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+  if(length(files_to_remove)>0){
+    file.remove(files_to_remove)
+  }
+  #now remove temp files from raster package located in rasterTmpDir
+  removeTmpFiles(h=0) #did not work if h is not set to 0
+  ## end of remove section
+  
+  return(rast_list)
+}
 
 
 accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
