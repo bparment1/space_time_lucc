@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/17/2017
+#DATE MODIFIED: 12/18/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -72,9 +72,8 @@ create_dir_fun <- function(out_dir,out_suffix){
 
 #####  Parameters and argument set up ###########
 
-
 in_dir <- "/home/bparmentier/Google Drive/Space_beats_time" #bpy50 laptop
-#in_dir <- "/home/parmentier/Data/Space_beats_time"
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time" #bpy50 laptop
 
 proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
 #CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
@@ -135,7 +134,7 @@ date_event1 <- "2005-09-24" #Dean
 #set up the working directory
 #Create output directory
 
-out_dir <- in_dir #output will be created in the input dir
+#out_dir <- in_dir #output will be created in the input dir
 out_suffix_s <- out_suffix #can modify name of output suffix
 if(create_out_dir_param==TRUE){
   out_dir <- create_dir_fun(out_dir,out_suffix_s)
@@ -168,13 +167,8 @@ if(create_out_dir_param==TRUE){
 ## PART 1: Read the datasets ####
 
 r_var1 <- stack(mixedsort(list.files(path=in_dir1,"r_NDVI.*.rst$",full.names=T)))
-#r_var2 <- stack(mixedsort(list.files(path=in_dir2,"r_F.*.light_Katrina_03222015.rst$",full.names=T)))
-#r_var3 <- stack(mixedsort(list.files(path=in_dir3,"r_reg2_NDVI.*.rst$",full.names=T)))
 
 r_zonal1 <- raster(list.files(path=in_dir1,pattern="r_z_winds_EDGY_.*.rst$",full.names=T))
-#r_zonal2 <- raster(file.path(in_dir2,"r_high1_lowminus1_light_Katrina_03222015.rst"))
-#r_zonal3 <- raster(file.path(in_dir3,"r_r_srtm_Katrina_rec2_NDVI_Katrina_04182015.rst"))
-#r_zonal3 <- raster(list.files(path=in_dir3,pattern="r_r_srtm_.*._rec2_NDVI_Katrina_04182015.rst$",full.names=T))
 
 ### Observed, predicted and residulas data for DEAN case study (1)
 
@@ -183,6 +177,147 @@ spat_pred_rast <- stack(mixedsort(list.files(path=in_dir1,"r_spat_pred_mle_Cheby
 temp_pred_rast <- stack(mixedsort(list.files(path=in_dir1,"r_temp_pred_arima_arima_.*._EDGY_predictions_03182015.rst$",full.names=T)))
 spat_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_spat_res_mle_Chebyshev_t_.*.EDGY_predictions_03182015.rst$",full.names=T)))
 temp_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_temp_res_arima_arima_.*._EDGY_predictions_03182015.rst$",full.names=T)))
+
+############## PANEL MAPS
+
+layout_m <- c(4,1)
+no_brks <- 255
+palette_colors <- rev(terrain.colors(no_brks))
+
+p1 <- levelplot(r_obs3, margin=FALSE,
+                ylab=NULL,xlab=NULL,
+                par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                    par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                par.strip.text=list(font=2,cex=2),
+                layout= layout_m,
+                names.attr= names_layers_obs,
+                #main=paste(names_layers[i],"NDVI",sep=" "),
+                col.regions=palette_colors,at=seq(-3000,10000,by=0.02))
+
+png(paste("Figure","_2_","combined_observed_NDVI_Katina_1107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+print(p1) #to plot in a loop!!  
+dev.off()
+
+##spatial plot
+layout_m <- c(4,1)
+no_brks <- 255
+palette_colors <- rev(terrain.colors(no_brks))
+
+p_spat <- levelplot(spat_pred_rast3, margin=FALSE,
+                    ylab=NULL,xlab=NULL,
+                    par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                        par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                    par.strip.text=list(font=2,cex=2),
+                    layout= layout_m,
+                    zlim=c(-3000,8000),
+                    names.attr= names_layers_pred_spat,
+                    #main=paste(names_layers[i],"NDVI",sep=" "),
+                    col.regions=palette_colors,at=seq(-3000,10000,by=0.02))
+
+png(paste("Figure","_2_","combined_spat_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+print(p_spat) #to plot in a loop!!  
+
+dev.off()
+
+##temp plot
+layout_m <- c(4,1)
+no_brks <- 255
+palette_colors <- rev(terrain.colors(no_brks))
+
+p_temp <- levelplot(temp_pred_rast3, margin=FALSE,
+                    ylab=NULL,xlab=NULL,
+                    par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                        par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                    par.strip.text=list(font=2,cex=2),
+                    layout= layout_m,
+                    names.attr= names_layers_pred_temp,
+                    #main=paste(names_layers[i],"NDVI",sep=" "),
+                    col.regions=palette_colors,
+                    at=seq(-3000,10000,by=0.02))
+
+png(paste("Figure","_2_","combined_temp_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+print(p_temp) #to plot in a loop!!  
+
+dev.off()
+
+##combined plots obs,spat,temp
+layout_m <- c(4,3)
+no_brks <- 255
+palette_colors <- rev(terrain.colors(no_brks))
+
+r_all_var3 <- stack(r_obs3,spat_pred_rast3,temp_pred_rast3)
+
+names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
+names_layers_pred_spat <- c("Spatial predicted T-1","Spatial predicted T+1","Spatial predicted T+2","Spatial predicted T+3")
+names_layers_pred_temp <- c("Temporal predicted T-1","Temporal predicted T+1","Temporal predicted T+2","Temporal predicted  T+3")
+names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_temp)
+
+p_all_var <- levelplot(r_all_var3, margin=FALSE,
+                       ylab=NULL,xlab=NULL,
+                       par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                           par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                       par.strip.text=list(font=2,cex=2),
+                       layout= layout_m,
+                       names.attr= names_layers_all,
+                       col.regions=palette_colors,
+                       at=seq(-3000,10000,by=0.02))
+
+png(paste("Figure","_2_","combined_all_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+print(p_all_var) #to plot in a loop!!  
+
+dev.off()
+
+
+#### Now plot residuals for NDVI
+
+#spat_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_spat_res_mle_Chebyshev_t_.*.EDGY_predictions_03182015.rst",full.names=T)))
+#temp_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_temp_res_arima_arima_.*._EDGY_predictions_03182015.rst",full.names=T)))
+
+layout_m <- c(4,2)
+no_brks <- 255
+#palette_colors <- (matlab.like(no_brks))
+palette_colors <- matlab.like(no_brks)
+
+r_all_res3 <- stack(spat_res_rast3,temp_res_rast3)
+names_layers_res_spat <- c("Spatial residuals T-1","Spatial residuals T+1","Spatial residuals T+2","Spatial residuals T+3")
+names_layers_res_temp <- c("Temporal residuals T-1","Temporal residuals T+1","Temporal residuals T+2","Temporal residuals T+3")
+names_layers_all_res <- c(names_layers_res_spat,names_layers_res_temp)
+
+p_all_res <- levelplot(r_all_res3, margin=FALSE,
+                       ylab=NULL,xlab=NULL,
+                       par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                           par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                       par.strip.text=list(font=2,cex=2),
+                       layout= layout_m,
+                       names.attr=names_layers_all_res,
+                       col.regions=matlab.like(255))
+#col.regions=palette_colors)
+
+png(paste("Figure","_2_","combined_all_res_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+print(p_all_res) #to plot in a loop!!  
+
+dev.off()
+
+
+###################
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #######################################################
 ########## Figure 3:  Strata: Zonal areas maps
@@ -427,128 +562,6 @@ for(i in 1:nlayers(r_obs3)){
 #                      par.strip.text=list(font=2,cex=1.5),
 #                      col.regions=temp.colors,at=seq(-1,1,by=0.02))
 
-layout_m <- c(4,1)
-no_brks <- 255
-palette_colors <- rev(terrain.colors(no_brks))
-
-p1 <- levelplot(r_obs3, margin=FALSE,
-                ylab=NULL,xlab=NULL,
-                par.settings = list(axis.text = list(font = 2, cex = 1.5),
-                                    par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
-                par.strip.text=list(font=2,cex=2),
-                layout= layout_m,
-                names.attr= names_layers_obs,
-                #main=paste(names_layers[i],"NDVI",sep=" "),
-                col.regions=palette_colors,at=seq(-3000,10000,by=0.02))
-
-png(paste("Figure","_2_","combined_observed_NDVI_Katina_1107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p1) #to plot in a loop!!  
-dev.off()
-
-##spatial plot
-layout_m <- c(4,1)
-no_brks <- 255
-palette_colors <- rev(terrain.colors(no_brks))
-
-p_spat <- levelplot(spat_pred_rast3, margin=FALSE,
-                    ylab=NULL,xlab=NULL,
-                    par.settings = list(axis.text = list(font = 2, cex = 1.5),
-                                        par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
-                    par.strip.text=list(font=2,cex=2),
-                    layout= layout_m,
-                    zlim=c(-3000,8000),
-                    names.attr= names_layers_pred_spat,
-                    #main=paste(names_layers[i],"NDVI",sep=" "),
-                    col.regions=palette_colors,at=seq(-3000,10000,by=0.02))
-
-png(paste("Figure","_2_","combined_spat_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p_spat) #to plot in a loop!!  
-
-dev.off()
-
-##temp plot
-layout_m <- c(4,1)
-no_brks <- 255
-palette_colors <- rev(terrain.colors(no_brks))
-
-p_temp <- levelplot(temp_pred_rast3, margin=FALSE,
-                    ylab=NULL,xlab=NULL,
-                    par.settings = list(axis.text = list(font = 2, cex = 1.5),
-                                        par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
-                    par.strip.text=list(font=2,cex=2),
-                    layout= layout_m,
-                    names.attr= names_layers_pred_temp,
-                    #main=paste(names_layers[i],"NDVI",sep=" "),
-                    col.regions=palette_colors,
-                    at=seq(-3000,10000,by=0.02))
-
-png(paste("Figure","_2_","combined_temp_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p_temp) #to plot in a loop!!  
-
-dev.off()
-
-##combined plots obs,spat,temp
-layout_m <- c(4,3)
-no_brks <- 255
-palette_colors <- rev(terrain.colors(no_brks))
-
-r_all_var3 <- stack(r_obs3,spat_pred_rast3,temp_pred_rast3)
-
-names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
-names_layers_pred_spat <- c("Spatial predicted T-1","Spatial predicted T+1","Spatial predicted T+2","Spatial predicted T+3")
-names_layers_pred_temp <- c("Temporal predicted T-1","Temporal predicted T+1","Temporal predicted T+2","Temporal predicted  T+3")
-names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_temp)
-
-p_all_var <- levelplot(r_all_var3, margin=FALSE,
-                       ylab=NULL,xlab=NULL,
-                       par.settings = list(axis.text = list(font = 2, cex = 1.5),
-                                           par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
-                       par.strip.text=list(font=2,cex=2),
-                       layout= layout_m,
-                       names.attr= names_layers_all,
-                       col.regions=palette_colors,
-                       at=seq(-3000,10000,by=0.02))
-
-png(paste("Figure","_2_","combined_all_NDVI_Katrina_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p_all_var) #to plot in a loop!!  
-
-dev.off()
-
-
-#### Now plot residuals for NDVI
-
-#spat_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_spat_res_mle_Chebyshev_t_.*.EDGY_predictions_03182015.rst",full.names=T)))
-#temp_res_rast <- stack(mixedsort(list.files(path=in_dir1,"r_temp_res_arima_arima_.*._EDGY_predictions_03182015.rst",full.names=T)))
-
-layout_m <- c(4,2)
-no_brks <- 255
-#palette_colors <- (matlab.like(no_brks))
-palette_colors <- matlab.like(no_brks)
-
-r_all_res3 <- stack(spat_res_rast3,temp_res_rast3)
-names_layers_res_spat <- c("Spatial residuals T-1","Spatial residuals T+1","Spatial residuals T+2","Spatial residuals T+3")
-names_layers_res_temp <- c("Temporal residuals T-1","Temporal residuals T+1","Temporal residuals T+2","Temporal residuals T+3")
-names_layers_all_res <- c(names_layers_res_spat,names_layers_res_temp)
-
-p_all_res <- levelplot(r_all_res3, margin=FALSE,
-                       ylab=NULL,xlab=NULL,
-                       par.settings = list(axis.text = list(font = 2, cex = 1.5),
-                                           par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
-                       par.strip.text=list(font=2,cex=2),
-                       layout= layout_m,
-                       names.attr=names_layers_all_res,
-                       col.regions=matlab.like(255))
-#col.regions=palette_colors)
-
-png(paste("Figure","_2_","combined_all_res_107_110_paper_space_beats_time_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-print(p_all_res) #to plot in a loop!!  
-
-dev.off()
 
 #########################################################################
 ##### Figure 8:  Temporal MAE patterns Dean four dates
