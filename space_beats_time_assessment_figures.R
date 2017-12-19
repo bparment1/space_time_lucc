@@ -204,6 +204,7 @@ palette_colors <- rev(terrain.colors(no_brks))
 
 p <- levelplot(r_obs, margin=FALSE,
                 ylab=NULL,xlab=NULL,
+                scales=list(draw=FALSE), #don't draw geographic coordinates
                 par.settings = list(axis.text = list(font = 2, cex = 1.5),
                                     par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
                 par.strip.text=list(font=2,cex=2),
@@ -226,6 +227,7 @@ palette_colors <- rev(terrain.colors(no_brks))
 
 p_spat <- levelplot(r_spat, margin=FALSE,
                     ylab=NULL,xlab=NULL,
+                    scales=list(draw=FALSE), #don't draw geographic coordinates
                     par.settings = list(axis.text = list(font = 2, cex = 1.5),
                                         par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
                     par.strip.text=list(font=2,cex=2),
@@ -250,6 +252,7 @@ palette_colors <- rev(terrain.colors(no_brks))
 
 p_temp <- levelplot(r_temp, margin=FALSE,
                     ylab=NULL,xlab=NULL,
+                    scales=list(draw=FALSE), #don't draw geographic coordinates
                     par.settings = list(axis.text = list(font = 2, cex = 1.5),
                                         par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
                     par.strip.text=list(font=2,cex=2),
@@ -278,6 +281,7 @@ r_all_var <- stack(r_obs,r_spat,r_temp)
 
 p_all_var <- levelplot(r_all_var, margin=FALSE,
                        ylab=NULL,xlab=NULL,
+                       scales=list(draw=FALSE), #don't draw geographic coordinates
                        par.settings = list(axis.text = list(font = 2, cex = 1.5),
                                            par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
                        par.strip.text=list(font=2,cex=2),
@@ -306,12 +310,14 @@ names_layers_all_res <- c(names_layers_res_spat,names_layers_res_temp)
 
 p_all_res <- levelplot(r_all_res, margin=FALSE,
                        ylab=NULL,xlab=NULL,
+                       scales=list(draw=FALSE), #don't draw geographic coordinates
                        par.settings = list(axis.text = list(font = 2, cex = 1.5),
                                            par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
                        par.strip.text=list(font=2,cex=2),
                        layout= layout_m,
                        names.attr=names_layers_all_res,
-                       col.regions=matlab.like(255))
+                       col.regions=matlab.like(255),
+                       at=seq(-3000,5000,by=200))
 #col.regions=palette_colors)
 
 png(paste("Figure","_2_","combined_all_residuals_models_time_and_space_",out_suffix,".png", sep=""),
