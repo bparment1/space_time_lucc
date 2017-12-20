@@ -4,17 +4,13 @@
 #The script uses spatial regression and temporal model (ARIMA and temporal OLS) values predicted for various. 
 #Current case studies include:
 
-#-raster NDVI MODIS data in the Yucatan after hurricane Rita
+#-raster NDVI MODIS data in the region of Houston after hurricane Rita
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/19/2017
+#DATE MODIFIED: 12/20/2017
 #Version: 1
-#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
-#PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
-#PROJECT: Chicago AAG 2015 with Marco Millones
-#PROJECT: Dallas Geocomputation 2015 with Marco Millones, Springer book
-#
+#PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: - 
 #         - 
 #TO DO:
@@ -47,7 +43,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01292016.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_12172017.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -83,7 +79,7 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 file_format <- ".rst" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_book_figures_12192017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_book_figures_12202017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #### Clean this up: Need to this general for any region!!!
@@ -104,6 +100,8 @@ mae_zones_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_1
 
 mae_tot_tb1a <- read.table(file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt"))
 mae_tot_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt"))
+
+###
 
 ## Parameters that vary from case studies to case studies...
 
@@ -201,6 +199,8 @@ names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_
 layout_m <- c(4,1)
 no_brks <- 255
 palette_colors <- rev(terrain.colors(no_brks))
+pix_res_height <- 500
+pix_res_width <- 480
 
 p <- levelplot(r_obs, margin=FALSE,
                 ylab=NULL,xlab=NULL,
@@ -215,7 +215,7 @@ p <- levelplot(r_obs, margin=FALSE,
 
 png_filename <- paste("Figure","_2_observed_",out_suffix,".png", sep="")
 png(png_filename,
-    height=480*layout_m[2],width=480*layout_m[1])
+    height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
 print(p) #to plot in a loop!!  
 dev.off()
 
@@ -224,6 +224,8 @@ dev.off()
 layout_m <- c(4,1) #
 no_brks <- 255
 palette_colors <- rev(terrain.colors(no_brks))
+pix_res_height <- 500
+pix_res_width <- 480
 
 p_spat <- levelplot(r_spat, margin=FALSE,
                     ylab=NULL,xlab=NULL,
@@ -240,7 +242,7 @@ p_spat <- levelplot(r_spat, margin=FALSE,
 png_filename <- paste("Figure","_spatial_prediction_",out_suffix,".png", sep="")
 
 png(png_filename,
-    height=480*layout_m[2],width=480*layout_m[1])
+    height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
 print(p_spat) #to plot in a loop!!  
 
 dev.off()
