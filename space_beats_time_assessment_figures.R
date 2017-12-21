@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/20/2017
+#DATE MODIFIED: 12/21/2017
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: - 
@@ -362,6 +362,16 @@ dev.off()
 ############################################################
 ###Figure 4:  Average Temporal profiles overall for the time series under study
 ## This illustrate the change (dip) directly after the Hurricane event
+
+data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
+data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
+
+
+dat_out1a <- read.table(data_fname1a,sep=",",stringsAsFactors = F,header=T)
+dat_out1b <- read.table(data_fname1b,sep=",",stringsAsFactors = F)
+
+dim(dat_out1a)
+dim(dat_out1b)
 
 #zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
 
