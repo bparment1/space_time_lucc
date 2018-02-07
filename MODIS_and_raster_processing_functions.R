@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 11/17/2017
+#MODIFIED ON: 02/07/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: pdating import file function with separate outdir set
 #
@@ -581,6 +581,7 @@ create_modis_tiles_region<-function(modis_grid,tiles){
 }
 
 get_modis_tiles_list <-function(modis_grid,reg_outline,CRS_interp){
+  #
   #Usage:This function finds the matching modis tiles given a vector polygon in shapefile format.
   #Inputs:
   #modis_grid: shapefiles of modis grid.
@@ -591,50 +592,27 @@ get_modis_tiles_list <-function(modis_grid,reg_outline,CRS_interp){
   
   ## SCRIPT BEGIN ##
   
-  #class(reg_outline) %in% c("SpatialPolygonsDataFrame","sf")
   if((class(reg_outline)[1]!="sf")){
-    #filename<-sub(extension(basename(reg_outline)),"",basename(reg_outline))       #Removing path and the extension from file name.
-    #reg_outline <- readOGR(dsn=dirname(reg_outline), filename)
     reg_outline <- st_read(reg_outline)
   }
-  #filename<-sub(".shp","",basename(infile_modis_grid))       #Removing path and the extension from file name.
-  #modis_grid<-readOGR(dsn=dirname(infile_modis_grid), filename)     #Reading shape file using rgdal library
+  
   modis_grid<-st_read(infile_modis_grid)    #Reading shape file using rgdal library
-  
-  #proj4string(reg_outline) <- CRS_interp
-  
-  #modis_WGS84 <- spTransform(modis_grid,CRS_locs_WGS84) #get cooddinates of center of region in lat, lon
   reg_outline_sin <- st_transform(reg_outline,st_crs(modis_grid)$proj4string)
-  #reg_outline_sin <- spTransform(reg_outline,CRS(proj4string(modis_grid))) #get cooddinates of center of region in lat, lon
-  #reg_outline <- as(reg_outline_sin,"Spatial")
-  #reg_outline_dissolved <- gUnionCascaded(reg_outline_sin)  #dissolve polygons
-  
+
   l_poly <- st_intersects(reg_outline_sin,modis_grid) #intersected poly
-  modis_grid_selected <- modis_grid[unlist(l_poly),]
-  #franconia %>%  
-  #  split(.$district) %>% 
-  # lapply(st_union) %>% 
-  # do.call(c, .) %>% # bind the list element to a single sfc
-    #st_cast() %>% # mapview doesn't like GEOMETRY -> cast to MULTIPOLYGON
-    #mapview()
-  
+  l_poly <- unique(unlist(l_poly))
+  modis_grid_selected <- modis_grid[l_poly,]
   plot(modis_grid_selected$geometry)
   plot(reg_outline_sin,col="red",add=T)
-  
-  #tiles<-gIntersection(reg_outline_dissolved, modis_grid, byid=FALSE, id=NULL)
-  
-  #l_poly <- over(reg_outline_dissolved, modis_grid)
   df_tmp <- as.data.frame(modis_grid_selected)
-  
-  #df_tmp <- as.data.frame(modis_grid[555:60,])
-
-  #now format...
-  #format()
   tiles_modis <- paste(sprintf("h%02d", df_tmp$h),sprintf("v%02d", df_tmp$v),sep="")
   tiles_modis <- paste(tiles_modis,collapse=",")
-  #h09v06
   
-  return(tiles_modis)
+  ##### Prepare object to return
+  
+  obj <- list(tiles_modis,modis_grid_selected)
+  names(obj) <- c("tiles_modis","modis_grid_selected")
+  return(obj)
 }
 ## function to download modis product??
 
