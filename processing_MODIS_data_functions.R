@@ -1,6 +1,6 @@
-########################################  TILES PROCESSING #######################################
-########################################### Read QC flags and mosaic tiles in R #####################################
-#The current version generate data forthe Arizona region.
+################################################  PROCESSING MODIS DATA #######################################
+########################################### Function to process MODIS datasets #####################################
+#The current version processes MODIS dataset given a set of inputs
 #This script download and processes MODIS tiles using Quality Flag. 
 #Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
@@ -80,86 +80,9 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_02082018.R"
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
-source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
-
-################################
-###### Parameters and arguments
-
-#ARG1
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param1
-#ARG2
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
-#ARG3
-#http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
-CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-#ARG4
-file_format <- ".tif" #raster format used #param4
-#ARG5
-NA_flag_val <- -9999
-#ARG6
-out_suffix <- "harvey_02072018"
-#ARG7
-create_out_dir_param=FALSE #param7
-#ARG8
-infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
-#ARG9
-#local raster name defining resolution, extent
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
-#ARG10
-MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
-#ARG11
-date_param <- "2017.01.01;2017.12.31;16" #start date, end date, time_step
-#ARG12
-list_tiles_modis <- NULL #if NULL determine the tiles to download
-#ARGS13
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
-#ARGS14
-product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#ARGS15
-var_name <- "LST_Night_1km" #can be LST_Day_1km
-#ARGS16
-qc_name <- "QC_Night"
-#ARGS17
-num_cores <- 4 #param 20
-#ARGS18
-selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA")
-#Select level 2:
-#qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
-#ARGS19
-agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param 11
-#ARG20
-steps_to_run <- list(download=TRUE,        #1rst step
-                     import=TRUE,          #2nd  step
-                     apply_QC_flag=TRUE,   #3rd  step
-                     mosaic=FALSE,          #4th  step
-                     reproject=TRUE)       #5th  step 
-### Constants
-
-#Constant1:
-proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
-#Constant2:
-CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 
-#Constatn3:
-file_format_download <- "hdf"  
-#Constant4:
-infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
-#Constant5:
-save_textfile <- TRUE
-
-## Maybe add in_dir for all the outputs
-#Constant6:
-###Maybe have a text file??
-download_dir <- NULL #step 1, multiple folders
-import_dir <- NULL # step 2, multiple folders
-mask_qc_dir <- NULL # step 3, this should be a list?, better as a text input
-mosaic_dir <- NULL # step 4
-project_dir <- NULL # step 5
-
-out_dir_processing_steps <- list(download_dir,import_dir,mask_qc_dir,mosaic_dir,project_dir)
-names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","mosaic_dir","project_dir")
+#function_analyses_paper <-"MODIS_and_raster_processing_functions_02082018.R"
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+#source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 processing_modis_data <- function(in_dir,
                                   out_dir,
@@ -408,17 +331,6 @@ processing_modis_data <- function(in_dir,
         out_dir_s <- import_dir
       }
       
-      #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
-      #drwxrwxr-x 2 bparmentier bparmentier 401408 Oct  9 17:27 mask_qc_h08v05
-      
-      #LST_Day_1km_arizona_10092017.rst
-      #MOD11A2_A2012361_h08v05_006_LST_Day_1km.rst
-      
-      #strsplit(x=MODIS_product, split="[.]")
-      #list_r_var_s <- list.files(path=out_dir_s,
-      #                     pattern=".*.LST_Day_1km.rst$")
-      
-      
       #file_pattern <- paste0(sub("[.]","_",MODIS_product),".*.",product_type,".*",file_format,"$")
       file_pattern <- paste0(".*.",product_type,".*",file_format,"$")
       
@@ -444,17 +356,14 @@ processing_modis_data <- function(in_dir,
   
   #list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
   #list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
-  list_r_var_s1 <- list_imported_files[[1]]$var[1] #first
+  list_r_var_s1 <- unlist(list_imported_files[[1]]$var[1]) #first tile, variable
+  list_r_qc_s1 <- unlist(list_imported_files[[1]]$qc[1]) #first tile, quality flags
+  
   #list_r_var_s2 <- list_imported_files[[1]]$var #first
-  
-  plot(raster(list_r_qc_s[1]))
-  plot(raster(list_r_var_s1[[2]]))
-  plot(raster(list_r_var_s2[[2]]))
-  
-  #print(r_var_s)
-  #print(r_qc_s)
-  
-  
+  r_var_s1 <- raster(list_r_var_s1)
+  r_qc_s1 <- raster(list_r_qc_s1)
+  plot(r_var_s1)
+  plot(r_qc_s1)
   
   #################################
   ##### STEP 3: APPLY/DEAL WITH QC FLAG AND SCREEN VALUE FOR VALID RANGE ###
@@ -890,38 +799,3 @@ processing_modis_data <- function(in_dir,
 
 ############################## END OF SCRIPT ########################
 
-######################################################
-########################  BEGIN SCRIPT  #############
-
-
-
-
-
-########################## END OF SCRIPT ##############################
-
-### need to change this:
-#r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
-#r_tmp <- raster(unlist(list_var_mosaiced)[1])
-# r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
-# ### need to set the resolution
-# r_test2 <- projectRaster(r_tmp,crs=CRS_reg, res=res(r_tmp),method="ngb")
-# test_sp <- as(test_sf, "Spatial") 
-# r_crop <- crop(r_test2,test_sp)
-# ## Now turn the polygon file to mask using the reprojected and crop area.
-# r_az <- rasterize(test_sp,r_crop)
-# compareCRS(r_az,r_crop)
-# projection(r_az) <- projection(r_crop)
-# compareCRS(r_az,CRS_reg) #TRUE
-# projection(r_az) <- CRS_reg
-# #https://www.nceas.ucsb.edu/scicomp/recipes/projections
-# NAvalue(r_az) <- -9999
-# writeRaster(r_az,file.path("reference_region_study_area_AZ.rst"),
-#             overwrite=T)
-# writeRaster(r_az,file.path("reference_region_study_area_AZ.tif"),
-#             overwrite=T)
-
-#Currently we use only this:
-
-
-###
-#"gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
