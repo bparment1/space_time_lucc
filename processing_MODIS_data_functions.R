@@ -1,0 +1,925 @@
+########################################  TILES PROCESSING #######################################
+########################################### Read QC flags and mosaic tiles in R #####################################
+#The current version generate data forthe Arizona region.
+#This script download and processes MODIS tiles using Quality Flag. 
+#Tiles are mosaiced and reprojected for a specific study region.
+#MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
+#using for example gdalinfo to identify the relevant dataset and QC flag options. 
+#Note that QC flags are store bitpacks of 8bits (byte) in big endian!!!
+#A data frame matching flag values is created to facilate the processing.            
+#Inspiration and some code for the MODIS flag function originates from Steve Mosher:
+#http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
+## MODIS WORKFLOW
+# Processing of MODIS HDF files is done in 5 steps:
+# Step 1: download modis tiles for specified product and version (e.g. version 5)
+# Step 2: import modis tiles for specified file format (e.g. ".tif",".rst)
+# Step 3: deal with modis flags (multiple levels)
+# Step 4: mosaic tiles for every time step
+# Step 5: reproject and crop extent to study region
+#
+#AUTHOR: Benoit Parmentier                                                                       
+#CREATED ON : 09/16/2013  
+#MODIFIED ON : 02/08/2018
+#PROJECT: General MODIS processing of all projects
+#COMMIT: modification of dowloading function
+#
+#TODO: 
+#1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
+#2) Add function to report statistics: missing files
+#3) Currently 20 input arguments (param), reduce to 15 or less
+#4) Make this script a function callable from shell!!
+#5) This script can be transformed to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
+#   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
+#6) Update mosaicing to use gdal for large areas
+
+
+###################################################################################################
+
+###Loading R library and packages                                                      
+#library(gtools)    # loading some useful tools 
+
+library(sp)
+library(raster)
+library(BMS) #contains hex2bin and bin2hex
+library(bitops)
+library(gtools)
+library(parallel)
+library(rasterVis)
+library(spdep)                               # Spatial pacakge with methods and spatial stat. by Bivand et al.
+library(rgdal)                               # GDAL wrapper for R, spatial utilities
+library(gstat)                               # Kriging and co-kriging by Pebesma et al.
+library(fields)                              # NCAR Spatial Interpolation methods such as kriging, splines
+library(raster)                              # Hijmans et al. package for raster processing
+library(rasterVis)
+library(spgwr)
+library(reshape)
+library(sf)
+library(dplyr)
+library(lubridate)
+
+#################################
+### Functions used in the script:
+
+create_dir_fun <- function(outDir,out_suffix=NULL){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    outDir <- file.path(outDir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(outDir)){
+    dir.create(outDir)
+  }
+  return(outDir)
+}
+
+#Used to load RData object saved within the functions produced.
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
+
+function_analyses_paper <-"MODIS_and_raster_processing_functions_02082018.R"
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
+
+################################
+###### Parameters and arguments
+
+#ARG1
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param1
+#ARG2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
+#ARG3
+#http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
+CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
+#ARG4
+file_format <- ".tif" #raster format used #param4
+#ARG5
+NA_flag_val <- -9999
+#ARG6
+out_suffix <- "harvey_02072018"
+#ARG7
+create_out_dir_param=FALSE #param7
+#ARG8
+infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
+#ARG9
+#local raster name defining resolution, extent
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
+#ARG10
+MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
+#ARG11
+date_param <- "2017.01.01;2017.12.31;16" #start date, end date, time_step
+#ARG12
+list_tiles_modis <- NULL #if NULL determine the tiles to download
+#ARGS13
+#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
+scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
+#ARGS14
+product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
+#ARGS15
+var_name <- "LST_Night_1km" #can be LST_Day_1km
+#ARGS16
+qc_name <- "QC_Night"
+#ARGS17
+num_cores <- 4 #param 20
+#ARGS18
+selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA")
+#Select level 2:
+#qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
+#ARGS19
+agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param 11
+#ARG20
+steps_to_run <- list(download=TRUE,        #1rst step
+                     import=TRUE,          #2nd  step
+                     apply_QC_flag=TRUE,   #3rd  step
+                     mosaic=FALSE,          #4th  step
+                     reproject=TRUE)       #5th  step 
+### Constants
+
+#Constant1:
+proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
+#Constant2:
+CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 
+#Constatn3:
+file_format_download <- "hdf"  
+#Constant4:
+infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
+#Constant5:
+save_textfile <- TRUE
+
+## Maybe add in_dir for all the outputs
+#Constant6:
+###Maybe have a text file??
+download_dir <- NULL #step 1, multiple folders
+import_dir <- NULL # step 2, multiple folders
+mask_qc_dir <- NULL # step 3, this should be a list?, better as a text input
+mosaic_dir <- NULL # step 4
+project_dir <- NULL # step 5
+
+out_dir_processing_steps <- list(download_dir,import_dir,mask_qc_dir,mosaic_dir,project_dir)
+names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","mosaic_dir","project_dir")
+
+processing_modis_data <- function(in_dir,
+                                  out_dir,
+                                  CRS_reg,
+                                  file_forma, 
+                                  NA_flag_val,
+                                  out_suffix,
+                                  create_out_dir_param,
+                                  infile_reg_outline,
+                                  ref_rast_name, 
+                                  MODIS_product,
+                                  date_param,
+                                  list_tiles_modis,
+                                  scaling_factors,
+                                  product_type,
+                                  var_name,
+                                  qc_name,
+                                  num_cores,
+                                  selected_flags, 
+                                  agg_param,
+                                  steps_to_run,
+                                  proj_modis_str,
+                                  CRS_WGS84,
+                                  file_format_download,
+                                  infile_modis_grid,
+                                  save_textfile,
+                                  out_dir_processing_steps){
+  
+  ##################################
+  
+  #Create output directory
+  
+  if(create_out_dir_param==TRUE){
+    out_dir <- create_dir_fun(out_dir,out_suffix)
+    setwd(out_dir)
+  }else{
+    setwd(out_dir) #use previoulsy defined directory
+  }
+  
+  #####################################
+  #### STEP 1:  DOWNLOAD MODIS PRODUCT  ####
+  
+  date_param <- unlist(strsplit(date_param,";"))
+  start_date <- date_param[1] 
+  end_date <- date_param[2]
+  time_step <- as.integer(date_param[3])
+  
+  ### If tiles to download, determine using region outline
+  if(is.null(list_tiles_modis)){
+    # generate figures of selected tiles later on?
+    obj <- get_modis_tiles_list(modis_grid,
+                                reg_outline=infile_reg_outline,
+                                CRS_reg)
+    list_tiles_modis <- obj$tiles_modis
+    
+  }
+  list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
+  
+  
+  
+  #debug(modis_product_download)
+  if(steps_to_run$download==TRUE){
+    #debug(modis_product_download)
+    download_modis_obj <- modis_product_download(MODIS_product,
+                                                 product_version,
+                                                 start_date,
+                                                 end_date,
+                                                 list_tiles_modis,
+                                                 file_format_download,
+                                                 out_dir,
+                                                 temporal_granularity)
+    out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
+    list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
+    colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
+  }else{
+    
+    ### Add download_dir here
+    out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
+    #list_files_by_tiles <- mapply(1:length(out_dir_tiles),FUN=list.files,MoreArgs=list(pattern="*.hdf$",path=out_dir_tiles,full.names=T),SIMPLIFY=T) #Use mapply to pass multiple arguments 
+    list_files_by_tiles <-mapply(1:length(out_dir_tiles),
+                                 FUN=function(i,x){list.files(path=x[[i]],pattern="*.hdf$",full.names=T)},MoreArgs=(list(x=out_dir_tiles)),SIMPLIFY=T) #Use mapply to pass multiple arguments
+    colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
+  }
+  
+  ##### Add a check for missing here??: clean up and make a function:
+  #undebug(extract_dates_from_raster_name)
+  ##This assumes MODIS data!!!
+  df_m_list_hdf <- extract_dates_from_raster_name(1,list_files_by_tiles,split_char=".")
+  df_m_list_hdf <- lapply(1:nrow(list_files_by_tiles),
+                          FUN=extract_dates_from_raster_name,
+                          list_files=list_files_by_tiles,
+                          split_char=".")
+  df_m_list_hdf <- do.call(rbind,df_m_list_hdf)
+  df_m_list_hdf <- data.frame(lapply(df_m_list_hdf , as.character), stringsAsFactors=FALSE)
+  #View(df_m_list_hdf)
+  #df_m_list_hdf <- as.data.frame(df_m_list_hdf,StringAsFactor=F)
+  str(df_m_list_hdf)
+  #names(df_m_list_hdf) <- c("raster_name","doy")
+  names(df_m_list_hdf)
+  df_m_list_hdf$doy
+  #df_m_list_hdf$dates <- as.Date(strptime(as.character(df_m_list_hdf$doy), format="%Y %j"))
+  
+  df_dates <- as.data.frame(generate_dates_by_step(start_date,end_date,time_step))
+  df_dates$doy <- as.character(df_dates$doy)
+  df_dates$dates <- as.character(df_dates$dates)
+  df_dates$missing <- 0
+  #missing_dates <- setdiff(as.character(df_dates$doy),as.character(df_m_list_hdf$doy))
+  missing_dates <- setdiff(as.character(df_dates$dates),as.character(df_m_list_hdf$dates))
+  ### Assign 1 if a date is missing
+  df_dates$missing[df_dates$date %in% missing_dates] <- 1
+  class(df_dates$doy)
+  class(df_m_list_hdf$doy)
+  
+  str(df_dates)
+  df_hdf_products <- merge(df_dates,df_m_list_hdf,by="doy",all=T)
+  #df_time_series <- merge(df_time_series,df_files,by="date",all=T) #outer join to keep missing dates
+  df_hdf_products <- merge(df_dates,df_m_list_hdf,by="dates",all=T)
+  
+  number_missing_dates <- sum(df_hdf_products$missing)
+  message(paste("Number of missing files is :",number_missing_dates))
+  ## Still need to modify this for each tile!!!
+  
+  
+  ####################################
+  ##### STEP 2: IMPORT MODIS LAYERS ###
+  
+  ##Modify this section into a function to extract names of product and quality flag automatically!!
+  infile_var <- list_files_by_tiles[[1]]
+  GDALinfo_hdf<-GDALinfo(infile_var[1],returnScaleOffset=FALSE)
+  str(GDALinfo_hdf)
+  modis_subdataset <- attributes(GDALinfo_hdf)$subdsmdata
+  print(modis_subdataset)
+  
+  hdf_df <- (strsplit(modis_subdataset,":"))
+  hdf_df <- as.data.frame(do.call(rbind,hdf_df),stringsAsFactors=F)
+  
+  names(hdf_df) <- c("subdataset_name","description","dir","product","var_name")
+  #Select automatically QC flag!!
+  #View(hdf_df)
+  
+  write.table(hdf_df,"hdf_subdataset.txt",sep=",")
+  
+  if(product_type=="NDVI"){
+    modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day NDVI layer
+    modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
+  }
+  if(product_type=="LST"){
+    #var_name, make a data.frame and pick the correct line...
+    var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
+    qc_name_index <- which(hdf_df$var_name==qc_name)
+    #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
+    #modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
+    modis_layer_str1 <- unlist(strsplit(modis_subdataset[var_name_index],"\""))[3] #Get day LST layer
+    modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
+    
+  }
+  
+  ### import list of files before mosaicing
+  
+  file_format_import <- file_format
+  var_modis_name <- unlist(strsplit(modis_layer_str1,":"))[3]
+  qc_modis_name <- unlist(strsplit(modis_layer_str2,":"))[3]
+  
+  var_modis_name <- gsub(" ","_",var_modis_name) #suffix name for product, may contain white space so replace with "_"
+  qc_modis_name <- gsub(" ","_",qc_modis_name)
+  
+  ##loop over tiles:
+  #Took 10 minutes for 506 files and one tile
+  if(steps_to_run$import==TRUE){
+    list_imported_files <- vector("list",length=length(list_tiles_modis))
+    for(j in 1:length(list_tiles_modis)){
+      #infile_var <- download_modis_obj$list_files_by_tiles[,j] 
+      infile_var <-list_files_by_tiles[,j] #note can be any variable even thought LST presented  here
+      #infile_var <- list_files_by_tiles[[j]]
+      out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+      #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+      out_dir_s <- file.path(out_dir,out_dir_tmp)
+      
+      out_suffix_s <- var_modis_name
+      list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
+                                      out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
+      #undebug(import_list_modis_layers_fun)
+      #r_var_s_filename <- import_list_modis_layers_fun(100,list_param_import_modis)    
+      #r_var_s <- raster(r_var_s_filename)
+      #r_var_s <- mclapply(1:12,
+      #                    FUN=import_list_modis_layers_fun,
+      #                    list_param=list_param_import_modis,
+      #                    mc.preschedule=FALSE,
+      #                    mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      
+      list_r_var_s <- mclapply(1:length(infile_var),
+                               FUN=import_list_modis_layers_fun,
+                               list_param=list_param_import_modis,
+                               mc.preschedule=FALSE,
+                               mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      
+      ##### Now do the qc flags
+      out_suffix_s <- qc_modis_name
+      list_param_import_modis <- list(i=1,
+                                      hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
+                                      out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
+      #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
+      #r_qc_s <-mclapply(1:12,
+      #                  FUN=import_list_modis_layers_fun,
+      #                  list_param=list_param_import_modis,
+      #                 mc.preschedule=FALSE,
+      #                  mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      
+      list_r_qc_s <-mclapply(1:length(infile_var),
+                             FUN=import_list_modis_layers_fun,
+                             list_param=list_param_import_modis,
+                             mc.preschedule=FALSE,
+                             mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      
+      #### Report on errors when importing data
+      
+      df_import <- data.frame(var=unlist(list_r_var_s),qc=unlist(list_r_qc_s))
+      list_error <- unlist(lapply(list_r_var_s, FUN=function(x){class(x)=="try-error"}))
+      index_error <- which(list_error==TRUE)
+      df_import$var[index_error] <- NA
+      list_error <- unlist(lapply(list_r_qc_s, FUN=function(x){class(x)=="try-error"}))
+      index_error <- which(list_error==TRUE)
+      df_import$qc[index_error] <- NA
+      #View(df_import)
+      out_file <- paste0("df_import",".txt")
+      write.table(df_import,file.path(out_dir,out_file))
+      
+      l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
+      list_imported_files[[j]] <- l_files
+    }
+  }
+  
+  
+  if(steps_to_run$import==FALSE){
+    ## Need to deal with multiple tiles
+    list_imported_files <- vector("list",length=length(list_tiles_modis))
+    for(j in 1:length(list_tiles_modis)){
+      
+      #j <-1
+      #for(j in 1:length(list_tiles_modis)){
+      if(is.null(import_dir)){
+        out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+        #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+        out_dir_s <- file.path(out_dir,out_dir_tmp)
+      }else{
+        out_dir_s <- import_dir
+      }
+      
+      #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
+      #drwxrwxr-x 2 bparmentier bparmentier 401408 Oct  9 17:27 mask_qc_h08v05
+      
+      #LST_Day_1km_arizona_10092017.rst
+      #MOD11A2_A2012361_h08v05_006_LST_Day_1km.rst
+      
+      #strsplit(x=MODIS_product, split="[.]")
+      #list_r_var_s <- list.files(path=out_dir_s,
+      #                     pattern=".*.LST_Day_1km.rst$")
+      
+      
+      #file_pattern <- paste0(sub("[.]","_",MODIS_product),".*.",product_type,".*",file_format,"$")
+      file_pattern <- paste0(".*.",product_type,".*",file_format,"$")
+      
+      list_r_var_s <- list.files(path=out_dir_s,
+                                 pattern=file_pattern,
+                                 full.names=T)
+      file_pattern <- paste0(".*.","QC",".*",file_format,"$")
+      #MOD11A2_A2002001_h08v05_006_QC_Day.rst
+      
+      list_r_qc_s <- list.files(path=out_dir_s,
+                                pattern=file_pattern,
+                                full.names=T)
+      
+      l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
+      list_imported_files[[j]] <- l_files
+    }
+  }
+  
+  ### Should report on errors:
+  #import_error_list <- unlist(lapply(1:length(r_qc_s),FUN=function(x){class(x)=="try-error"}))
+  #import_error_list[as.numeric(import_error_list)==1]
+  #sum(as.numeric(import_error_list))
+  
+  #list_r_var_s <- unlist(list_r_var_s) #list of files as character vector
+  #list_r_qc_s <- unlist(list_r_qc_s) #list of files as character vector
+  list_r_var_s1 <- list_imported_files[[1]]$var[1] #first
+  #list_r_var_s2 <- list_imported_files[[1]]$var #first
+  
+  plot(raster(list_r_qc_s[1]))
+  plot(raster(list_r_var_s1[[2]]))
+  plot(raster(list_r_var_s2[[2]]))
+  
+  #print(r_var_s)
+  #print(r_qc_s)
+  
+  
+}
+
+
+############################## END OF SCRIPT ########################
+
+######################################################
+########################  BEGIN SCRIPT  #############
+
+
+
+
+#################################
+##### STEP 3: APPLY/DEAL WITH QC FLAG AND SCREEN VALUE FOR VALID RANGE ###
+
+## Get QC information for lST/NDVI and mask values: imporove and automate this later
+if(product_type=="NDVI"){
+  QC_obj <- create_MODIS_QC_table(LST=FALSE, NDVI=TRUE) #Get table corresponding to QC for LST
+  names(QC_obj)
+  QC_data_ndvi <- QC_obj$NDVI
+  #For NDVI: use this section to process. This is the default processing quality, this should go top in the parameters!!!
+  #Select level 1:
+  qc_lst_valid <- subset(x=QC_data_ndvi,QA_word1 == "VI Good Quality" | QA_word1 =="VI Produced,check QA")
+  #Select level 2:
+  qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
+
+  #Select level 3:
+  #...Not implemented at this stage
+
+}
+
+## Get QC information for lST/NDVI and mask values: imporove and automate this later
+if(product_type=="LST"){
+  #undebug(create_MODIS_QC_table)
+  QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
+  names(QC_obj)
+  #For LST: Use default value:
+  QC_data_lst <- QC_obj$LST
+  #Select level 1:
+  qc_lst_valid <- subset(x=QC_data_lst,QA_word1 == "LST Good Quality" | QA_word1 =="LST Produced,Check QA")
+  #Select level 2:
+  qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 == "Good Data" | QA_word2 =="Other Quality")
+  #Select level 3:
+  #...
+
+}
+#QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
+
+names(qc_lst_valid)
+qc_valid<-qc_lst_valid$Integer_Value #value integer values
+#NA_flag_val <- -9999
+
+#r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
+list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
+list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
+list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
+
+#26 minutes for 230 files to apply NDVI mask
+if(steps_to_run$apply_QC_flag==TRUE){
+  for(j in 1:length(list_tiles_modis)){
+    #list all files first
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    
+    #out_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    out_dir_tmp <- paste0("import_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
+    
+    out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
+    file_format_s <-file_format
+    #undebug(create_raster_list_from_file_pat)
+    list_r_lst[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",
+                                                        in_dir=out_dir_s,
+                                                        out_prefix="",
+                                                        file_format=file_format_s)
+    
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j] #same as above
+    #debug(create_raster_list_from_file_pat)
+    out_suffix_s <- paste(qc_modis_name,sep="") #for qc flags
+    list_r_qc[[j]] <- create_raster_list_from_file_pat(out_suffix_s,
+                                                       file_pat="",
+                                                       in_dir=out_dir_s,
+                                                       out_prefix="",
+                                                       file_format=file_format_s)
+    
+    ##### Now prepare the input for screening using QC flag values
+    
+    ##Set output dir
+    out_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
+    
+    list_param_screen_qc <- list(qc_valid,
+                                 list_r_qc[[j]], 
+                                 list_r_lst[[j]],
+                                 rast_mask=TRUE,
+                                 NA_flag_val,out_dir_s,out_suffix) 
+    names(list_param_screen_qc) <- c("qc_valid",
+                                     "rast_qc", 
+                                     "rast_var","rast_mask",
+                                     "NA_flag_val","out_dir","out_suffix") 
+    #undebug(screen_for_qc_valid_fun)
+    #test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+    #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
+    #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+    
+    list_r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
+                            FUN=screen_for_qc_valid_fun,
+                            list_param=list_param_screen_qc,
+                            mc.preschedule=FALSE,
+                            mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    
+  }
+}
+#33 minutes for 4 tiles of NDVI 230 images
+#26 minutes for 230 for NDVI
+#19minutes for 505 files
+#r_lst_by_tiles <-mapply(1:length(list_tiles_modis),FUN=list.files,pattern=paste".*.day_LST.*.rst$",path=out_dir_s,full.names=T) #Use mapply to pass multiple arguments
+#r_lst <- mapply(1:length(out_suffix_s),FUN=create_raster_list_from_file_pat,
+ #               file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+
+### Now loop over a series of files...
+#extract_list_from_list_obj(unlist(r_stack),"var")
+  
+#################################
+##### STEP 4: MOSAIC TILES  ###
+
+#debug(create_raster_list_from_file_pat)
+if(steps_to_run$mosaic==TRUE){
+  
+  if(is.null(mosaic_dir)){
+
+    #out_dir_tmp <- paste0("mosaic_",out_suffix)
+    out_dir_tmp <- paste0("mosaic_output")
+    
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
+  }else{
+    out_dir_s <- mosaic_dir
+  }
+  
+  list_m_var <- vector("list",length(list_tiles_modis))  
+  l_df_raster_name <- vector("list",length(list_tiles_modis))  
+
+  names(list_m_var)<- list_tiles_modis
+  list_m_qc <- vector("list",length(list_tiles_modis))  
+  names(list_m_qc)<- list_tiles_modis
+
+  for (j in 1:length(list_tiles_modis)){
+    #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
+    #file_format_s <-file_format
+    #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
+    #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
+    #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
+    #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),
+    #                            path=out_dir_s,
+    #                            full.names=TRUE) #inputs for moasics
+    file_pattern <- paste0(".*.",product_type,".*.",
+                           out_suffix,file_format,"$")
+    
+    in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
+    
+    #list_r_var_s <- list.files(path=out_dir_s,
+    #                           pattern=file_pattern,
+    #                           full.names=T)
+    
+    #MOD11A2_A2012353_h08v05_006_LST_Day_1km_arizona_10092017.rst
+    #list_var_mosaiced <-list.files(pattern=".*.LST_Day_1km_arizona_10092017.rst$",
+    #                               path=out_dir_s,
+    #                               full.names=TRUE) #inputs for moasics
+    
+    list_r_var_s <-list.files(pattern=file_pattern,
+                                   #patter=".*.NDVI.*.arizona_10182017.rst$",
+                                   path=in_dir_s,
+                                   full.names=TRUE) #inputs for moasics
+    list_m_var[[j]] <- list_r_var_s
+    #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+    df_m_var <- lapply(1:length(list_m_var[[j]]),
+                       FUN=extract_dates_from_raster_name,
+                       list_files=list_m_var[[j]])
+    #df_m_var <- lapply(1:length(list_m_var),
+    #                   FUN=extract_dates_from_raster_name,
+    #                   list_files=list_m_var)
+    df_m_var <- do.call(rbind,df_m_var)
+    names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
+    
+    df_m_var[,1] <- as.character(df_m_var[,1])
+    l_df_raster_name[[j]] <- df_m_var
+    
+  }
+  
+  #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
+  #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
+  df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
+  x <- subset(df_m_mosaics,select= -c(date))# drop column with name "date"
+    
+  #report on missing dates:
+  #st <- as.Date(start_date,format="%Y.%m.%d")
+  #en <- as.Date(end_date,format="%Y.%m.%d")
+  #ll <- seq.Date(st, en, by="1 day")
+  #dates_queried <- format(ll,"%Y.%m.%d")
+  #mosaic_list_var <-mapply(FUN="c",list_m_var,SIMPLIFY=T)
+  #x <-mapply(FUN=as.matrix,list_m_var,SIMPLIFY=T)
+    
+  #x <-mapply(FUN="c",x,SIMPLIFY=T)
+  #MODIS_product <- "MOD13A2.005" #NDVI/EVI 1km product (monthly) #param12
+  #strsplit(MODIS_product,"[.]")
+  #MODIS_product <- "MOD11A1.005"
+  MODIS_product_name <- gsub("[.]","_",MODIS_product)
+  date_str <- df_m_mosaics$date
+  df_m_mosaics$out_rastnames_var <- paste(MODIS_product_name,date_str,"mosaic",product_type,out_suffix,sep="_") #no file format added!
+  mosaic_list_var <- lapply(seq_len(nrow(x)), function(i){x[i,]}) #list of tiles by batch to mosaic
+  #Prepare list of output names without extension
+  out_rastnames_var <- (basename(gsub(list_tiles_modis[1],"",list_m_var[[1]])))
+  out_rastnames_var <- gsub(extension(out_rastnames_var),"",out_rastnames_var)
+  #out_rastnames_var <- df_m_mosaics$out_rastnames_var
+    
+  j <- 1
+  
+  #out_dir_mosaic <-     
+  #out_dir_tmp <- paste0("mosaic_output_",out_suffix)
+  out_dir_tmp <- paste0("mosaic_output")
+  #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+  out_dir_s <- file.path(out_dir,out_dir_tmp)
+  if(!file.exists(out_dir_s)){
+    dir.create(out_dir_s)
+  }
+  
+  out_dir_mosaic <- out_dir_s
+  #list_param_mosaic<-list(j,mosaic_list_var,out_rastnames_var,out_dir,file_format,NA_flag_val)
+  list_param_mosaic<-list(j,
+                          mosaic_list_var,
+                          out_rastnames_var,
+                          out_dir_mosaic,
+                          file_format,
+                          NA_flag_val)
+    
+  names(list_param_mosaic)<-c("j",
+                              "mosaic_list",
+                              "out_rastnames",
+                              "out_path",
+                              "file_format",
+                              "NA_flag_val")
+  #debug(mosaic_m_raster_list)
+  #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
+  #list_var_mosaiced <-mclapply(1:11, 
+  #                             list_param=list_param_mosaic, 
+  #                             mosaic_m_raster_list,
+  #                             mc.preschedule=FALSE,
+  #                             mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+  
+  #Parallelization
+  #started at 22:07 -22:11
+  list_var_mosaiced <-mclapply(1:length(mosaic_list_var), 
+                               list_param=list_param_mosaic, 
+                               mosaic_m_raster_list,
+                               mc.preschedule=FALSE,
+                               mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+    
+  #list_var_mosaiced <- lapply(1:length(mosaic_list_var), list_param=list_param_mosaic, mosaic_m_raster_list) #This is the end bracket from mclapply(...) statement
+    
+  #r_test <- stack(list_var_mosaiced)
+  #plot(r_test,y=1:2)
+    
+
+}
+
+if(steps_to_run$mosaic==FALSE){
+  
+  if(is.null(mosaic_dir)){
+    out_dir_tmp <- paste0("mosaic_output_",out_suffix)
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
+  }else{
+    out_dir_s <- mosaic_dir
+    #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
+    
+  }
+  
+  #out_dir_s <- out_dir_mosaic
+  #list_var_mosaiced <-    
+  #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE) #inputs for moasics
+  file_pattern <- paste0(".*.",product_type,".*.",
+                         out_suffix,file_format,"$")
+  
+  #list_r_var_s <- list.files(path=out_dir_s,
+  #                           pattern=file_pattern,
+  #                           full.names=T)
+  
+  #MOD11A2_A2012353_h08v05_006_LST_Day_1km_arizona_10092017.rst
+  #list_var_mosaiced <-list.files(pattern=".*.LST_Day_1km_arizona_10092017.rst$",
+  #                               path=out_dir_s,
+  #                               full.names=TRUE) #inputs for moasics
+  
+  list_var_mosaiced <-list.files(pattern=file_pattern,
+                                 path=out_dir_s,
+                                 full.names=TRUE) #inputs for moasics
+  
+}
+
+#################################
+##### STEP 5: REPROJECT AND CROP TO STUDY REGION  ###
+
+if(steps_to_run$reproject==TRUE){
+  
+  # FIRST SET UP STUDY AREA ####
+  
+  # NOW PROJECT AND CROP WIHT REF REGION ####
+  
+  if(is.null(project_dir)){
+    #out_dir_tmp <- paste0("project_output_",out_suffix)
+    out_dir_tmp <- paste0("project_output")
+    
+    #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
+    out_dir_s <- file.path(out_dir,out_dir_tmp)
+    if(!file.exists(out_dir_s)){
+      dir.create(out_dir_s)
+    }
+  }else{
+    out_dir_s <- project_dir
+    #out_dir_s <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/import_h08v05"
+    if(!file.exists(out_dir_s)){
+      dir.create(out_dir_s)
+    }
+  }
+  
+  if(is.null(ref_rast_name)){
+    
+    #infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
+    #Use one mosaiced modis tile as reference image...We will need to add a function 
+    ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
+    ref_rast_prj <-projectRaster(from=ref_rast_tmp,
+                             res=res(ref_rast_tmp), #set resolution to the same as input
+                             crs=CRS_reg,
+                             method="ngb")
+    #to define a local reference system and reproject later!!
+    #Assign new projection system here in the argument CRS_reg (!it is used later)
+    if(!is.null(infile_reg_outline)){
+      reg_sf <- st_read(infile_reg_outline)
+      reg_sf <- st_transform(reg_sf,crs=CRS_reg)
+      reg_sp <-as(reg_sf, "Spatial") 
+      ref_rast <- crop(ref_rast_prj,reg_sp)    
+    }
+
+  #Use the reference raster
+  if(!is.null(ref_rast_name)){
+    ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
+    projection(ref_rast) <- CRS_reg #Assign given reference system from master script...
+  }
+  
+  ##Create output names for region
+  list_var_mosaiced_tmp <- remove_from_list_fun(list_var_mosaiced,condition_class ="try-error")$list
+  
+  out_suffix_var <-paste(out_suffix,file_format,sep="")          
+  var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,
+                                              out_suffix_var,
+                                              "reg_",
+                                              file_format,
+                                              out_path=out_dir)     
+  
+  #list_param_create_region<-list(j,raster_name=list_var_mosaiced,reg_ref_rast=ref_rast,out_rast_name=var_list_outnames)
+  #j<-1
+  #list_param_create_region<-list(j,list_var_mosaiced,ref_rast,var_list_outnames,NA_flag_val)
+  #names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_name","NA_flag_val")
+  
+  #undebug(create__m_raster_region)
+  
+  #### pasted from other file:
+  out_rast_name <- NULL
+  lf_r <- list_var_mosaiced
+  list_param_create_region <- list(as.list(lf_r),
+                                   ref_rast, 
+                                   out_rast_name,
+                                   agg_param,
+                                   file_format,
+                                   NA_flag_val,
+                                   input_proj_str=NULL,
+                                   out_suffix="",
+                                   out_dir_s)
+  names(list_param_create_region) <- c("raster_name",
+                                       "reg_ref_rast", 
+                                       "out_rast_name","agg_param",
+                                       "file_format",
+                                       "NA_flag_val",
+                                       "input_proj_str",
+                                       "out_suffix",
+                                       "out_dir")
+  #undebug(create__m_raster_region)
+  r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
+  #r <- raster(r_filename)
+  reg_var_list <- mclapply(1:length(lf_r),
+                       FUN=create__m_raster_region,
+                       list_param=list_param_create_region,
+                       mc.preschedule=FALSE,
+                       mc.cores = num_cores)
+
+  #reg_var_list <- mclapply(1:12,
+  #                         FUN=create__m_raster_region,
+  #                         list_param=list_param_create_region,
+  #                         mc.preschedule=FALSE,
+  #                         mc.cores = num_cores)
+  
+  ###Note: add x,y raster and mask defining the study area for the stack below!!
+  
+  lf <- list.files(path=out_dir_s,
+                   pattern=paste0("*.",file_format,"$"),
+                   full.names = T)
+  write.table(lf,
+              "raster_list_data.txt",
+              sep=",",
+              rownames=F)
+  
+  if(save_textfile==TRUE){
+    
+    r_reg_var<- stack(reg_var_list)
+    
+    dat_reg_var_spdf <- as(r_reg_var,"SpatialPointsDataFrame")
+    ##66,806
+    #drop NA
+    dat_reg_var <- as.data.frame(dat_reg_var_spdf) 
+    #Now
+    
+    #dat_out <- as.data.frame(r_reg_var)
+    #dat_out <- na.omit(dat_out)
+    out_filename <- paste0("dat_reg_var_list_",product_type,"_",out_suffix,".txt")
+    write.table(dat_reg_var,
+                file.path(out_dir_s,out_filename),
+                row.names=F,sep=",",col.names=T)
+    
+    #write.table(dat_reg_var)
+  }
+  
+  }
+  
+}
+
+########################## END OF SCRIPT ##############################
+
+### need to change this:
+#r_test1 <- raster(create__m_raster_region(1,list_param_create_region))
+#r_tmp <- raster(unlist(list_var_mosaiced)[1])
+# r_test2 <- projectRaster(r_tmp,to=ref_rast,method="ngb")
+# ### need to set the resolution
+# r_test2 <- projectRaster(r_tmp,crs=CRS_reg, res=res(r_tmp),method="ngb")
+# test_sp <- as(test_sf, "Spatial") 
+# r_crop <- crop(r_test2,test_sp)
+# ## Now turn the polygon file to mask using the reprojected and crop area.
+# r_az <- rasterize(test_sp,r_crop)
+# compareCRS(r_az,r_crop)
+# projection(r_az) <- projection(r_crop)
+# compareCRS(r_az,CRS_reg) #TRUE
+# projection(r_az) <- CRS_reg
+# #https://www.nceas.ucsb.edu/scicomp/recipes/projections
+# NAvalue(r_az) <- -9999
+# writeRaster(r_az,file.path("reference_region_study_area_AZ.rst"),
+#             overwrite=T)
+# writeRaster(r_az,file.path("reference_region_study_area_AZ.tif"),
+#             overwrite=T)
+
+#Currently we use only this:
+
+
+###
+#"gdalwarp -overwrite -t_srs '+proj=tmerc +lat_0=31 +lon_0=-111.9166666666667 +k=0.9999 +x_0=213360 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048 +no_defs' -of RST /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/mask_qc_h08v05/MOD11A2_A2002001_h08v05_006_LST_Day_1km_arizona_10092017.rst /home/bparmentier/Google Drive/Space_beats_time/Data/data_AZ_jacob/test_projection_az.rst"
