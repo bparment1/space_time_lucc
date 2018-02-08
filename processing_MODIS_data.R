@@ -81,7 +81,7 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02082018d.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02082018e.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -110,7 +110,8 @@ create_out_dir_param=FALSE #param7
 infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
 #ARG9
 #local raster name defining resolution, extent
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rev_project_output/mosaiced_MOD13A2_A2010353__006_1_km_16_days_NDVI_houston_10222017_crop_proj_reg_rev.rst"
+#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG10
 MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
 #ARG11
