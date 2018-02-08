@@ -80,10 +80,13 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_analyses_paper <-"MODIS_and_raster_processing_functions_02082018.R"
+function_raster_processing <-"processing_MODIS_data_functions_02082018b.R"
+function_processing_modis_data <-"processing_MODIS_data_02082018b.R"
+
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
-source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
+source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
+source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
 
 ################################
 ###### Parameters and arguments
@@ -162,33 +165,33 @@ project_dir <- NULL # step 5
 out_dir_processing_steps <- list(download_dir,import_dir,mask_qc_dir,mosaic_dir,project_dir)
 names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","mosaic_dir","project_dir")
 
-processing_modis_data <- function(in_dir,
-                                  out_dir,
-                                  CRS_reg,
-                                  file_forma, 
-                                  NA_flag_val,
-                                  out_suffix,
-                                  create_out_dir_param,
-                                  infile_reg_outline,
-                                  ref_rast_name, 
-                                  MODIS_product,
-                                  date_param,
-                                  list_tiles_modis,
-                                  scaling_factors,
-                                  product_type,
-                                  var_name,
-                                  qc_name,
-                                  num_cores,
-                                  selected_flags, 
-                                  agg_param,
-                                  steps_to_run,
-                                  proj_modis_str,
-                                  CRS_WGS84,
-                                  file_format_download,
-                                  infile_modis_grid,
-                                  save_textfile,
-                                  out_dir_processing_steps)
+processing_modis_data(in_dir,
+                      out_dir,
+                      CRS_reg,
+                      file_format, 
+                      NA_flag_val,
+                      out_suffix,
+                      create_out_dir_param,
+                      infile_reg_outline,
+                      ref_rast_name, 
+                      MODIS_product,
+                      date_param,
+                      list_tiles_modis,
+                      scaling_factors,
+                      product_type,
+                      var_name,
+                      qc_name,
+                      num_cores,
+                      selected_flags, 
+                      agg_param,
+                      steps_to_run,
+                      proj_modis_str,
+                      CRS_WGS84,
+                      file_format_download,
+                      infile_modis_grid,
+                      save_textfile,
+                      out_dir_processing_steps)
 
 
-############################## END OF SCRIPT ########################
+###################################  END OF SCRIPT ########################
 
