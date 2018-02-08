@@ -80,8 +80,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"processing_MODIS_data_functions_02082018b.R"
-function_processing_modis_data <-"processing_MODIS_data_02082018b.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02082018c.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -103,7 +103,7 @@ file_format <- ".tif" #raster format used #param4
 #ARG5
 NA_flag_val <- -9999
 #ARG6
-out_suffix <- "harvey_02072018"
+out_suffix <- "harvey_02082018"
 #ARG7
 create_out_dir_param=FALSE #param7
 #ARG8
@@ -164,6 +164,8 @@ project_dir <- NULL # step 5
 
 out_dir_processing_steps <- list(download_dir,import_dir,mask_qc_dir,mosaic_dir,project_dir)
 names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","mosaic_dir","project_dir")
+
+debug(processing_modis_data)
 
 processing_modis_data(in_dir,
                       out_dir,
