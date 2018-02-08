@@ -21,7 +21,7 @@
 #CREATED ON : 09/16/2013  
 #MODIFIED ON : 02/08/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: modification of dowloading function
+#COMMIT: modifications in mosaicing step to deal with error
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -479,6 +479,7 @@ processing_modis_data <- function(in_dir,
   
   ### Now loop over a series of files...
   #extract_list_from_list_obj(unlist(r_stack),"var")
+  browser()
   
   #################################
   ##### STEP 4: MOSAIC TILES  ###
@@ -505,32 +506,13 @@ processing_modis_data <- function(in_dir,
     names(list_m_qc)<- list_tiles_modis
     
     for (j in 1:length(list_tiles_modis)){
-      #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,sep="")
-      #file_format_s <-file_format
-      #out_suffix_s <- paste(list_tiles_modis[j],"_",sprintf( "%03d", product_version),"_",var_modis_name,"_",out_suffix,file_format_s,sep="")
-      #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
-      #out_dir_s <- file.path(out_dir,list_tiles_modis)[j]
-      #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),
-      #                            path=out_dir_s,
-      #                            full.names=TRUE) #inputs for moasics
       file_pattern <- paste0(".*.",product_type,".*.",
                              out_suffix,file_format,"$")
       
       in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
-      #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
       
-      #list_r_var_s <- list.files(path=out_dir_s,
-      #                           pattern=file_pattern,
-      #                           full.names=T)
-      
-      #MOD11A2_A2012353_h08v05_006_LST_Day_1km_arizona_10092017.rst
-      #list_var_mosaiced <-list.files(pattern=".*.LST_Day_1km_arizona_10092017.rst$",
-      #                               path=out_dir_s,
-      #                               full.names=TRUE) #inputs for moasics
-      
       list_r_var_s <-list.files(pattern=file_pattern,
-                                #patter=".*.NDVI.*.arizona_10182017.rst$",
                                 path=in_dir_s,
                                 full.names=TRUE) #inputs for moasics
       list_m_var[[j]] <- list_r_var_s
@@ -542,15 +524,19 @@ processing_modis_data <- function(in_dir,
       #                   FUN=extract_dates_from_raster_name,
       #                   list_files=list_m_var)
       df_m_var <- do.call(rbind,df_m_var)
-      names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
+      #names(df_m_var) <- c(paste("raster_name",j,sep="_"),"date")
+      names(df_m_var) <- c(paste("raster_name",j,sep="_"),"doy","date")
       
-      df_m_var[,1] <- as.character(df_m_var[,1])
+      df_m_var[,1] <- as.character(df_m_var[,1]) #make sure it is not factor
+      #drop "doy column"?
+      df_m_var <- df_m_var[,-2]
       l_df_raster_name[[j]] <- df_m_var
       
     }
     
     #test <- merge_all(l_df_raster_name,by="date") #,all.x=T,all.y=T) #does not work properly since df have to be order from most to least complete!!!
     #test <- merge(l_df_raster_name[[1]],l_df_raster_name[[2]],by="date",all.x=T,all.y=T)
+    
     df_m_mosaics <- merge_multiple_df(l_df_raster_name,"date")
     x <- subset(df_m_mosaics,select= -c(date))# drop column with name "date"
     
