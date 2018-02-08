@@ -1,7 +1,7 @@
-########################################  TILES PROCESSING #######################################
-########################################### Read QC flags and mosaic tiles in R #####################################
-#The current version generate data forthe Arizona region.
-#This script download and processes MODIS tiles using Quality Flag. 
+##################################################  PROCESSING MODIS DATA  #######################################
+########################################### TILE PROCESSING OF MODIS PRODUCTS #####################################
+#The current version implements a workflow for processing MODIS products.
+#This script downloads and processes MODIS tiles using Quality Flag. 
 #Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
 #using for example gdalinfo to identify the relevant dataset and QC flag options. 
@@ -21,7 +21,7 @@
 #CREATED ON : 09/16/2013  
 #MODIFIED ON : 02/08/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: modification of dowloading function
+#COMMIT: debugging mosaicing step
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -81,7 +81,7 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02082018c.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02082018d.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -129,7 +129,7 @@ qc_name <- "QC_Night"
 #ARGS17
 num_cores <- 4 #param 20
 #ARGS18
-selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA")
+selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
 #Select level 2:
 #qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
 #ARGS19
@@ -138,7 +138,7 @@ agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param
 steps_to_run <- list(download=TRUE,        #1rst step
                      import=TRUE,          #2nd  step
                      apply_QC_flag=TRUE,   #3rd  step
-                     mosaic=FALSE,          #4th  step
+                     mosaic=TRUE,          #4th  step
                      reproject=TRUE)       #5th  step 
 ### Constants
 
@@ -165,7 +165,7 @@ project_dir <- NULL # step 5
 out_dir_processing_steps <- list(download_dir,import_dir,mask_qc_dir,mosaic_dir,project_dir)
 names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","mosaic_dir","project_dir")
 
-debug(processing_modis_data)
+#debug(processing_modis_data)
 
 processing_modis_data(in_dir,
                       out_dir,
@@ -195,5 +195,5 @@ processing_modis_data(in_dir,
                       out_dir_processing_steps)
 
 
-###################################  END OF SCRIPT ########################
+################################ END OF SCRIPT ##############################
 
