@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/08/2018
+#MODIFIED ON : 02/09/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: modifications in mosaicing step to deal with error
 #
@@ -87,7 +87,7 @@ load_obj <- function(f){
 processing_modis_data <- function(in_dir,
                                   out_dir,
                                   CRS_reg,
-                                  file_forma, 
+                                  file_format, 
                                   NA_flag_val,
                                   out_suffix,
                                   create_out_dir_param,
@@ -141,7 +141,24 @@ processing_modis_data <- function(in_dir,
   }
   list_tiles_modis <- unlist(strsplit(list_tiles_modis,","))  # transform string into separate element in char vector
   
+  ### Plot area with kml before donwloading:
+  ### This can be displayed using Google Earth
+  if(!is.null(ref_rast_name)){
+    r <- raster(ref_rast_name)
+    filename_kml <- file.path(out_dir,"ref_rast.kml")
+    projection(r) <- CRS_reg
+    r_WGS84 <- projectRaster(r,crs=CRS_WGS84)
+    KML(r_WGS84,filename_kml , col=rev(terrain.colors(255)), 
+        colNA=NA, zip='', overwrite=TRUE)
+  }
   
+  if(!is.null(infile_reg_outline)){
+    # S4 method for Spatial
+    reg_sf <- st_read(infile_reg_outline)
+    reg_spdf <- as(reg_sf,"Spatial")
+    filename_kml <- file.path(out_dir,"reg_outline.kml")
+    KML(reg_spdf, filename_kml, zip='', overwrite=TRUE)
+  }
   
   #debug(modis_product_download)
   if(steps_to_run$download==TRUE){
@@ -154,6 +171,7 @@ processing_modis_data <- function(in_dir,
                                                  file_format_download,
                                                  out_dir,
                                                  temporal_granularity)
+    browser()
     out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
     list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
     colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
@@ -204,7 +222,7 @@ processing_modis_data <- function(in_dir,
   number_missing_dates <- sum(df_hdf_products$missing)
   message(paste("Number of missing files is :",number_missing_dates))
   ## Still need to modify this for each tile!!!
-  
+  browser()
   
   ####################################
   ##### STEP 2: IMPORT MODIS LAYERS ###
@@ -479,7 +497,7 @@ processing_modis_data <- function(in_dir,
   
   ### Now loop over a series of files...
   #extract_list_from_list_obj(unlist(r_stack),"var")
-  browser()
+  #browser()
   
   #################################
   ##### STEP 4: MOSAIC TILES  ###
@@ -687,34 +705,34 @@ processing_modis_data <- function(in_dir,
         reg_sp <-as(reg_sf, "Spatial") 
         ref_rast <- crop(ref_rast_prj,reg_sp)    
       }
-      
+    }  
       #Use the reference raster
-      if(!is.null(ref_rast_name)){
+    if(!is.null(ref_rast_name)){
         ref_rast<-raster(ref_rast_name) #This is the reference image used to define the study/processing area
         projection(ref_rast) <- CRS_reg #Assign given reference system from master script...
-      }
+    }
       
-      ##Create output names for region
-      list_var_mosaiced_tmp <- remove_from_list_fun(list_var_mosaiced,condition_class ="try-error")$list
+    ##Create output names for region
+    list_var_mosaiced_tmp <- remove_from_list_fun(list_var_mosaiced,condition_class ="try-error")$list
       
-      out_suffix_var <-paste(out_suffix,file_format,sep="")          
-      var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,
+    out_suffix_var <-paste(out_suffix,file_format,sep="")          
+    var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,
                                                   out_suffix_var,
                                                   "reg_",
                                                   file_format,
                                                   out_path=out_dir)     
       
-      #list_param_create_region<-list(j,raster_name=list_var_mosaiced,reg_ref_rast=ref_rast,out_rast_name=var_list_outnames)
-      #j<-1
-      #list_param_create_region<-list(j,list_var_mosaiced,ref_rast,var_list_outnames,NA_flag_val)
-      #names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_name","NA_flag_val")
+    #list_param_create_region<-list(j,raster_name=list_var_mosaiced,reg_ref_rast=ref_rast,out_rast_name=var_list_outnames)
+    #j<-1
+    #list_param_create_region<-list(j,list_var_mosaiced,ref_rast,var_list_outnames,NA_flag_val)
+    #names(list_param_create_region) <-c("j","raster_name","reg_ref_rast","out_rast_name","NA_flag_val")
       
-      #undebug(create__m_raster_region)
+    #undebug(create__m_raster_region)
       
-      #### pasted from other file:
-      out_rast_name <- NULL
-      lf_r <- list_var_mosaiced
-      list_param_create_region <- list(as.list(lf_r),
+    #### pasted from other file:
+    out_rast_name <- NULL
+    lf_r <- list_var_mosaiced
+    list_param_create_region <- list(as.list(lf_r),
                                        ref_rast, 
                                        out_rast_name,
                                        agg_param,
@@ -723,7 +741,7 @@ processing_modis_data <- function(in_dir,
                                        input_proj_str=NULL,
                                        out_suffix="",
                                        out_dir_s)
-      names(list_param_create_region) <- c("raster_name",
+    names(list_param_create_region) <- c("raster_name",
                                            "reg_ref_rast", 
                                            "out_rast_name","agg_param",
                                            "file_format",
@@ -731,55 +749,51 @@ processing_modis_data <- function(in_dir,
                                            "input_proj_str",
                                            "out_suffix",
                                            "out_dir")
-      #undebug(create__m_raster_region)
-      r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
-      #r <- raster(r_filename)
-      reg_var_list <- mclapply(1:length(lf_r),
+    #undebug(create__m_raster_region)
+    r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
+    #r <- raster(r_filename)
+    reg_var_list <- mclapply(1:length(lf_r),
                                FUN=create__m_raster_region,
                                list_param=list_param_create_region,
                                mc.preschedule=FALSE,
                                mc.cores = num_cores)
       
-      #reg_var_list <- mclapply(1:12,
-      #                         FUN=create__m_raster_region,
-      #                         list_param=list_param_create_region,
-      #                         mc.preschedule=FALSE,
-      #                         mc.cores = num_cores)
+    ###Note: add x,y raster and mask defining the study area for the stack below!!
       
-      ###Note: add x,y raster and mask defining the study area for the stack below!!
-      
-      lf <- list.files(path=out_dir_s,
+    lf <- list.files(path=out_dir_s,
                        pattern=paste0("*.",file_format,"$"),
                        full.names = T)
-      write.table(lf,
+    write.table(lf,
                   "raster_list_data.txt",
                   sep=",",
-                  rownames=F)
+                  row.names=F)
       
-      if(save_textfile==TRUE){
-        
+    if(save_textfile==TRUE){
         r_reg_var<- stack(reg_var_list)
+        r_x <-init(r_reg_var,v="x")
+        r_y <-init(r_reg_var,v="y")
+        r_stack <- stack(r_x,r_y,r_reg_var)
         
-        dat_reg_var_spdf <- as(r_reg_var,"SpatialPointsDataFrame")
-        ##66,806
-        #drop NA
+        dat_reg_var_spdf <- as(r_stack,"SpatialPointsDataFrame")
         dat_reg_var <- as.data.frame(dat_reg_var_spdf) 
-        #Now
-        
         #dat_out <- as.data.frame(r_reg_var)
         #dat_out <- na.omit(dat_out)
+      
         out_filename <- paste0("dat_reg_var_list_",product_type,"_",out_suffix,".txt")
         write.table(dat_reg_var,
                     file.path(out_dir_s,out_filename),
                     row.names=F,sep=",",col.names=T)
         
         #write.table(dat_reg_var)
-      }
-      
     }
-    
-  }
+      
+  }### End of step 5: reproject  
   
+  ####### NOW prepare object to Return here:
+  
+  list()
+  
+  return()
 }
 
 
