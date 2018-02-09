@@ -244,9 +244,18 @@ processing_modis_data <- function(in_dir,
   write.table(hdf_df,"hdf_subdataset.txt",sep=",")
   
   if(product_type=="NDVI"){
+    #Will Need to change if EVI!!!
+    #1 km 16 days EVI
+    #modis_layer_str1 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day EVI layer
+    #var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
+    
     modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day NDVI layer
     modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
   }
+  
+  #If product type EVI...
+  #Implement here
+  
   if(product_type=="LST"){
     #var_name, make a data.frame and pick the correct line...
     var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
