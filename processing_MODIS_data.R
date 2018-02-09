@@ -19,9 +19,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/08/2018
+#MODIFIED ON : 02/09/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: debugging mosaicing step
+#COMMIT: testing downloading of NDVI for Harvey event in Houston
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -81,7 +81,7 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02082018e.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02092018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -103,14 +103,14 @@ file_format <- ".tif" #raster format used #param4
 #ARG5
 NA_flag_val <- -9999
 #ARG6
-out_suffix <- "harvey_02082018"
+out_suffix <- "harvey_02092018"
 #ARG7
 create_out_dir_param=FALSE #param7
 #ARG8
 infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
 #ARG9
 #local raster name defining resolution, extent
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rev_project_output/mosaiced_MOD13A2_A2010353__006_1_km_16_days_NDVI_houston_10222017_crop_proj_reg_rev.rst"
+ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG10
 MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
@@ -124,9 +124,9 @@ scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, 
 #ARGS14
 product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
 #ARGS15
-var_name <- "LST_Night_1km" #can be LST_Day_1km
+var_name <- NULL #"LST_Night_1km" #can be LST_Day_1km, not implemented for NDVI at this stage
 #ARGS16
-qc_name <- "QC_Night"
+qc_name <- NULL #"QC_Night", not implemented for NDVI at this stage
 #ARGS17
 num_cores <- 4 #param 20
 #ARGS18
