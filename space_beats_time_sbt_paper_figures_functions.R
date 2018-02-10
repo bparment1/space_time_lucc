@@ -1,21 +1,12 @@
 ####################################    Space Time Analyses PAPER   #######################################
 ###########################################  Figures production  #######################################
-#This script produces figures based on outputs from earlier analyses for the space beats time project.
-#The script uses spatial regression and temporal model (ARIMA and temporal OLS) values predicted for various. 
-#Current case studies include:
-
-#-raster NDVI MODIS data in the Yucatan after hurricane Dean
-#-raster DSMP ligth data in New Orleans after hurricane Katrina
-#-raster NDVI MODIS data in New Orleans after hurricane Katrina
+#This script produces figures based on outputs from earlier analyses for the space beats time framework.
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/17/2017
+#DATE MODIFIED: 02/10/2018
 #Version: 1
-#PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
-#PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
-#PROJECT: Chicago AAG 2015 with Marco Millones
-#PROJECT: Dallas Geocomputation 2015 with Marco Millones, Springer book
+#PROJECT: SBT RITA book chapter
 #
 #COMMENTS: - 
 #         - 

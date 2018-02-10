@@ -1,18 +1,15 @@
 ####################################    Space Time Analyses PAPER   #######################################
 ###########################################  Figures production  #######################################
-#This script produces figures based on outputs from earlier analyses for the space beats time project.
-#The script uses spatial regression and temporal model (ARIMA and temporal OLS) values predicted for various. 
-#Current case studies include:
-
-#-raster NDVI MODIS data in the region of Houston after hurricane Rita
+#This script produces figures based on outputs from earlier analyses for the space beats time framework.
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 12/21/2017
+#DATE MODIFIED: 01/02/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
-#COMMENTS: - 
-#         - 
+#COMMENTS: 
+#         
+#COMMIT: changes to output figures of temporal profiles
 #TO DO:
 #produce jpegs with the tfw files...so that they can be opened in a transparency mode in a GIS directly overlaid.
 #
