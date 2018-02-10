@@ -40,7 +40,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_12172017.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -74,9 +74,8 @@ proj_str<- CRS_WGS84
 CRS_reg <- CRS_WGS84 # PARAM 4
 
 file_format <- ".rst" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"sbt_book_figures_12202017" #output suffix for the files and ouptu folder #PARAM 8
+NA_flag_val <- -9999 #PARAM7
+out_suffix <-"sbt_book_figures_02102018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 #### Clean this up: Need to this general for any region!!!
@@ -86,14 +85,20 @@ in_dir1a <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile
 in_dir1b <- "/home/bparmentier/Google Drive/Space_beats_time/outputs/output_tile_2_NDVI_Rita_11062017" #EDGY Dean
 in_dir_ref <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI/rev_project_output"
 
+### This will need to be changed: this should be a file with list of files to read from tile dir
 data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
 data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
 
 data_tb1a <- read.table(data_fname1a,sep=",",header=T) #EDGY DEAN
 data_tb1b <- read.table(data_fname1b,sep=",",header=T) #EDGY DEAN
 
+
 mae_zones_tb1a <- read.table(file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt"))
 mae_zones_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt"))
+
+list_mae_zones_tb <- list(mae_zones_tb1a,mae_tot_tb1b)
+mae_zones_tb <- do.call(rbind,list_mae_zones_tb)
+dim(mae_zones_tb)
 
 mae_tot_tb1a <- read.table(file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt"))
 mae_tot_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt"))
@@ -106,14 +111,14 @@ coord_names <- "x,y" #PARAM 9
 zonal_colnames <- "r_zonal_rev" #PARAM 12
 var_names <- "1,230" #PARAM 10 #Data is stored in the columns 3 to 22
 num_cores <- "4" #PARAM 11
-n_time_event <- "110" #PARAM 12 #this is the timestep corresponding to the event ie Hurricane Katrina (Aug 23- Aub 31 2005): 235-243 DOY, storm surge Aug 29 in New Orelans
+n_time_event <- "110,7,7" #PARAM 12 #timestep corresponding to the event for obs,spat pred, temp pred 
 time_window_selected <- "100,116" #PARAM 13: use alll dates for now
 previous_step <- TRUE #PARAM 14
 date_range <- c("2001.01.01","2010.12.31") #date
 
 dates <- generate_dates_by_step(date_range[1],date_range[2],16)$dates
 #Closest date to the even for each example:
-date_event <- "2005-09-24" #Dean
+date_event <- "2005-09-24" #Hurricane RITA
 
 ################# START SCRIPT ###############################
 
@@ -133,20 +138,11 @@ if(create_out_dir_param==TRUE){
 
 ##Figure 1:    Concept for SBT (outside R) (Marco)
 ##Figure 2:    Study areas (outside R) (Stu)
-##Figure 3:    Strata: Zonal areas maps (Stu)
+##Figure 3:    Strata: Zonal areas maps: Generate here
 ##Figure 4:    Average Temporal profiles in a year by zones and overall to show impact of events on the variable
-##Figure 5:    Spatial patterns Dean: Maps of Observed, predicted, residuals
-##Figure 6:    Spatial patterns Katrina NLU: Maps of Observed, predicted, residuals
-##Figure 7:    Spatial patterns Katrina NDVI: Maps of Observed, predicted, residuals
-##Figure 8:    Temporal MAE patterns Dean four dates
-##Figure 9:    Temporal MAE patterns Katrina NLU for four dates
-##Figure 10:   Temporal MAE patterns Katrina NDVI four dates
+##Figure 5:    Spatial patterns: Maps of Observed, predicted, residuals
+##Figure 8:    Temporal MAE patterns for event over x dates
 
-#Figure index
-#a: Dean NDVI
-#b: Katrina NLU
-#c: Katrina NDVI
-#
 # e.g. Figure 4a: temporal profiles for Dean NDVI
 
 #################################################
@@ -174,11 +170,21 @@ r_spat_pred <- stack(list.files(path=in_dir,
 r_var <- stack(mixedsort(list.files(path=in_dir_ref,paste0(file_format,"$"),full.names=T))) #input raster images for the study area (276 images)
 
 #### Prepare data: time window subset:
-n_time_event <- as.numeric(n_time_event)
 
-n_time_subset <- c(n_time_event -1 ,n_time_event+2)
+n_time_event <- as.numeric(unlist(strsplit(n_time_event,",")))
+
+n_time_event_obs <- n_time_event[1]
+n_time_event_spat <- n_time_event[2]
+n_time_event_temp <- n_time_event[3]
+n_time_subset <- c(n_time_event_obs -1 ,n_time_event_obs + 2)
 steps_subset <- n_time_subset[1]:n_time_subset[2] 
 r_obs <- subset(r_var,steps_subset)
+#r_spat <- subset(r_spat_pred,5:8)
+#r_temp <- subset(r_temp_pred,5:8)
+
+n_time_subset <- c(n_time_event_spat - 1 ,n_time_event_spat + 2)
+steps_subset <- n_time_subset[1]:n_time_subset[2] 
+
 r_spat <- subset(r_spat_pred,5:8)
 r_temp <- subset(r_temp_pred,5:8)
 
@@ -363,13 +369,16 @@ dev.off()
 data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
 data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
 
-
 dat_out1a <- read.table(data_fname1a,sep=",",stringsAsFactors = F,header=T)
 dat_out1b <- read.table(data_fname1b,sep=",",stringsAsFactors = F)
 
 dim(dat_out1a)
 dim(dat_out1b)
+list_df <- list(dat_out1a,dat_out1b)
+dat_out <- do.call(rbind,list_df)
+names(dat_out1a)
 
+#View(dat_out1a)
 #zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
 
 #zones_avg_df <- as.data.frame(zones_tb_avg)
@@ -503,7 +512,6 @@ layout_m <- c(1,1)
 
 #debug(plot_by_tot_and_timestep_fun)
 plot_tot_obj1 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
-
 
 #################################################################
 #### Figure 10:  Temporal MAE patterns Katrina NDVI four dates
