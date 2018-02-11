@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 01/02/2018
+#DATE MODIFIED: 02/11/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -41,14 +41,16 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02112018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
+
 #zonal stratum for NLU
 ##### Functions used in this script 
-
 
 create_dir_fun <- function(out_dir,out_suffix){
   if(!is.null(out_suffix)){
@@ -77,6 +79,34 @@ file_format <- ".rst" #PARAM5
 NA_flag_val <- -9999 #PARAM7
 out_suffix <-"sbt_book_figures_02102018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
+#method_space <- c("mle")
+#method_time <- c("arima")
+method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
+method_time <- "arima;arima;TRUE"
+
+###
+
+## Parameters that vary from case studies to case studies...
+
+coord_names <- "x;y" #PARAM 9
+zonal_colnames <- "r_zonal_rev" #PARAM 12
+var_names <- "1;230" #PARAM 10 #Data is stored in the columns 3 to 22
+num_cores <- "4" #PARAM 11
+n_time_event <- "110;7;7" #PARAM 12 #timestep corresponding to the event for obs,spat pred, temp pred 
+time_window_selected <- "105;114" #PARAM 13: use alll dates for now
+previous_step <- TRUE #PARAM 14
+date_range <- c("2001.01.01","2010.12.31") #date
+date_range <- "2001.01.01;2010.12.31" #date
+
+date_range_str <- unlist(strsplit(date_range,";"))
+dates <- generate_dates_by_step(date_range_str[1],date_range_str[2],16)$dates
+#Closest date to the even for each example:
+date_event <- "2005-09-24" #Hurricane RITA
+
+#method_space <- df_args[19,index_val] 
+#method_time <- df_args[20,index_val] 
+#take a look at:
+#https://github.com/bparment1/space_time_lucc/blob/master/space_and_time_assessment.R
 
 #### Clean this up: Need to this general for any region!!!
 #Latest relevant folders, bpy50 laptop
@@ -88,37 +118,11 @@ in_dir_ref <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_ND
 ### This will need to be changed: this should be a file with list of files to read from tile dir
 data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
 data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
+data_fname_mae_zone_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
+data_fname_mae_zone_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
 
-data_tb1a <- read.table(data_fname1a,sep=",",header=T) #EDGY DEAN
-data_tb1b <- read.table(data_fname1b,sep=",",header=T) #EDGY DEAN
-
-
-mae_zones_tb1a <- read.table(file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt"))
-mae_zones_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt"))
-
-list_mae_zones_tb <- list(mae_zones_tb1a,mae_tot_tb1b)
-mae_zones_tb <- do.call(rbind,list_mae_zones_tb)
-dim(mae_zones_tb)
-
-mae_tot_tb1a <- read.table(file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt"))
-mae_tot_tb1b <- read.table(file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt"))
-
-###
-
-## Parameters that vary from case studies to case studies...
-
-coord_names <- "x,y" #PARAM 9
-zonal_colnames <- "r_zonal_rev" #PARAM 12
-var_names <- "1,230" #PARAM 10 #Data is stored in the columns 3 to 22
-num_cores <- "4" #PARAM 11
-n_time_event <- "110,7,7" #PARAM 12 #timestep corresponding to the event for obs,spat pred, temp pred 
-time_window_selected <- "100,116" #PARAM 13: use alll dates for now
-previous_step <- TRUE #PARAM 14
-date_range <- c("2001.01.01","2010.12.31") #date
-
-dates <- generate_dates_by_step(date_range[1],date_range[2],16)$dates
-#Closest date to the even for each example:
-date_event <- "2005-09-24" #Hurricane RITA
+data_fname_mae_tot_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
+data_fname_mae_tot_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
 
 ################# START SCRIPT ###############################
 
@@ -365,6 +369,40 @@ dev.off()
 ############################################################
 ###Figure 4:  Average Temporal profiles overall for the time series under study
 ## This illustrate the change (dip) directly after the Hurricane event
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02112018.R" #PARAM 1
+
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
+
+
+debug(accuracy_space_time_calc)
+data_fname <- r_var
+#time_window_selected <- "100,116" #PARAM 13: use alll dates for now
+#time_window_predicted <- time_window_selected
+r_ref <- NULL
+
+test <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
+                                 r_spat_pred=r_spat_pred,
+                                 s_raster=data_fname,
+                                 time_window_selected=time_window_selected,
+                                 n_time_event=n_time_event_obs,
+                                 r_zonal=zonal_colnames,
+                                 method_space=method_space,
+                                 method_time=method_time,
+                                 r_ref=r_ref,
+                                 out_suffix=out_suffix,
+                                 var_names=var_names,
+                                 NA_flag_val=NA_flag_val,
+                                 file_format=file_format, 
+                                 date_range=date_range,
+                                 out_dir=out_dir,
+                                 create_out_dir_param=create_out_dir_param)
+
+
 
 data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
 data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
@@ -377,6 +415,123 @@ dim(dat_out1b)
 list_df <- list(dat_out1a,dat_out1b)
 dat_out <- do.call(rbind,list_df)
 names(dat_out1a)
+
+####
+
+data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
+data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
+data_fname_mae_zone_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
+data_fname_mae_zone_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
+
+data_fname_mae_tot_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
+data_fanem_mae_tot_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
+
+data_tb1a <- read.table(data_fname1a,sep=",",header=T) #EDGY DEAN
+data_tb1b <- read.table(data_fname1b,sep=",",header=T) #EDGY DEAN
+
+mae_zones_tb1a <- read.table(data_fname_mae_zone_tb1a)
+mae_zones_tb1b <- read.table(data_fname_mae_zone_tb1a)
+
+mae_tot_tb1a <- read.table(data_fname_mae_tot_tb1a)
+mae_tot_tb1b <- read.table(data_fname_mae_tot_tb1b)
+list_mae_zones_tb <- list(mae_zones_tb1a,mae_tot_tb1b)
+list_mae_tot_tb <- list(mae_tot_tb1a,mae_tot_tb1b)
+mae_zones_tb <- do.call(rbind,list_mae_zones_tb)
+mae_tot_tb <- do.call(rbind,list_mae_zones_tb)
+
+dim(mae_zones_tb)
+dim(mae_tot_tb)
+
+### Start of added on 02/10/2018
+
+method_time <- unlist(strsplit(method_time,";"))
+method_space <- unlist(strsplit(method_space,";"))
+
+name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
+name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
+
+mae_tot_tb <- as.data.frame(mae_tot_tb)
+row.names(mae_tot_tb) <- NULL
+#names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
+#mae_tot_tb$time <- 2:nrow(mae_tot_tb)
+#mae_tot_tb$time <- 2:n_pred
+mae_tot_tb$time <- 1:nlayers(r_obs)
+y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
+
+res_pix<-960
+col_mfrow<-1
+row_mfrow<-1
+png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+
+temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
+plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
+#lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
+lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
+legend("topleft",
+       legend=c(namee_method_space,name_method_time),
+       col=c("cyan","blue"),
+       lty=1,
+       cex=0.8)
+title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
+
+dev.off()
+
+write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
+
+#### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
+
+#mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
+#                      ac_temp_obj$mae_zones_tb[1:3,])
+mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
+                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
+                      ac_temp_obj$mae_zones_tb)
+
+mae_zones_tb <- as.data.frame(mae_zones_tb)
+
+n_zones <- length(unique(mae_zones_tb$zone))
+
+mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
+
+n_time <- ncol(mae_zones_tb) -1
+pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
+#names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
+names(mae_zones_tb) <- pred_names
+
+write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+
+mydata<- mae_zones_tb
+dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+#dd$lag <- mydata$lag 
+#drop first few rows that contain no data but zones...
+n_start <-n_zones*3 +1 #3 because we have 3 methods...
+#n_start <-n_zones*2 +1
+dd <- dd[n_start:nrow(dd),]
+
+dd$zones <- mydata$zones
+dd$method <- mydata$method
+
+dd$zones <- mydata$zone #use recycle rule
+
+#Note that to get the title correct, one needs to add
+res_pix<-960
+col_mfrow<-1
+row_mfrow<-1
+png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+
+p <- xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
+            strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
+            auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
+                            border = FALSE, lines = TRUE,cex=1.2))
+try(print(p))
+
+dev.off()
+#histogram(r_zonal)
+
+#####################end of added on 02/10/2018
+
+
 
 #View(dat_out1a)
 #zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
