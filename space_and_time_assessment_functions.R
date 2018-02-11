@@ -94,7 +94,7 @@ mosaic_m_raster_list<-function(j,list_param){
 }
 
 
-accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_window_predicted,
+accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_event,time_window_selected,
                                      r_zonal,method_space,method_time,r_ref,out_suffix,
                                      var_names,NA_flag_val,file_format,date_range,
                                      out_dir,create_out_dir_param){
@@ -103,12 +103,13 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   #1)r_temp_pred
   #2) r_spat_pred
   #3) s_raster
-  #4) time_window_predicted
-  #5) r_zonal
-  #6) r_ref
-  #7) methods_name
-  #7) out_suffix
-  #8) out_dir_param
+  #4) n_time
+  #5) time_window_selected
+  #6) r_zonal
+  #7) r_ref
+  #8) methods_name
+  #9) out_suffix
+  #10) out_dir_param
   ##OUTPUTS
   #1)
   #2)
@@ -149,7 +150,13 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   #date_range <- (unlist(strsplit(date_range,";")))
   
   #r_obs <- subset(s_raster,time_window_predicted[1]:time_window_predicted[2]) #remove 99 because not considred in the prediction!!
-  r_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
+  #if same length, don't remove
+  if(length(time_window_selected)==nlayers(r_temp_pred)){
+    r_obs <- subset(s_raster,time_window_selected) #remove 99 because not considred in the prediction!!
+  }else{
+    r_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
+  }
+  
   projection(r_obs) <- proj_str
   projection(r_temp_pred) <- proj_str
   projection(r_spat_pred) <- proj_str
@@ -162,11 +169,10 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   levelplot(r_temp_pred,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
 
   #### Step 2: compute residuals
-  browser()
-  res_temp_s <- calc(r_temp_pred,r_obs,fun=function(x,y){x-y})
-  test<-r_temp_pred*r_robs
+  #browser()
+  #this is better: use this to not store temporary files
+  #res_temp_s <- overlay(r_temp_pred,r_obs,fun=function(x,y){x-y})
   res_temp_s <- r_temp_pred - r_obs
-  r_obs+r_temp_pred
   res_spat_s <- r_spat_pred - r_obs
 
   names(res_temp_s) <- sub("pred","res",names(res_temp_s))
@@ -174,13 +180,22 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
 
   ### Compute residuals by zones
   rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
+  r_x <- init(rast_zonal,"x")
+  r_y <- init(rast_zonal,"y")
   
-  r_results <- stack(s_raster,rast_zonal,temp_pred_rast,
+  r_results <- stack(r_x,r_y,s_raster,r_temp_pred,r_spat_pred,
                                           res_temp_s,res_spat_s)
   
   dat_out <- as.data.frame(r_results)
-  dat_out <- na.omit(dat_out)
+  dim(dat_out)
+  #dat_out <- na.omit(dat_out) #don't do this
   
+  #$r_zonal_rev
+  #value count
+  #[1,]     1  9205
+  #[2,]     2 11708
+  #[3,]    NA 13655
+  freq_tb_zonal <- freq(rast_zonal)
   filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
@@ -190,7 +205,14 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,time_windo
   out_suffix_s <- paste("temp_",method_time[1],"_",out_suffix,sep="")
 
   #undebug(calc_ac_stat_fun)
-
+  #Find where that function is!!!
+  
+  #function_space_and_time_predictions <- "space_and_time_predictions_functions_11072017.R"
+  #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
+  #function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
+  #function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
+  #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
+  
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
                                   r_var_s=r_obs,
                                   r_zones=rast_zonal,
