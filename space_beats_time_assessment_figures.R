@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/11/2018
+#DATE MODIFIED: 02/12/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02112018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02122018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -66,28 +66,18 @@ create_dir_fun <- function(out_dir,out_suffix){
 
 #####  Parameters and argument set up ###########
 
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time" #bpy50 laptop
+#ARG1: input dir
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time" 
+#ARG2: output dir
 out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/outputs" #bpy50 laptop
-
-proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
-#CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
-CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
-proj_str<- CRS_WGS84 
-CRS_reg <- CRS_WGS84 # PARAM 4
-
+#ARG3: proj4 coordinates system info for modis projection
+proj_str <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+#ARG
 file_format <- ".rst" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"sbt_book_figures_02102018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_book_figures_02122018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
-#method_space <- c("mle")
-#method_time <- c("arima")
-method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
-method_time <- "arima;arima;TRUE"
-
-###
-
-## Parameters that vary from case studies to case studies...
-
+datafname <- NULL #Need to update this
 coord_names <- "x;y" #PARAM 9
 zonal_colnames <- "r_zonal_rev" #PARAM 12
 var_names <- "1;230" #PARAM 10 #Data is stored in the columns 3 to 22
@@ -95,9 +85,18 @@ num_cores <- "4" #PARAM 11
 n_time_event <- "110;7;7" #PARAM 12 #timestep corresponding to the event for obs,spat pred, temp pred 
 time_window_selected <- "105;114" #PARAM 13: use alll dates for now
 previous_step <- TRUE #PARAM 14
-date_range <- c("2001.01.01","2010.12.31") #date
 date_range <- "2001.01.01;2010.12.31" #date
 
+r_ref <- NULL
+temp_fname <- NULL #Need to update this
+spat_fname <- NULL #Need to update this
+method_space <- "mle;eigen" #method for space and time used to predict space and time respectively
+method_time <- "arima;arima;TRUE"
+pixel_index <- NULL
+mosaic_dir <- NULL
+mosaic_out_suffix <- NULL
+
+###########
 date_range_str <- unlist(strsplit(date_range,";"))
 dates <- generate_dates_by_step(date_range_str[1],date_range_str[2],16)$dates
 #Closest date to the even for each example:
@@ -123,6 +122,9 @@ data_fname_mae_zone_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11
 
 data_fname_mae_tot_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
 data_fname_mae_tot_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
+
+###### constant
+proj_modis_str <-"+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs" #CONST 1
 
 ################# START SCRIPT ###############################
 
@@ -167,6 +169,7 @@ r_temp_pred <- stack(list.files(path=in_dir,
 r_spat_pred <- stack(list.files(path=in_dir,
                           pattern="r_spat_pred_mle_eigen_no_previous_step_.*.tif",
                           full.names=T))
+
 #r_spat_pred <- list.files(path=in_dir,
 #                          pattern="r_spat_pred_mle_eigen_no_previous_step_.*.tif",
 #                          full.names=T)
@@ -175,7 +178,7 @@ r_var <- stack(mixedsort(list.files(path=in_dir_ref,paste0(file_format,"$"),full
 
 #### Prepare data: time window subset:
 
-n_time_event <- as.numeric(unlist(strsplit(n_time_event,",")))
+n_time_event <- as.numeric(unlist(strsplit(n_time_event,";")))
 
 n_time_event_obs <- n_time_event[1]
 n_time_event_spat <- n_time_event[2]
@@ -189,6 +192,7 @@ r_obs <- subset(r_var,steps_subset)
 n_time_subset <- c(n_time_event_spat - 1 ,n_time_event_spat + 2)
 steps_subset <- n_time_subset[1]:n_time_subset[2] 
 
+#### Will change here using input info
 r_spat <- subset(r_spat_pred,5:8)
 r_temp <- subset(r_temp_pred,5:8)
 
@@ -370,7 +374,7 @@ dev.off()
 ###Figure 4:  Average Temporal profiles overall for the time series under study
 ## This illustrate the change (dip) directly after the Hurricane event
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02112018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02122018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
