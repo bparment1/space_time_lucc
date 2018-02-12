@@ -93,6 +93,60 @@ mosaic_m_raster_list<-function(j,list_param){
   return(rast_list)
 }
 
+calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suffix){
+  #Purpose: Calculate accuracy statistics for given regions/zones of the study area
+  #Statistics are MAE (Mean Absolute Error) and RMSE(Root Mean Square Error)
+  #Parameters:
+  #Input:
+  #r_pred_s: raster stack of layers predictions (for example predicted NDVI)
+  #r_var_s: raster stack of layers actual values (for example observed NDVI)
+  #r_zones: raster defining zones of relevance to accuracy (e.g.hurricane winds zones)
+  #Output:
+  #
+  #
+  #
+  
+  ##Functions used
+  rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}
+  mae_fun <-function(x){mean(abs(x),na.rm=TRUE)}
+  #rmse_fun <-function(x){sqrt(mean(x^2,na.rm=TRUE))}  
+  sd_rmse_fun <-function(x){(sd(x^2,na.rm=TRUE))}  
+  #mae_fun <-function(x){sd(abs(x),na.rm=TRUE)}
+  sd_mae_fun <- function(x){sd(abs(x))} #sd Absolute Error give a residuals vector
+  
+  ###
+  
+  ##Start script
+  
+  #Accuracy/errors by zones
+  r_res_s <- r_pred_s - r_var_s #residuals, stack of raster layers
+  mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="mean") #mean square error
+  mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="mean") #absolute error
+  sd_mae_zones_tb <- zonal(abs(r_res_s),r_zones,fun="sd") #absolute error
+  sd_rmse_tb <- zonal(r_res_s^2,r_zones,fun="sd") #
+  #sd_mse_zones_tb <- zonal(r_res_s^2,r_zones,fun="sd") #mean square error
+  
+  rmse_zones_tb <- cbind(mse_zones_tb[,1],
+                         sqrt(mse_zones_tb[,2:dim(mse_zones_tb)[2]])) #root mean square error
+  if(!is.null(colnames(rmse_zones_tb)[1])){
+    colnames(rmse_zones_tb)[1] <- c("zone")
+  }
+  
+  #Overall Accuracy/errors 
+  
+  mae_tb <- cellStats(abs(r_res_s),mean) #calculate MAE for layer stack
+  rmse_tb <- sqrt(cellStats((r_res_s)^2,mean)) #calculate rmse overall
+  sd_mae_tb <- cellStats(abs(r_res_s),sd) #sd for absolute error
+  
+  #write out residuals rasters
+  r_res_s <- writeRaster(r_res_s,filename=file.path(out_dir,"r_res_s.tif"),bylayer=TRUE,
+                         suffix=paste(1:nlayers(r_res_s),out_suffix,sep="_"),overwrite=TRUE)
+  ac_obj <- list(mae_tb,rmse_tb,sd_mae_tb,mae_zones_tb,rmse_zones_tb,sd_mae_zones_tb,sd_rmse_tb)
+  names(ac_obj) <- c("mae_tb","rmse_tb","sd_mae_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
+  
+  return(ac_obj)
+}
+
 
 accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_event,time_window_selected,
                                      r_zonal,method_space,method_time,r_ref,out_suffix,
@@ -207,12 +261,8 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   #undebug(calc_ac_stat_fun)
   #Find where that function is!!!
   
-  #function_space_and_time_predictions <- "space_and_time_predictions_functions_11072017.R"
   #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
-  #function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-  #function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
-  #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path to script #PARAM 2
-  
+
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
                                   r_var_s=r_obs,
                                   r_zones=rast_zonal,
@@ -220,9 +270,9 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
                                   out_suffix=out_suffix_s)  
   
   #out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
-  out_suffix_s <- paste("spat_",method_spatial,out_suffix,sep="_")
-  ac_spat <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
-                              r_var_s=r_huric_obs,
+  out_suffix_s <- paste("spat_",method_space,out_suffix,sep="_")
+  ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
+                              r_var_s=r_obs,
                               r_zones=rast_zonal,
                               file_format=file_format,
                               out_suffix=out_suffix_s)
@@ -230,6 +280,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
+  #plot(mae_tot_tb[,1],)
   name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
   name_method_space <- paste0("spat_",method_time[1],"_",method_space[2])
   mae_tot_tb <- as.data.frame(mae_tot_tb)
@@ -237,8 +288,13 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   #names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
   #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
   #mae_tot_tb$time <- 2:n_pred
+  names(mae_tot_tb)<- c(name_method_space,name_method_time)
+  
   mae_tot_tb$time <- 1:nlayers(r_obs)
-  y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
+  y_range<- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
+  
+  #plot(mae_tot_tb[[name_method_space]],type="l",ylim=y_range)
+  #lines(mae_tot_tb[[name_method_time]],type="l",ylim=y_range)
   
   res_pix<-960
   col_mfrow<-1
@@ -246,13 +302,19 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
-  plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
+  #temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
+  temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
+  spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+  
+  plot(temp_formula_str,type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
+  #plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
   #lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
-  lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
+  #lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
+  lines(spat_formula_str, type="b",col="magenta",data=mae_tot_tb)
+  
   legend("topleft",
-         legend=c(namee_method_space,name_method_time),
-         col=c("cyan","blue"),
+         legend=c(name_method_space,name_method_time),
+         col=c("cyan","magenta"),
          lty=1,
          cex=0.8)
   title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
@@ -265,8 +327,10 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   
   #mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
   #                      ac_temp_obj$mae_zones_tb[1:3,])
-  mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
-                        ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
+  #mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
+  #                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
+  #                      ac_temp_obj$mae_zones_tb)
+  mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
                         ac_temp_obj$mae_zones_tb)
   
   mae_zones_tb <- as.data.frame(mae_zones_tb)
@@ -274,6 +338,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   n_zones <- length(unique(mae_zones_tb$zone))
   
   mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
+  mae_zones_tb$method <- c(rep(name_method_space,n_zones),rep(name_method_time,n_zones))
   
   n_time <- ncol(mae_zones_tb) -1
   pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
@@ -286,7 +351,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
   #dd$lag <- mydata$lag 
   #drop first few rows that contain no data but zones...
-  n_start <-n_zones*3 +1 #3 because we have 3 methods...
+  n_start <-n_zones*2 +1 #3 because we have 3 methods...
   #n_start <-n_zones*2 +1
   dd <- dd[n_start:nrow(dd),]
   
