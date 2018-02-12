@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/09/2018
+#MODIFIED ON : 02/12/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: testing downloading of NDVI for Harvey event in Houston
 #
@@ -81,7 +81,7 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02092018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02122018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -103,7 +103,7 @@ file_format <- ".tif" #raster format used #param4
 #ARG5
 NA_flag_val <- -9999
 #ARG6
-out_suffix <- "harvey_02092018"
+out_suffix <- "harvey_02122018"
 #ARG7
 create_out_dir_param=FALSE #param7
 #ARG8
