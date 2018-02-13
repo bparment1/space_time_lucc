@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02122018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02132018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -153,6 +153,23 @@ if(create_out_dir_param==TRUE){
 
 #################################################
 ## PART 1: Read the datasets ####
+
+###  Load data if needed:
+# if(class(r_temp_pred)=="character"){
+#   #/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2
+#   r_temp_pred_df <- read.table(r_temp_pred,stringsAsFactors = F)
+#   lf <-r_temp_pred_df[,1] 
+#   r_temp_pred <- stack(lf)
+# }
+# if(class(r_spat_pred)=="character"){
+#   r_spat_pred_df <- read.table(r_spat_pred,stringsAsFactors = F)
+#   lf <-r_spat_pred_df[,1] 
+#   r_spat_pred <- stack(lf)
+# }
+# if(class(s_raster)=="character"){
+#   df_lf <- read.table(s_raster,sep=",",stringsAsFactors = F,header=T) 
+#   s_raster <- stack(df_lf[,1])
+# }
 
 ### Observed, predicted and residulas data for DEAN case study (1)
 
@@ -373,25 +390,15 @@ dev.off()
 ############################################################
 ###Figure 4:  Average Temporal profiles overall for the time series under study
 ## This illustrate the change (dip) directly after the Hurricane event
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02122018.R" #PARAM 1
 
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
-#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
-
-
-debug(accuracy_space_time_calc)
+#debug(accuracy_space_time_calc)
 data_fname <- r_var
-#time_window_selected <- "100,116" #PARAM 13: use alll dates for now
-#time_window_predicted <- time_window_selected
-r_ref <- NULL
+#r_ref <- NULL
 
-test <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
+accuracy_space_and_time_obj <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
                                  r_spat_pred=r_spat_pred,
                                  s_raster=data_fname,
+                                 proj_str=proj_str,
                                  time_window_selected=time_window_selected,
                                  n_time_event=n_time_event_obs,
                                  r_zonal=zonal_colnames,
@@ -406,82 +413,70 @@ test <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
                                  out_dir=out_dir,
                                  create_out_dir_param=create_out_dir_param)
 
-
-
-data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
-data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
-
-dat_out1a <- read.table(data_fname1a,sep=",",stringsAsFactors = F,header=T)
-dat_out1b <- read.table(data_fname1b,sep=",",stringsAsFactors = F)
-
-dim(dat_out1a)
-dim(dat_out1b)
-list_df <- list(dat_out1a,dat_out1b)
-dat_out <- do.call(rbind,list_df)
-names(dat_out1a)
-
-####
-
-data_fname1a <- file.path(in_dir1a,"dat_out_tile_1_NDVI_Rita_11062017.txt")
-data_fname1b <- file.path(in_dir1b,"dat_out_tile_2_NDVI_Rita_11062017.txt")
-data_fname_mae_zone_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
-data_fname_mae_zone_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
-
-data_fname_mae_tot_tb1a <- file.path(in_dir1a,"mae_zones_tb_tile_1_NDVI_Rita_11062017.txt")
-data_fanem_mae_tot_tb1b <- file.path(in_dir1b,"mae_zones_tb_tile_2_NDVI_Rita_11062017.txt")
-
-data_tb1a <- read.table(data_fname1a,sep=",",header=T) #EDGY DEAN
-data_tb1b <- read.table(data_fname1b,sep=",",header=T) #EDGY DEAN
-
-mae_zones_tb1a <- read.table(data_fname_mae_zone_tb1a)
-mae_zones_tb1b <- read.table(data_fname_mae_zone_tb1a)
-
-mae_tot_tb1a <- read.table(data_fname_mae_tot_tb1a)
-mae_tot_tb1b <- read.table(data_fname_mae_tot_tb1b)
-list_mae_zones_tb <- list(mae_zones_tb1a,mae_tot_tb1b)
-list_mae_tot_tb <- list(mae_tot_tb1a,mae_tot_tb1b)
-mae_zones_tb <- do.call(rbind,list_mae_zones_tb)
-mae_tot_tb <- do.call(rbind,list_mae_zones_tb)
+mae_tot_tb <- accuracy_space_and_time_obj$mae_tot_tb
+mae_zones_tb <- accuracy_space_and_time_obj$mae_zones_tb
 
 dim(mae_zones_tb)
 dim(mae_tot_tb)
-
-### Start of added on 02/10/2018
 
 method_time <- unlist(strsplit(method_time,";"))
 method_space <- unlist(strsplit(method_space,";"))
 
 name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
 name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
-
 mae_tot_tb <- as.data.frame(mae_tot_tb)
 row.names(mae_tot_tb) <- NULL
-#names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
-#mae_tot_tb$time <- 2:nrow(mae_tot_tb)
-#mae_tot_tb$time <- 2:n_pred
-mae_tot_tb$time <- 1:nlayers(r_obs)
-y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
+names(mae_tot_tb)<- c(name_method_space,name_method_time)
+mae_tot_tb$time <- 1:nrow(mae_tot_tb)
 
-res_pix<-960
-col_mfrow<-1
-row_mfrow<-1
-png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
+## Input params for the plot:
+#https://stackoverflow.com/questions/5506046/how-do-i-put-more-space-between-the-axis-labels-and-axis-title-in-an-r-boxplot
+
+y_range <- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
+legend_val <- c("spatial model","temporal model")
+  
+res_pix <- 960
+col_mfrow<- 1
+row_mfrow<- 0.7
+png(filename=paste("Figure_temporal_profiles_MAE_tot_",out_suffix,".png",sep=""),
     width=col_mfrow*res_pix,height=row_mfrow*res_pix)
 
-temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
-plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
-#lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
-lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
-legend("topleft",
-       legend=c(namee_method_space,name_method_time),
-       col=c("cyan","blue"),
-       lty=1,
-       cex=0.8)
-title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
+temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
+spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
 
+#par(mgp=c(0,1,0))
+## margin for side 2 is 7 lines in size
+#op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
+op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
+plot(temp_formula_str,type="b",
+     col="cyan",
+     pch=16, #filled in circles...
+     lwd=3,
+     data=mae_tot_tb,
+     ylim=y_range,
+     ylab="Mean Absolute Error (MAE)",
+     xlab="Time",
+     cex.lab=1.5,
+     cex.axis=1.2,
+     cex=1.5)
+lines(spat_formula_str, 
+      type="b",
+      lwd=2,
+      pch=16, #filled in circles
+      col="magenta",
+      data=mae_tot_tb)
+
+legend("topleft",
+       legend=legend_val,
+       col=c("cyan","magenta"),
+       lty=1,
+       lwd=3,
+       cex=1.5,
+       bty="n")
+title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
+par(op)
 dev.off()
 
-write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
 
 #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
 
