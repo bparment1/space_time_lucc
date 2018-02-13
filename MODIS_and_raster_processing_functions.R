@@ -807,12 +807,31 @@ import_list_modis_layers_fun <-function(i,list_param){
 
   #Now get file to import
   hdf_filename <-hdf_file[i] # must include input path!!
+  
   modis_subset_layer_Day <- paste("HDF4_EOS:EOS_GRID:",
                                   hdf_filename,
                                   subdataset,sep="")
   
-  r <-readGDAL(modis_subset_layer_Day) 
-  r  <-raster(r)
+  n_layer <- length(modis_subset_layer_Day)
+  #r <- readGDAL(modis_subset_layer_Day) 
+  #if number of layers is 1:
+  class(r)
+  dim(r)
+  #r_test <-brick(modis_subset_layer_Day)
+  
+  if(n_layer==1){
+    r <- readGDAL(modis_subset_layer_Day) 
+    r  <-raster(r)
+  }
+  if(n_layer>1){
+    list_r <- lapply(modis_subset_layer_Day,function(x){raster(readGDAL(x))})
+    #r <- readGDAL(modis_subset_layer_Day) 
+    r <- stack(list_r)
+    get_names_layers <- function(x){val_extracted <- unlist(strsplit(x,":")); val_extracted[length(val_extracted)]}
+    names_layers <- unlist(lapply(modis_subset_layer_Day,get_names_layers))
+    names(r) <- names_layers
+  }
+  
   if(!is.null(scaling_factors)){ #if scaling factor exists, scale values...(not applied for QC flags!!!)
     r <- scaling_factors[1]*r + scaling_factors[2]
   }
@@ -824,13 +843,73 @@ import_list_modis_layers_fun <-function(i,list_param){
   raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
   #out_dir_str <-  dirname(hdf)
   #set output dir from input above
+  multiband <- FALSE
+  raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_b0.tif"
+  if(n_layer==1){
+    writeRaster(r, 
+                NAflag=NA_flag_val,
+                filename=file.path(out_dir_s,raster_name),
+                bylayer=TRUE,
+                bandorder="BSQ",
+                overwrite=TRUE)   
+  }
   
-  writeRaster(r, 
-              NAflag=NA_flag_val,
-              filename=file.path(out_dir_s,raster_name),
-              bylayer=TRUE,
-              bandorder="BSQ",
-              overwrite=TRUE)   
+  if(n_layer>1){
+    
+    #Write out as brick
+    data_type_str <- dataType(r) #find the dataTyre
+    if(is.null(NA_flag_val)){
+      NA_flag_val <- NAvalue(r)
+    }
+    
+    if(multiband==TRUE){
+      raster_name_tmp <- raster_name 
+    }
+    if(multiband==FALSE){
+      raster_name <- 
+
+      strsplit(raster_name,"_")
+      raster_name_tmp <-
+    }
+    
+    
+    if(file_format="tif"){
+      writeRaster(r,
+                  filename=file.path(out_dir,raster_name_tmp),
+                  bylayer=multiband,
+                  #suffix=paste(names(r),"_",out_suffix,sep=""),
+                  #format=format_raster,
+                  suffix=paste(names(r)),
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str,
+                  options=c("COMPRESS=LZW"))
+      
+      writeRaster(r,
+                  filename=file.path(out_dir,raster_name),
+                  bylayer=multiband,
+                  #suffix=paste(names(r),"_",out_suffix,sep=""),
+                  #format=format_raster,
+                  suffix=paste(names(r)),
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str,
+                  options=c("COMPRESS=LZW"))
+      
+    }else{
+    writeRaster(r,
+                filename=file.path(out_dir,raster_name),
+                bylayer=multiband,
+                #suffix=paste(names(r),"_",out_suffix,sep=""),
+                #format=format_raster,
+                suffix=paste(names(r)),
+                overwrite=TRUE,
+                NAflag=NA_flag_val,
+                datatype=data_type_str)
+      
+    }
+    
+  }
   
   ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
   ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
