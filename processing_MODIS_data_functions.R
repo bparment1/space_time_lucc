@@ -19,7 +19,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/09/2018
+#MODIFIED ON : 02/13/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: modifications in mosaicing step to deal with error
 #
@@ -163,6 +163,8 @@ processing_modis_data <- function(in_dir,
   #debug(modis_product_download)
   if(steps_to_run$download==TRUE){
     #debug(modis_product_download)
+    #9:36 to 10: for MOD09 4 tiles
+    
     download_modis_obj <- modis_product_download(MODIS_product,
                                                  product_version,
                                                  start_date,
@@ -171,9 +173,9 @@ processing_modis_data <- function(in_dir,
                                                  file_format_download,
                                                  out_dir,
                                                  temporal_granularity)
-    browser()
+    #browser()
     out_dir_tiles <- (file.path(in_dir,list_tiles_modis))
-    list_files_by_tiles <-download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
+    list_files_by_tiles <- download_modis_obj$list_files_by_tiles #Use mapply to pass multiple arguments
     colnames(list_files_by_tiles) <- list_tiles_modis #note that the output of mapply is a matrix
   }else{
     
@@ -222,7 +224,7 @@ processing_modis_data <- function(in_dir,
   number_missing_dates <- sum(df_hdf_products$missing)
   message(paste("Number of missing files is :",number_missing_dates))
   ## Still need to modify this for each tile!!!
-  browser()
+  #browser()
   
   ####################################
   ##### STEP 2: IMPORT MODIS LAYERS ###
@@ -266,7 +268,20 @@ processing_modis_data <- function(in_dir,
     modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
     
   }
-  
+
+  if(product_type=="reflectance"){
+    #d
+    modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day NDVI layer
+    modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
+    #var_name, make a data.frame and pick the correct line...
+    var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
+    qc_name_index <- which(hdf_df$var_name==qc_name)
+    #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
+    #modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
+    modis_layer_str1 <- unlist(strsplit(modis_subdataset[var_name_index],"\""))[3] #Get day LST layer
+    modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
+    
+  }
   ### import list of files before mosaicing
   
   file_format_import <- file_format
