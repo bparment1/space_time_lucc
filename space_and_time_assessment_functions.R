@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 12/16/2017
+#DATE MODIFIED: 02/13/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -148,7 +148,7 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
 }
 
 
-accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_event,time_window_selected,
+accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n_time_event,time_window_selected,
                                      r_zonal,method_space,method_time,r_ref,out_suffix,
                                      var_names,NA_flag_val,file_format,date_range,
                                      out_dir,create_out_dir_param){
@@ -157,13 +157,21 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   #1)r_temp_pred
   #2) r_spat_pred
   #3) s_raster
-  #4) n_time
-  #5) time_window_selected
-  #6) r_zonal
-  #7) r_ref
-  #8) methods_name
-  #9) out_suffix
-  #10) out_dir_param
+  #4) proj_str
+  #5) n_time
+  #6) time_window_selected
+  #7) r_zonal
+  #8) methods_space
+  #9) method_time
+  #10) r_ref
+  #11) out_suffix
+  #12) var_nams
+  #13) NA_flag_val
+  #14) file_format
+  #15) date_range
+  #16) out_dir
+  #17) out_dir_param
+  #
   ##OUTPUTS
   #1)
   #2)
@@ -200,10 +208,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   
   method_space <- (unlist(strsplit(method_space,";")))
   method_time <- (unlist(strsplit(method_time,";")))
-  
-  #date_range <- (unlist(strsplit(date_range,";")))
-  
-  #r_obs <- subset(s_raster,time_window_predicted[1]:time_window_predicted[2]) #remove 99 because not considred in the prediction!!
+
   #if same length, don't remove
   if(length(time_window_selected)==nlayers(r_temp_pred)){
     r_obs <- subset(s_raster,time_window_selected) #remove 99 because not considred in the prediction!!
@@ -215,13 +220,6 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   projection(r_temp_pred) <- proj_str
   projection(r_spat_pred) <- proj_str
   
-  #### Step 1: generate plot
-  #plot(r_huric_obs)
-  #r_huric_w <- crop(r_huric_w,rast_ref)
-  
-  levelplot(r_obs,col.regions=matlab.like(25))
-  levelplot(r_temp_pred,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-
   #### Step 2: compute residuals
   #browser()
   #this is better: use this to not store temporary files
@@ -229,6 +227,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   res_temp_s <- r_temp_pred - r_obs
   res_spat_s <- r_spat_pred - r_obs
 
+  ### Assign names for new layers
   names(res_temp_s) <- sub("pred","res",names(res_temp_s))
   names(res_spat_s) <- sub("pred","res",names(res_spat_s))
 
@@ -237,6 +236,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   r_x <- init(rast_zonal,"x")
   r_y <- init(rast_zonal,"y")
   
+  ### Generate output in text format
   r_results <- stack(r_x,r_y,s_raster,r_temp_pred,r_spat_pred,
                                           res_temp_s,res_spat_s)
   
@@ -244,19 +244,21 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   dim(dat_out)
   #dat_out <- na.omit(dat_out) #don't do this
   
-  #$r_zonal_rev
-  #value count
-  #[1,]     1  9205
-  #[2,]     2 11708
-  #[3,]    NA 13655
-  freq_tb_zonal <- freq(rast_zonal)
+  freq_tb_zonal <- as.data.frame(freq(rast_zonal))
+  
+  filename_freq_tb_zonal <- file.path(out_dir,paste("freq_tb_zonal_",out_suffix,".txt",sep=""))
+  write.table(freq_tb_zonal,
+              file=filename_freq_tb_zonal,
+              row.names=F,sep=",",col.names=T)
+  
+  
   filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
   
   ### Now accuracy assessment using MAE
   
-  out_suffix_s <- paste("temp_",method_time[1],"_",out_suffix,sep="")
+  out_suffix_s <- paste("temp_",method_time[1],"_",method_time[2],"_",out_suffix,sep="")
 
   #undebug(calc_ac_stat_fun)
   #Find where that function is!!!
@@ -269,8 +271,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
                                   file_format=file_format,
                                   out_suffix=out_suffix_s)  
   
-  #out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
-  out_suffix_s <- paste("spat_",method_space,out_suffix,sep="_")
+  out_suffix_s <- paste("spat_",method_space[1],"_",method_space[2],"_",out_suffix,sep="")
   ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
                               r_var_s=r_obs,
                               r_zones=rast_zonal,
@@ -280,21 +281,14 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
-  #plot(mae_tot_tb[,1],)
   name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
-  name_method_space <- paste0("spat_",method_time[1],"_",method_space[2])
+  name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
   mae_tot_tb <- as.data.frame(mae_tot_tb)
   row.names(mae_tot_tb) <- NULL
-  #names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
-  #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
-  #mae_tot_tb$time <- 2:n_pred
   names(mae_tot_tb)<- c(name_method_space,name_method_time)
   
   mae_tot_tb$time <- 1:nlayers(r_obs)
   y_range<- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
-  
-  #plot(mae_tot_tb[[name_method_space]],type="l",ylim=y_range)
-  #lines(mae_tot_tb[[name_method_time]],type="l",ylim=y_range)
   
   res_pix<-960
   col_mfrow<-1
@@ -302,18 +296,18 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  #temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
   temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
   spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
   
-  plot(temp_formula_str,type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
-  #plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
-  #lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
-  #lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
+  plot(temp_formula_str,type="b",
+       col="cyan",
+       data=mae_tot_tb,
+       ylim=y_range,
+       ylab="MAE")
   lines(spat_formula_str, type="b",col="magenta",data=mae_tot_tb)
   
   legend("topleft",
-         legend=c(name_method_space,name_method_time),
+         legend=c(name_method_time,name_method_space),
          col=c("cyan","magenta"),
          lty=1,
          cex=0.8)
@@ -337,7 +331,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   
   n_zones <- length(unique(mae_zones_tb$zone))
   
-  mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
+  #mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
   mae_zones_tb$method <- c(rep(name_method_space,n_zones),rep(name_method_time,n_zones))
   
   n_time <- ncol(mae_zones_tb) -1
@@ -351,8 +345,8 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,n_time_eve
   dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
   #dd$lag <- mydata$lag 
   #drop first few rows that contain no data but zones...
-  n_start <-n_zones*2 +1 #3 because we have 3 methods...
-  #n_start <-n_zones*2 +1
+  n_methods <- 2 #2 because we have 2 methods... (one for space and one for time)
+  n_start <-n_zones*2 +1 
   dd <- dd[n_start:nrow(dd),]
   
   dd$zones <- mydata$zones
