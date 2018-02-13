@@ -448,6 +448,7 @@ spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
 ## margin for side 2 is 7 lines in size
 #op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
 op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
+
 plot(temp_formula_str,type="b",
      col="cyan",
      pch=16, #filled in circles...
@@ -455,16 +456,21 @@ plot(temp_formula_str,type="b",
      data=mae_tot_tb,
      ylim=y_range,
      ylab="Mean Absolute Error (MAE)",
+     xaxt="n",
      xlab="Time",
-     cex.lab=1.5,
-     cex.axis=1.2,
+     cex.lab=2,
+     cex.axis=1.5,
      cex=1.5)
 lines(spat_formula_str, 
       type="b",
-      lwd=2,
+      lwd=3,
       pch=16, #filled in circles
       col="magenta",
       data=mae_tot_tb)
+
+x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
+#axis(2, cex.axis = 2)
 
 legend("topleft",
        legend=legend_val,
@@ -476,7 +482,6 @@ legend("topleft",
 title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
 par(op)
 dev.off()
-
 
 #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
 
