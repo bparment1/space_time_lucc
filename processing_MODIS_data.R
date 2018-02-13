@@ -19,9 +19,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/12/2018
+#MODIFIED ON : 02/13/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: testing downloading of NDVI for Harvey event in Houston
+#COMMIT: editing to downloading MOD09 products
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -81,7 +81,7 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02122018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02132018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -92,9 +92,12 @@ source(file.path(script_path,function_processing_modis_data)) #source all functi
 ###### Parameters and arguments
 
 #ARG1
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param1
+#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param1
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
 #ARG2
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
+#out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
+
 #ARG3
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
@@ -103,7 +106,7 @@ file_format <- ".tif" #raster format used #param4
 #ARG5
 NA_flag_val <- -9999
 #ARG6
-out_suffix <- "harvey_02122018"
+out_suffix <- "RITA_02132018"
 #ARG7
 create_out_dir_param=FALSE #param7
 #ARG8
@@ -113,16 +116,16 @@ infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data
 ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG10
-MODIS_product <- "MOD13A2.006" #NDVI/EVI 1km product (monthly) #param12
+MODIS_product <- "MOD09A1.006" #Reflectance 500m (day) #param12
 #ARG11
-date_param <- "2017.01.01;2017.12.31;16" #start date, end date, time_step
+date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
 #ARG12
 list_tiles_modis <- NULL #if NULL determine the tiles to download
 #ARGS13
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #ARGS14
-product_type = c("NDVI") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
+product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
 #ARGS15
 var_name <- NULL #"LST_Night_1km" #can be LST_Day_1km, not implemented for NDVI at this stage
 #ARGS16
@@ -168,32 +171,32 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
-processing_modis_data(in_dir,
-                      out_dir,
-                      CRS_reg,
-                      file_format, 
-                      NA_flag_val,
-                      out_suffix,
-                      create_out_dir_param,
-                      infile_reg_outline,
-                      ref_rast_name, 
-                      MODIS_product,
-                      date_param,
-                      list_tiles_modis,
-                      scaling_factors,
-                      product_type,
-                      var_name,
-                      qc_name,
-                      num_cores,
-                      selected_flags, 
-                      agg_param,
-                      steps_to_run,
-                      proj_modis_str,
-                      CRS_WGS84,
-                      file_format_download,
-                      infile_modis_grid,
-                      save_textfile,
-                      out_dir_processing_steps)
+modis_processed_obj  <- processing_modis_data(in_dir,
+                                              out_dir,
+                                              CRS_reg,
+                                              file_format, 
+                                              NA_flag_val,
+                                              out_suffix,
+                                              create_out_dir_param,
+                                              infile_reg_outline,
+                                              ref_rast_name, 
+                                              MODIS_product,
+                                              date_param,
+                                              list_tiles_modis,
+                                              scaling_factors,
+                                              product_type,
+                                              var_name,
+                                              qc_name,
+                                              num_cores,
+                                              selected_flags, 
+                                              agg_param,
+                                              steps_to_run,
+                                              proj_modis_str,
+                                              CRS_WGS84,
+                                              file_format_download,
+                                              infile_modis_grid,
+                                              save_textfile,
+                                              out_dir_processing_steps)
 
 
 ################################ END OF SCRIPT ##############################
