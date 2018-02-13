@@ -270,24 +270,45 @@ processing_modis_data <- function(in_dir,
   }
 
   if(product_type=="reflectance"){
-    #d
-    modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day NDVI layer
-    modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
+    
+    #nb_subdatasets <- length(modis_subdataset)/2
+    #seq(1,nb_subdatasets,by=2)
+    index_var_layers<- seq(1,length(modis_subdataset),by=2)
+    index_qc_layers<- seq(2,length(modis_subdataset),by=2)
+    
+    modis_subdataset[index_var_layers] #13 bands for MOD09 reflectance
+    
+    #var_name_index <- index_var_layers # if get all...this inlcudes other things
+    #qc_name_index <- index_qc_layers
+    var_name_index <- index_var_layers[1:7] #get reflectance bands 1 to 7 
+    qc_name_index <- 15 #qc band
+    
+    #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day sur_refl_b01
+    #modis_layer_str2 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day sur_refl_b01
+    
+    #modis_layer_str2 <- unlist(strsplit(modis_subdataset[5],"\""))[3] #Get day VI QC layer
     #var_name, make a data.frame and pick the correct line...
-    var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
-    qc_name_index <- which(hdf_df$var_name==qc_name)
+    #var_name_index <- which(hdf_df$var_name==var_name) #find matching variable in hdf file
+    #qc_name_index <- which(hdf_df$var_name==qc_name)
     #modis_layer_str1 <- unlist(strsplit(modis_subdataset[1],"\""))[3] #Get day LST layer
     #modis_layer_str2 <- unlist(strsplit(modis_subdataset[3],"\""))[3] #Get day QC layer
-    modis_layer_str1 <- unlist(strsplit(modis_subdataset[var_name_index],"\""))[3] #Get day LST layer
-    modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
+    
+    modis_layer_str1 <- unlist(lapply(var_name_index,function(i){unlist(strsplit(modis_subdataset[i],"\""))[3]}))
+    modis_layer_str2 <- unlist(lapply(qc_name_index,function(i){unlist(strsplit(modis_subdataset[i],"\""))[3]}))
+    
+    #modis_layer_str1 <- unlist(strsplit(modis_subdataset[var_name_index],"\""))[3] #Get day LST layer
+    #modis_layer_str2 <- unlist(strsplit(modis_subdataset[qc_name_index],"\""))[3] #Get day QC layer
     
   }
   ### import list of files before mosaicing
   
   file_format_import <- file_format
-  var_modis_name <- unlist(strsplit(modis_layer_str1,":"))[3]
-  qc_modis_name <- unlist(strsplit(modis_layer_str2,":"))[3]
+  #var_modis_name <- unlist(strsplit(modis_layer_str1,":"))[3]
+  #qc_modis_name <- unlist(strsplit(modis_layer_str2,":"))[3]
+  var_modis_name <- unlist(lapply(modis_layer_str1, function(x){unlist(strsplit(x,":"))[3]}))
+  qc_modis_name <-  unlist(lapply(modis_layer_str2, function(x){unlist(strsplit(x,":"))[3]}))
   
+  #### Remote white space if present
   var_modis_name <- gsub(" ","_",var_modis_name) #suffix name for product, may contain white space so replace with "_"
   qc_modis_name <- gsub(" ","_",qc_modis_name)
   
@@ -306,8 +327,8 @@ processing_modis_data <- function(in_dir,
       out_suffix_s <- var_modis_name
       list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
                                       out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
-      #undebug(import_list_modis_layers_fun)
-      #r_var_s_filename <- import_list_modis_layers_fun(100,list_param_import_modis)    
+      debug(import_list_modis_layers_fun)
+      r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
       #r_var_s <- raster(r_var_s_filename)
       #r_var_s <- mclapply(1:12,
       #                    FUN=import_list_modis_layers_fun,
