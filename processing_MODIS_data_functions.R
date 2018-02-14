@@ -1,14 +1,17 @@
 ################################################  PROCESSING MODIS DATA #######################################
 ########################################### Function to process MODIS datasets #####################################
-#The current version processes MODIS dataset given a set of inputs
+#The current version processes MODIS dataset given a set of inputs.
 #This script download and processes MODIS tiles using Quality Flag. 
 #Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
-#using for example gdalinfo to identify the relevant dataset and QC flag options. 
+#using for example gdalinfo to identify the relevant subdatasets and QC flag options. 
 #Note that QC flags are store bitpacks of 8bits (byte) in big endian!!!
-#A data frame matching flag values is created to facilate the processing.            
+#A data frame matching flag values is created to facilitate the processing.            
 #Inspiration and some code for the MODIS flag function originates from Steve Mosher:
 #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
+#Note that the downloading step requires a .netrc file and and login to EARTHDATA.
+#See for more information on the LPDAAC data pool: https://lpdaac.usgs.gov/data_access/data_pool
+#
 ## MODIS WORKFLOW
 # Processing of MODIS HDF files is done in 5 steps:
 # Step 1: download modis tiles for specified product and version (e.g. version 5)
@@ -19,9 +22,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/13/2018
+#MODIFIED ON : 02/14/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: modifications in mosaicing step to deal with error
+#COMMIT: dealing with multibands outputs in import
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -30,7 +33,7 @@
 #4) Make this script a function callable from shell!!
 #5) This script can be transformed to process other datasets using the https://lpdaac.usgs.gov/data_access/data_pool
 #   e.g."https://e4ftl01.cr.usgs.gov/WELD/" for WELD datasets.
-#6) Update mosaicing to use gdal for large areas
+#6) adding multiband option for import of MOD09
 
 
 ###################################################################################################
@@ -80,9 +83,6 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-#function_analyses_paper <-"MODIS_and_raster_processing_functions_02082018.R"
-#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
-#source(file.path(script_path,function_analyses_paper)) #source all functions used in this script.
 
 processing_modis_data <- function(in_dir,
                                   out_dir,
@@ -98,6 +98,7 @@ processing_modis_data <- function(in_dir,
                                   list_tiles_modis,
                                   scaling_factors,
                                   product_type,
+                                  multiband,
                                   var_name,
                                   qc_name,
                                   num_cores,
@@ -308,6 +309,7 @@ processing_modis_data <- function(in_dir,
   var_modis_name <- unlist(lapply(modis_layer_str1, function(x){unlist(strsplit(x,":"))[3]}))
   qc_modis_name <-  unlist(lapply(modis_layer_str2, function(x){unlist(strsplit(x,":"))[3]}))
   
+  browser()
   #### Remote white space if present
   var_modis_name <- gsub(" ","_",var_modis_name) #suffix name for product, may contain white space so replace with "_"
   qc_modis_name <- gsub(" ","_",qc_modis_name)
