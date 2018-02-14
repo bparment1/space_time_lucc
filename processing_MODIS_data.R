@@ -1,14 +1,17 @@
 ##################################################  PROCESSING MODIS DATA  #######################################
 ########################################### TILE PROCESSING OF MODIS PRODUCTS #####################################
 #The current version implements a workflow for processing MODIS products.
-#This script downloads and processes MODIS tiles using Quality Flag. 
+#This script download and processes MODIS tiles using Quality Flag. 
 #Tiles are mosaiced and reprojected for a specific study region.
 #MODIS currently stores information in HDF4 format. Layers must be extracted and must be listed first
-#using for example gdalinfo to identify the relevant dataset and QC flag options. 
+#using for example gdalinfo to identify the relevant subdatasets and QC flag options. 
 #Note that QC flags are store bitpacks of 8bits (byte) in big endian!!!
-#A data frame matching flag values is created to facilate the processing.            
+#A data frame matching flag values is created to facilitate the processing.            
 #Inspiration and some code for the MODIS flag function originates from Steve Mosher:
 #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
+#Note that the downloading step requires a .netrc file and and login to EARTHDATA.
+#See for more information on the LPDAAC data pool: https://lpdaac.usgs.gov/data_access/data_pool
+#
 ## MODIS WORKFLOW
 # Processing of MODIS HDF files is done in 5 steps:
 # Step 1: download modis tiles for specified product and version (e.g. version 5)
@@ -19,9 +22,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/13/2018
+#MODIFIED ON : 02/14/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: editing to downloading MOD09 products
+#COMMIT: import MOD09 with multiband output option added
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -80,8 +83,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02072018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02132018.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02142018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02142018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -121,25 +124,27 @@ MODIS_product <- "MOD09A1.006" #Reflectance 500m (day) #param12
 date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
 #ARG12
 list_tiles_modis <- NULL #if NULL determine the tiles to download
-#ARGS13
+#ARG13
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #ARGS14
 product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#ARGS15
+#ARG15
+multiband <- TRUE #This is only used for multiband products?
+#ARGS16: This can be removed in the future by stating LST_Day as a product type
 var_name <- NULL #"LST_Night_1km" #can be LST_Day_1km, not implemented for NDVI at this stage
-#ARGS16
+#ARG17: This can be removed in the future by stating LST_Day as a product type
 qc_name <- NULL #"QC_Night", not implemented for NDVI at this stage
-#ARGS17
+#ARG18
 num_cores <- 4 #param 20
-#ARGS18
+#ARS19: if NULL, used default options, Maybe a textfile with be better here as input?
 selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
 #Select level 2:
 #qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
-#ARGS19
-agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param 11
 #ARG20
-steps_to_run <- list(download=TRUE,        #1rst step
+agg_param <- c(FALSE,NULL,"mean") #False means there is no aggregation!!! #param 11
+#ARG21
+steps_to_run <- list(download=FALSE,        #1rst step
                      import=TRUE,          #2nd  step
                      apply_QC_flag=TRUE,   #3rd  step
                      mosaic=TRUE,          #4th  step
@@ -171,6 +176,14 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
+function_raster_processing <-"MODIS_and_raster_processing_functions_02142018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02142018.R"
+
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+
+source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
+source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
+
 modis_processed_obj  <- processing_modis_data(in_dir,
                                               out_dir,
                                               CRS_reg,
@@ -185,6 +198,7 @@ modis_processed_obj  <- processing_modis_data(in_dir,
                                               list_tiles_modis,
                                               scaling_factors,
                                               product_type,
+                                              multiband,
                                               var_name,
                                               qc_name,
                                               num_cores,
