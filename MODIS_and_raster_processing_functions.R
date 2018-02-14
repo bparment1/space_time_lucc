@@ -815,12 +815,7 @@ import_list_modis_layers_fun <-function(i,list_param){
                                   subdataset,sep="")
   
   n_layer <- length(modis_subset_layer_Day)
-  #r <- readGDAL(modis_subset_layer_Day) 
-  #if number of layers is 1:
-  class(r)
-  dim(r)
-  #r_test <-brick(modis_subset_layer_Day)
-  
+
   if(n_layer==1){
     r <- readGDAL(modis_subset_layer_Day) 
     r  <-raster(r)
@@ -838,7 +833,7 @@ import_list_modis_layers_fun <-function(i,list_param){
     r <- scaling_factors[1]*r + scaling_factors[2]
   }
   #Finish this part...write out
-  names_hdf<-as.character(unlist(strsplit(x=basename(hdf_filename), split="[.]")))
+  names_hdf <- as.character(unlist(strsplit(x=basename(hdf_filename), split="[.]")))
   
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
@@ -847,33 +842,44 @@ import_list_modis_layers_fun <-function(i,list_param){
   #out_dir_str <-  dirname(hdf)
   #set output dir from input above
   if(n_layer==1){
-    writeRaster(r, 
-                NAflag=NA_flag_val,
-                filename=file.path(out_dir_s,raster_name),
-                bylayer=TRUE,
-                bandorder="BSQ",
-                overwrite=TRUE)   
+    if(file_format==".tif"){
+      
+      writeRaster(r, 
+                  NAflag=NA_flag_val,
+                  filename=file.path(out_dir_s,raster_name),
+                  bylayer=TRUE,
+                  bandorder="BSQ",
+                  overwrite=TRUE,
+                  #datatype=data_type_str, #this should be a future option for reduced size!!!
+                  options=c("COMPRESS=LZW")) #compress by default
+    }else{
+      
+      writeRaster(r, 
+                  NAflag=NA_flag_val,
+                  filename=file.path(out_dir_s,raster_name),
+                  bylayer=TRUE,
+                  bandorder="BSQ",
+                  overwrite=TRUE)   
+    }
   }
   
+  #### Now deal with multiband e.g. MOD09 reflectance
   if(n_layer>1){
     
     #Write out as brick
-    data_type_str <- dataType(r) #find the dataTyre
+    data_type_str <- dataType(r) #find the dataType, this should be a future input param
     if(is.null(NA_flag_val)){
       NA_flag_val <- NAvalue(r)
     }
     
     if(multiband==TRUE){
-      raster_name_tmp <- raster_name 
-    }
-    if(multiband==FALSE){
-      #raster_name <- hdf_filename
-      #multiband <- FALSE
-      #raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_b0.tif"
       raster_name_tmp <- paste(names_hdf,"_",product_type,file_format,sep="")
     }
+    if(multiband==FALSE){
+      raster_name_tmp <- raster_name
+    }
     
-    if(file_format=="tif"){
+    if(file_format==".tif"){
       writeRaster(r,
                   filename=file.path(out_dir,raster_name_tmp),
                   bylayer=multiband,
