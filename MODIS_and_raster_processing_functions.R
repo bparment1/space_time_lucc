@@ -4,9 +4,9 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/07/2018
+#MODIFIED ON: 02/14/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
-#COMMIT: pdating import file function with separate outdir set
+#COMMIT: multiband option changes for import of MOD09
 #
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -796,7 +796,9 @@ import_list_modis_layers_fun <-function(i,list_param){
   out_suffix <- list_param$out_suffix
   file_format <- list_param$file_format
   scaling_factors <- list_param$scaling_factors
-  
+  product_type <- list_param$product_type #this is the variable name: LST, NDVI, reflectance
+  multiband <- list_param$multiband # 
+    
   ######## Begin script #####
   
   if(!file.exists(out_dir_s)){
@@ -840,11 +842,10 @@ import_list_modis_layers_fun <-function(i,list_param){
   
   char_nb<-length(names_hdf)-2
   names_hdf <- names_hdf[1:char_nb]
-  raster_name <- paste(paste(names_hdf,collapse="_"),"_",out_suffix,file_format,sep="")
+  names_hdf <- paste(names_hdf,collapse="_") #this is the name of the hdf file with "." replaced by "_"
+  raster_name <- paste(names_hdf,"_",out_suffix,file_format,sep="")
   #out_dir_str <-  dirname(hdf)
   #set output dir from input above
-  multiband <- FALSE
-  raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_b0.tif"
   if(n_layer==1){
     writeRaster(r, 
                 NAflag=NA_flag_val,
@@ -866,14 +867,13 @@ import_list_modis_layers_fun <-function(i,list_param){
       raster_name_tmp <- raster_name 
     }
     if(multiband==FALSE){
-      raster_name <- 
-
-      strsplit(raster_name,"_")
-      raster_name_tmp <-
+      #raster_name <- hdf_filename
+      #multiband <- FALSE
+      #raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_b0.tif"
+      raster_name_tmp <- paste(names_hdf,"_",product_type,file_format,sep="")
     }
     
-    
-    if(file_format="tif"){
+    if(file_format=="tif"){
       writeRaster(r,
                   filename=file.path(out_dir,raster_name_tmp),
                   bylayer=multiband,
@@ -885,20 +885,21 @@ import_list_modis_layers_fun <-function(i,list_param){
                   datatype=data_type_str,
                   options=c("COMPRESS=LZW"))
       
-      writeRaster(r,
-                  filename=file.path(out_dir,raster_name),
-                  bylayer=multiband,
-                  #suffix=paste(names(r),"_",out_suffix,sep=""),
-                  #format=format_raster,
-                  suffix=paste(names(r)),
-                  overwrite=TRUE,
-                  NAflag=NA_flag_val,
-                  datatype=data_type_str,
-                  options=c("COMPRESS=LZW"))
+      #writeRaster(r,
+      #            filename=file.path(out_dir,raster_name),
+      #            bylayer=multiband,
+      #            #suffix=paste(names(r),"_",out_suffix,sep=""),
+      #            #format=format_raster,
+      #            suffix=paste(names(r)),
+      #            overwrite=TRUE,
+      #            NAflag=NA_flag_val,
+      #            datatype=data_type_str,
+      #            options=c("COMPRESS=LZW"))
       
     }else{
+    #Don't use compression option if not tif
     writeRaster(r,
-                filename=file.path(out_dir,raster_name),
+                filename=file.path(out_dir,raster_name_tmp),
                 bylayer=multiband,
                 #suffix=paste(names(r),"_",out_suffix,sep=""),
                 #format=format_raster,
