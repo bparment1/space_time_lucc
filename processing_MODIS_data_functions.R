@@ -325,11 +325,19 @@ processing_modis_data <- function(in_dir,
       out_dir_tmp <- paste0("import_",list_tiles_modis[j])
       #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       out_dir_s <- file.path(out_dir,out_dir_tmp)
-      
+      browser()
       out_suffix_s <- var_modis_name
-      list_param_import_modis <- list(i=1,hdf_file=infile_var,subdataset=modis_layer_str1,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
-                                      out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=scaling_factors)
-      debug(import_list_modis_layers_fun)
+      list_param_import_modis <- list(i=1,
+                                      hdf_file=infile_var,
+                                      subdataset=modis_layer_str1,
+                                      NA_flag_val=NA_flag_val,
+                                      out_dir=out_dir_s,
+                                      out_suffix=out_suffix_s,
+                                      file_format=file_format_import,
+                                      scaling_factors=scaling_factors,
+                                      product_type=product_type,
+                                      multiband=multiband)
+      #debug(import_list_modis_layers_fun)
       r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
       #r_var_s <- raster(r_var_s_filename)
       #r_var_s <- mclapply(1:12,
