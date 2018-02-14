@@ -83,8 +83,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02142018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02142018.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02142018b.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02142018b.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -136,8 +136,8 @@ var_name <- NULL #"LST_Night_1km" #can be LST_Day_1km, not implemented for NDVI 
 #ARG17: This can be removed in the future by stating LST_Day as a product type
 qc_name <- NULL #"QC_Night", not implemented for NDVI at this stage
 #ARG18
-num_cores <- 4 #param 20
-#ARS19: if NULL, used default options, Maybe a textfile with be better here as input?
+num_cores <- 4 #option for parallel processes
+#AR19: if NULL, used default options, Maybe a textfile with be better here as input?
 selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
 #Select level 2:
 #qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
@@ -176,8 +176,8 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02142018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02142018.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02142018b.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02142018b.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
