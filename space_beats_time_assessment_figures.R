@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/12/2018
+#DATE MODIFIED: 02/14/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -365,8 +365,9 @@ dev.off()
 col_pal_all <- c("red","blue","green") #used in all the areas
 
 ############
-##Figure 3a: Dean case zonal stat
+##Figure 3a: Zonal figure
 
+### Find number of zones from freq tb
 layout_m <- c(1,1)
 png(paste("Figure","_3a_","zonal_variable_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
@@ -386,7 +387,6 @@ legend(x = -87.4, y = 19.2, legend = cat_name, fill = rev(col_pal),
 dev.off()
 
 
-############################# This is repeated?? 
 ############################################################
 ###Figure 4:  Average Temporal profiles overall for the time series under study
 ## This illustrate the change (dip) directly after the Hurricane event
@@ -433,7 +433,7 @@ mae_tot_tb$time <- 1:nrow(mae_tot_tb)
 #https://stackoverflow.com/questions/5506046/how-do-i-put-more-space-between-the-axis-labels-and-axis-title-in-an-r-boxplot
 
 y_range <- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
-legend_val <- c("spatial model","temporal model")
+legend_val <- c("tempor model","spatial model")
   
 res_pix <- 960
 col_mfrow<- 1
@@ -487,28 +487,29 @@ dev.off()
 
 #mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
 #                      ac_temp_obj$mae_zones_tb[1:3,])
-mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
-                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
-                      ac_temp_obj$mae_zones_tb)
+#mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
+#                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
+#                      ac_temp_obj$mae_zones_tb)
 
-mae_zones_tb <- as.data.frame(mae_zones_tb)
+mae_zones_tb <- accuracy_space_and_time_obj$mae_zones_tb
 
 n_zones <- length(unique(mae_zones_tb$zone))
 
-mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
+#mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
 
-n_time <- ncol(mae_zones_tb) -1
-pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
+#n_time <- ncol(mae_zones_tb) -1
+#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
 #names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
-names(mae_zones_tb) <- pred_names
+#names(mae_zones_tb) <- pred_names
 
-write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+#write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
 
 mydata<- mae_zones_tb
 dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
 #dd$lag <- mydata$lag 
 #drop first few rows that contain no data but zones...
-n_start <-n_zones*3 +1 #3 because we have 3 methods...
+n_methods <- 2 #2 because we have 2 methods... (one for space and one for time)
+n_start <-n_zones*2 +1 
 #n_start <-n_zones*2 +1
 dd <- dd[n_start:nrow(dd),]
 
