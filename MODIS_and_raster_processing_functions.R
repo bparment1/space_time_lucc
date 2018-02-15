@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/14/2018
+#MODIFIED ON: 02/15/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: multiband option changes for import of MOD09
 #
@@ -842,11 +842,12 @@ import_list_modis_layers_fun <-function(i,list_param){
   #out_dir_str <-  dirname(hdf)
   #set output dir from input above
   if(n_layer==1){
+    raster_name_tmp <- raster_name
     if(file_format==".tif"){
       
       writeRaster(r, 
                   NAflag=NA_flag_val,
-                  filename=file.path(out_dir_s,raster_name),
+                  filename=file.path(out_dir_s,raster_name_tmp),
                   bylayer=TRUE,
                   bandorder="BSQ",
                   overwrite=TRUE,
@@ -856,7 +857,7 @@ import_list_modis_layers_fun <-function(i,list_param){
       
       writeRaster(r, 
                   NAflag=NA_flag_val,
-                  filename=file.path(out_dir_s,raster_name),
+                  filename=file.path(out_dir_s,raster_name_tmp),
                   bylayer=TRUE,
                   bandorder="BSQ",
                   overwrite=TRUE)   
@@ -874,15 +875,17 @@ import_list_modis_layers_fun <-function(i,list_param){
     
     if(multiband==TRUE){
       raster_name_tmp <- paste(names_hdf,"_",product_type,file_format,sep="")
+      bylayer_val <- FALSE #don't write out separate layer files for each "band"
     }
     if(multiband==FALSE){
       raster_name_tmp <- raster_name
+      bylayer_val <- TRUE #write out separate layer files for each "band"
     }
     
     if(file_format==".tif"){
       writeRaster(r,
-                  filename=file.path(out_dir,raster_name_tmp),
-                  bylayer=multiband,
+                  filename=file.path(out_dir_s,raster_name_tmp),
+                  bylayer=bylayer_val,
                   #suffix=paste(names(r),"_",out_suffix,sep=""),
                   #format=format_raster,
                   suffix=paste(names(r)),
@@ -890,22 +893,11 @@ import_list_modis_layers_fun <-function(i,list_param){
                   NAflag=NA_flag_val,
                   datatype=data_type_str,
                   options=c("COMPRESS=LZW"))
-      
-      #writeRaster(r,
-      #            filename=file.path(out_dir,raster_name),
-      #            bylayer=multiband,
-      #            #suffix=paste(names(r),"_",out_suffix,sep=""),
-      #            #format=format_raster,
-      #            suffix=paste(names(r)),
-      #            overwrite=TRUE,
-      #            NAflag=NA_flag_val,
-      #            datatype=data_type_str,
-      #            options=c("COMPRESS=LZW"))
-      
+
     }else{
     #Don't use compression option if not tif
     writeRaster(r,
-                filename=file.path(out_dir,raster_name_tmp),
+                filename=file.path(out_dir_s,raster_name_tmp),
                 bylayer=multiband,
                 #suffix=paste(names(r),"_",out_suffix,sep=""),
                 #format=format_raster,
@@ -934,7 +926,7 @@ import_list_modis_layers_fun <-function(i,list_param){
   #tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   ## end of remove section
   
-  return(file.path(out_dir_s,raster_name)) 
+  return(file.path(out_dir_s,raster_name_tmp)) 
 }
 
 create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
