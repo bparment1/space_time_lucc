@@ -491,17 +491,23 @@ processing_modis_data <- function(in_dir,
   }
   #QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 
-  if(product_type=="NDVI"){
-    d
-    d
-  names(qc_lst_valid)
-  qc_valid<-qc_lst_valid$Integer_Value #value integer values
-  #NA_flag_val <- -9999
-  
-  #r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
-  list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
-  list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
-  list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
+  if(product_type=="reflectance"){
+    dataType(r_qc_s1)
+    MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif
+    r_qc_s1 <- raster("/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif")
+    debug(create_MODIS_QC_table)
+    QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=FALSE) #Get table corresponding to QC for LST
+    names(QC_obj)
+    
+    names(qc_lst_valid)
+    qc_valid<-qc_lst_valid$Integer_Value #value integer values
+    #NA_flag_val <- -9999
+    
+    #r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
+    list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
+    list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
+    list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
+  }
   
   #26 minutes for 230 files to apply NDVI mask
   if(steps_to_run$apply_QC_flag==TRUE){
