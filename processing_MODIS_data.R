@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/14/2018
+#MODIFIED ON : 02/15/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: import MOD09 with multiband output option added
 #
@@ -83,8 +83,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02142018b.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02142018b.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02152018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02152018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
@@ -176,8 +176,8 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02142018b.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02142018b.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02152018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02152018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 

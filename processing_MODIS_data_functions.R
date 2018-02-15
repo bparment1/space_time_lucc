@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/15/2018
+#MODIFIED ON : 02/16/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
