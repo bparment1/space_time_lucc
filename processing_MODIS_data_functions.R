@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/14/2018
+#MODIFIED ON : 02/15/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -325,7 +325,7 @@ processing_modis_data <- function(in_dir,
       out_dir_tmp <- paste0("import_",list_tiles_modis[j])
       #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       out_dir_s <- file.path(out_dir,out_dir_tmp)
-      browser()
+      #browser()
       out_suffix_s <- var_modis_name
       list_param_import_modis <- list(i=1,
                                       hdf_file=infile_var,
@@ -338,7 +338,7 @@ processing_modis_data <- function(in_dir,
                                       product_type=product_type,
                                       multiband=multiband)
       #debug(import_list_modis_layers_fun)
-      r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
+      #r_var_s_filename <- import_list_modis_layers_fun(1,list_param_import_modis)    
       #r_var_s <- raster(r_var_s_filename)
       #r_var_s <- mclapply(1:12,
       #                    FUN=import_list_modis_layers_fun,
@@ -355,8 +355,15 @@ processing_modis_data <- function(in_dir,
       ##### Now do the qc flags
       out_suffix_s <- qc_modis_name
       list_param_import_modis <- list(i=1,
-                                      hdf_file=infile_var,subdataset=modis_layer_str2,NA_flag_val=NA_flag_val,out_dir=out_dir_s,
-                                      out_suffix=out_suffix_s,file_format=file_format_import,scaling_factors=NULL)
+                                      hdf_file=infile_var,
+                                      subdataset=modis_layer_str2,
+                                      NA_flag_val=NA_flag_val,
+                                      out_dir=out_dir_s,
+                                      out_suffix=out_suffix_s,
+                                      file_format=file_format_import,
+                                      scaling_factors=NULL,
+                                      product_type=product_type,
+                                      multiband=multiband)
       #r1<-import_list_modis_layers_fun(1,list_param_import_modis)
       #r_qc_s <-mclapply(1:12,
       #                  FUN=import_list_modis_layers_fun,
@@ -364,11 +371,11 @@ processing_modis_data <- function(in_dir,
       #                 mc.preschedule=FALSE,
       #                  mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
       
-      list_r_qc_s <-mclapply(1:length(infile_var),
-                             FUN=import_list_modis_layers_fun,
-                             list_param=list_param_import_modis,
-                             mc.preschedule=FALSE,
-                             mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      list_r_qc_s <- mclapply(1:length(infile_var),
+                              FUN=import_list_modis_layers_fun,
+                              list_param=list_param_import_modis,
+                              mc.preschedule=FALSE,
+                              mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
       
       #### Report on errors when importing data
       
@@ -381,7 +388,7 @@ processing_modis_data <- function(in_dir,
       df_import$qc[index_error] <- NA
       #View(df_import)
       out_file <- paste0("df_import",".txt")
-      write.table(df_import,file.path(out_dir,out_file))
+      write.table(df_import,file.path(out_dir_s,out_file))
       
       l_files <- list(var=list_r_var_s,qc=list_r_qc_s)
       list_imported_files[[j]] <- l_files
@@ -422,6 +429,7 @@ processing_modis_data <- function(in_dir,
     }
   }
   
+  browser()
   ### Should report on errors:
   #import_error_list <- unlist(lapply(1:length(r_qc_s),FUN=function(x){class(x)=="try-error"}))
   #import_error_list[as.numeric(import_error_list)==1]
@@ -432,9 +440,18 @@ processing_modis_data <- function(in_dir,
   list_r_var_s1 <- unlist(list_imported_files[[1]]$var[1]) #first tile, variable
   list_r_qc_s1 <- unlist(list_imported_files[[1]]$qc[1]) #first tile, quality flags
   
-  #list_r_var_s2 <- list_imported_files[[1]]$var #first
-  r_var_s1 <- raster(list_r_var_s1)
-  r_qc_s1 <- raster(list_r_qc_s1)
+  if(length(var_modis_name) > 1){
+    r_var_s1 <- brick(list_r_var_s1)
+  }else{
+    r_var_s1 <- raster(list_r_var_s1)
+  }
+  
+  if(length(qc_modis_name) > 1){
+    r_qc_s1 <- brick(list_r_qc_s1)
+  }else{
+    r_qc_s1 <- raster(list_r_qc_s1)
+  }
+  
   plot(r_var_s1)
   plot(r_qc_s1)
   
@@ -473,7 +490,10 @@ processing_modis_data <- function(in_dir,
     
   }
   #QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
-  
+
+  if(product_type=="NDVI"){
+    d
+    d
   names(qc_lst_valid)
   qc_valid<-qc_lst_valid$Integer_Value #value integer values
   #NA_flag_val <- -9999
