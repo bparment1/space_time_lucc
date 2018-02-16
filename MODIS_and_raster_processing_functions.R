@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/15/2018
+#MODIFIED ON: 02/16/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: multiband option changes for import of MOD09
 #
@@ -929,15 +929,17 @@ import_list_modis_layers_fun <-function(i,list_param){
   return(file.path(out_dir_s,raster_name_tmp)) 
 }
 
-create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
+create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   #Function to generate MODIS QC  flag table
   #Author: Benoit Parmentier (with some lines from S.Mosher)
-  #Date: 09/16/2013
+  #Date CREATED: 09/16/2013
+  #Date MODIFIED: 02/15/2018
+  #
   #Some of the inspiration and code originates from Steve Mosher' s blog:
   #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
   
-  list_QC_Data <- vector("list", length=2)
-  names(list_QC_Data) <- c("LST","NDVI")
+  list_QC_Data <- vector("list", length=3)
+  names(list_QC_Data) <- c("LST","NDVI","reflectance")
   
   ## PRODUCT 1: LST
   #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
@@ -1059,7 +1061,130 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE){
     list_QC_Data[[2]]<- QC_Data
   }
   
-  ## PRODUCT 3: Albedo
+  ## PRODUCT 3: Reflectance
+  # This is for MOD09
+  #
+  if(reflectance==TRUE){
+    #https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09a1
+    #This is 32 bits
+    #r_qc_s1 <- raster("/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif")
+    #dataType(r_qc_s1) is FLT8S, 64 bits real numbers
+    #The flags are 32 bits int
+    #library(binaryLogic)
+    test <- unique(r_qc_s1)
+    intToBits(65)    
+    length(intToBits(65))
+    rawToBits()
+    line1<-c(readBin(to.read,"int",5), 
+             readBin(to.read,"double",1,size=4),
+             readBin(to.read,"int",2))
+    as.integer(test[1]) #no need to do this
+    #length(intToBits(test[1])) 
+    length(intToBits(test[1])) #that is 32
+    intToBits()
+    https://stackoverflow.com/questions/43274706/apply-function-bitwise-and-on-each-cell-of-a-raster-in-r/43274922
+    #as.binary(test)
+    #class(intToBits(test))
+    #potential logic:
+    # Write table of bits as described in the documentation
+    # Extract unique values from raster
+    # Convert unique values into bit sequence
+    # Match bit sequence to table
+    # screen for only sequence that we want
+    # 
+    # Other logic:
+    # 
+    
+    QC_Data <- data.frame(Integer_Value = 0:65535,
+                          Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
+                          Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
+                          QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
+                          QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
+                          QA_word9 = NA)
+
+    
+    QC_Data <- data.frame(,
+                          0,1, NA,NA,..,NA #
+                          0,0
+                          Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
+                          Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
+                          QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
+                          QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
+                          QA_word9 = NA)
+    
+    #Populate table...this is extremely slow...change???
+    for(i in QC_Data$Integer_Value){
+      AsInt <- as.integer(intToBits(i)[1:16]) #16bit unsigned integer
+      QC_Data[i+1,2:17]<- AsInt[16:1]
+    } 
+    
+    #Level 1: Overal MODIS Quality which is common to all MODIS product
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "VI Good Quality"    #(0-0)
+    QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "VI Produced,check QA"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,because of clouds"
+    QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "Not Produced, other reasons"
+    
+    #Level 2: VI usefulness (read from right to left)
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Highest quality, 1"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Lower quality, 2"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 3 "
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 4"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 5"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 6"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 7"
+    QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 8"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 9"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 10"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 11"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 12"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Lowest quality, 13"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Quality so low that not useful, 14"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "L1B data faulty, 15"
+    QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Not useful/not processed, 16"
+    
+    # Level 3: Aerosol quantity 
+    QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "Climatology"
+    QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "Low"
+    QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "Average"
+    QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "High"
+    
+    # Level 4: Adjacent cloud detected
+    QC_Data$QA_word4[QC_Data$Bit8==0] <- "No"
+    QC_Data$QA_word4[QC_Data$Bit8==1] <- "Yes"
+    
+    # Level 5: Atmosphere BRDF correction performed
+    QC_Data$QA_word5[QC_Data$Bit9 == 0] <- "No"
+    QC_Data$QA_word5[QC_Data$Bit9 == 1] <- "Yes"
+    
+    # Level 6: Mixed Clouds
+    QC_Data$QA_word6[QC_Data$Bit10 == 0] <- "No"
+    QC_Data$QA_word6[QC_Data$Bit10 == 1] <- "Yes"
+    
+    #Level 7: Land/Water Flag (read from right to left)
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Shallow Ocean"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Land"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Ocean coastlines and lake shorelines"
+    QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Shallow inland water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Ephemeral water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Deep inland water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Moderate or continental water"
+    QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Deep ocean"
+    
+    # Level 8: Possible snow/ice
+    QC_Data$QA_word8[QC_Data$Bit14 == 0] <- "No"
+    QC_Data$QA_word8[QC_Data$Bit14 == 1] <- "Yes"
+    
+    # Level 9: Possible shadow
+    QC_Data$QA_word9[QC_Data$Bit15 == 0] <- "No"
+    QC_Data$QA_word9[QC_Data$Bit15 == 1] <- "Yes"
+    
+    list_QC_Data[[2]]<- QC_Data
+  }
+  
+  
+  
+  
+  ## PRODUCT 4: Albedo
   #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
   #To be added...
   
