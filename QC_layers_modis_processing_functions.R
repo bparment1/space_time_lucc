@@ -8,7 +8,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 02/23/2018 
-#DATE MODIFIED: 02/26/2018
+#DATE MODIFIED: 02/27/2018
 #Version: 1
 
 #PROJECT: General use
