@@ -938,6 +938,8 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   #Some of the inspiration and code originates from Steve Mosher' s blog:
   #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
   
+  #r_qc_s1 <- raster("/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif")
+  
   list_QC_Data <- vector("list", length=3)
   names(list_QC_Data) <- c("LST","NDVI","reflectance")
   
@@ -1071,18 +1073,21 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
     #dataType(r_qc_s1) is FLT8S, 64 bits real numbers
     #The flags are 32 bits int
     #library(binaryLogic)
-    test <- unique(r_qc_s1)
+    test <- unique(r_qc_s1) #first get unique values
     intToBits(65)    
     length(intToBits(65))
-    rawToBits()
+    #rawToBits()
+    
     line1<-c(readBin(to.read,"int",5), 
              readBin(to.read,"double",1,size=4),
              readBin(to.read,"int",2))
     as.integer(test[1]) #no need to do this
     #length(intToBits(test[1])) 
     length(intToBits(test[1])) #that is 32
-    intToBits()
-    https://stackoverflow.com/questions/43274706/apply-function-bitwise-and-on-each-cell-of-a-raster-in-r/43274922
+    str_bit <- as.character(intToBits(test[1]))
+    
+    
+    #https://stackoverflow.com/questions/43274706/apply-function-bitwise-and-on-each-cell-of-a-raster-in-r/43274922
     #as.binary(test)
     #class(intToBits(test))
     #potential logic:
@@ -1103,14 +1108,14 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
                           QA_word9 = NA)
 
     
-    QC_Data <- data.frame(,
-                          0,1, NA,NA,..,NA #
-                          0,0
-                          Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
-                          Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-                          QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
-                          QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
-                          QA_word9 = NA)
+    #QC_Data <- data.frame(,
+    #                      0,1, NA,NA,..,NA #
+    #                      0,0
+    #                      Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
+    #                      Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
+    #                      QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
+    #                      QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
+    #                      QA_word9 = NA)
     
     #Populate table...this is extremely slow...change???
     for(i in QC_Data$Integer_Value){
