@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/13/2017
+#DATE MODIFIED: 02/20/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -277,7 +277,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
                               r_zones=rast_zonal,
                               file_format=file_format,
                               out_suffix=out_suffix_s)
-  
+  View(mae_tot_tb)
   mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
@@ -326,9 +326,11 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #                      ac_temp_obj$mae_zones_tb)
   mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
                         ac_temp_obj$mae_zones_tb)
-  
+  mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb),
+                        t(ac_temp_obj$mae_zones_tb))
+  View(mae_zones_tb)
   mae_zones_tb <- as.data.frame(mae_zones_tb)
-  
+  http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/
   n_zones <- length(unique(mae_zones_tb$zone))
   
   #mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
@@ -340,6 +342,91 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   names(mae_zones_tb) <- pred_names
   
   write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+  
+  ##### Let's set up the figure production now
+  @View(mae_zones_tb)
+  #test <- rbind(mae_zones_tb, c(NA,1:10,NA))
+  dim(mae_zones_tb)
+  
+  #dim(mae_tot_tb)
+  mydata<- mae_zones_tb
+  #mydata <- test
+  dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+  #dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
+  
+  mae_zones_tb_long <- dd #long format
+  names(mae_zones_tb_long)
+  names(dd)
+  mae_zones_tb <- as.data.frame(t(mae_zones_tb))
+  #View(mae_zones_tb)
+  method_time <- unlist(strsplit(method_time,";"))
+  method_space <- unlist(strsplit(method_space,";"))
+  
+  name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
+  name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
+  #mae_tot_tb <- as.data.frame(mae_tot_tb)
+  #row.names(mae_tot_tb) <- NULL
+  #names(mae_tot_tb)<- c(name_method_space,name_method_time)
+  mae_zones_tb$time <- 1:nrow(mae_zones_tb)
+  
+  View(mae_zones_tb)
+  ## Input params for the plot:
+  #https://stackoverflow.com/questions/5506046/how-do-i-put-more-space-between-the-axis-labels-and-axis-title-in-an-r-boxplot
+  
+  y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
+  legend_val <- c("tempor model","spatial model")
+  
+  res_pix <- 960
+  col_mfrow<- 1
+  row_mfrow<- 0.7
+  png(filename=paste("Figure_temporal_profiles_MAE_zones_",out_suffix,".png",sep=""),
+      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
+  spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+  
+  #par(mgp=c(0,1,0))
+  ## margin for side 2 is 7 lines in size
+  #op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
+  op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
+  
+  plot(temp_formula_str,type="b",
+       col="cyan",
+       pch=16, #filled in circles...
+       lwd=3,
+       data=mae_zones_tb,
+       ylim=y_range,
+       ylab="Mean Absolute Error (MAE)",
+       xaxt="n",
+       xlab="Time",
+       cex.lab=2,
+       cex.axis=1.5,
+       cex=1.5)
+  lines(spat_formula_str, 
+        type="b",
+        lwd=3,
+        pch=16, #filled in circles
+        col="magenta",
+        data=mae_tot_tb)
+  
+  x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+  axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
+  #axis(2, cex.axis = 2)
+  
+  legend("topleft",
+         legend=legend_val,
+         col=c("cyan","magenta"),
+         lty=1,
+         lwd=3,
+         cex=1.5,
+         bty="n")
+  title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
+  par(op)
+  dev.off()
+  
+  
+  
+  
   
   mydata<- mae_zones_tb
   dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
