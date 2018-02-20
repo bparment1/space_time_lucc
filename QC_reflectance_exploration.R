@@ -1,8 +1,8 @@
 #######################################    MODIS processing   #######################################
 ############################ Exploration of MOD09 reflectance QC Flags #######################################
-#This script contains functions to assess predictions for Space Beats Time Framework.       
-#Temporal predictions use OLS with the image of the previous time step or ARIMA.
-#Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
+#This script explores the processing of QC flags for MODIS reflectance (MOD09).       
+#
+#
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
 #DATE MODIFIED: 12/16/2017
@@ -26,8 +26,6 @@ require(RCurl)
 require(stringr)
 require(XML)
 library(lubridate)
-library(miscFuncs) #contains binary/bit processing helper functions
-library(data.table)
 
 ## PRODUCT 3: Reflectance
 # This is for MOD09
@@ -57,14 +55,14 @@ writeRaster(r_qc_s1,
             datatype=data_type_str)
 r <- raster(file.path(out_dir_s,raster_name_tmp))
 unique_vals_test <- unique(r)
-
+convert
 #The flags are 32 bits int
 #library(binaryLogic)
 unique_vals <- unique(r_qc_s1) #first get unique values
 unique_vals==unique_vals_test
 #convert decimal to intu32
 bin(255)
-1*2^7 + 1*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + 1*2^1 + 1*2^0 
+1*2^7 + 1*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + + 1*2^1 + + 1*2^0 
 length(bin(255))
 
 bin(61)
@@ -97,7 +95,6 @@ bin_val <- as.numeric(as.logical(bin_val))
 
 debug(convert_decimal_to_uint32)
 convert_decimal_to_uint32(61)
-length(convert_decimal_to_uint32(61))
 bin(61)
 
 #add_zero <- 2
@@ -127,6 +124,121 @@ bin(test)
 convert_to_decimal(bin_val)
 test
 
+rep(NA,64)
+#qc_table_modis <- data.table(bitNo=NA,param_name=NA,BitComb=NA,Sur_refl_qc_500m=NA)
+qc_table_modis <- data.frame(bitNo=NA,param_name=NA,BitComb=NA,Sur_refl_qc_500m=NA)
+
+View(qc_table_modis)
+
+qc_table_modis[1:4,c("bitNo")] <- rep("0-1",4) 
+qc_table_modis[1:4,c("param_name")] <- rep("MODLAND QA bits",4) 
+qc_table_modis[1:4,c("BitComb")] <- c("00","01","10","11") 
+qc_table_modis[1:4,c("Sur_refl_qc_500m")] <- c("corrected product produced at ideal quality all bands",
+                                              "corrected product produced at less than ideal quality some or all bands",
+                                              "corrected product not produced due to cloud effects all bands",
+                                              "corrected producted not produced due to other reasons some or all bands may be fill value [Note that a value of (11) overrides a value of (01)]") 
+
+### now add band quality
+band_no <- 1
+qc_table_modis[5:13,c("bitNo")] <- rep("26-29",9) 
+qc_table_modis[5:13,c("param_name")] <- rep(paste("band",band_no,"quality four bit range",9)) 
+qc_table_modis[5:13,c("BitComb")] <- c("0000","1000","1001","1010","1011","1100","1101","1110","1111") 
+qc_table_modis[5:13,c("Sur_refl_qc_500m")] <- c("highest quality",
+                                               "dead detector; data interpolated in L1B",
+                                               "solar zenith >=86 degrees",
+                                               "solar zenith >=85 degrees and < 86 degrees",
+                                               "missing input",
+                                               "internal constant used in place of climatological data for at least one atmospheric constant",
+                                               "correction out of bounds pixel constrained to extreme allowable value",
+                                               "L1B data faulty",
+                                               "not processed due to deep ocean or clouds") 
+
+View(qc_table_modis)
+
+
+#####################
+
+#Now generate reference table
+(create_qa_mask)
+
+#' A function to translate QA information into a datamask
+#' 
+#' @param qa_bits numeric. Number of bits of info in the QA
+#' @param wordinbits logical. Should the bit word parsing stay in bit format, or translate to numeric within the word
+#' @param bit_interpreter data.table. data.table with columns word_number, word_start, word_end
+#'
+create_qa_mask = function(qa_bits, wordinbits = T, bit_interpreter){
+  
+  #create a table that translates integer values to bits
+  cw = data.table::data.table(intval = 0:(2^qa_bits-1))
+  
+  #GEE converts the bits into their integer value per word. That conversion is better if least significant digit is on the left
+  #modis appears to be the opposite
+  if(wordinbits){
+    bitorder = qa_bits:1
+  }else{
+    bitorder = 1:qa_bits
+  }
+  
+  bits = lapply(cw[,intval], function(x) as.integer(intToBits(x))[bitorder]) #starting val is on the lhs.
+  bits = do.call(rbind, bits)
+  cw = cbind(cw, bits)
+  setnames(cw, c('intval',paste0('V',bitorder - 1)))
+  
+  #create words
+  for(qqq in seq(nrow(bit_interpreter))){
+    
+    
+    start = bit_interpreter[qqq,word_start]
+    end = bit_interpreter[qqq,word_end]
+    i = bit_interpreter[qqq,word_number]
+    
+    if(wordinbits){
+      cw[, paste0('word',i) := apply(.SD, 1, paste, collapse = ""), .SDcols = paste0('V',end:start)]
+    } else{
+      #convert the word to its integer counterpart
+      cw[, paste0('word',i) := rowSums(.SD[, lapply(1:ncol(.SD), function(x) 2^(x-1) * .SD[[x]])]), .SDcols = paste0('V',start:end)] 
+    }
+    
+  }
+  
+  #return the grid
+  return(cw)
+}
+
+build_lst_qa = function(){
+  bi = data.table(word_number = 1:4 ,
+                  word_start = c(0,2,4,6),
+                  word_end = c(1,3,5,7))
+  qa = create_qa_mask(8, F, bi)
+  
+  #return rows where the data is good at word 1 or word 2
+  qa = qa[word1 ==0 | (word1 == 1 & word2 == 0), intval]
+  
+  return(qa)
+  
+}
+
+build_vi_qa = function(){
+  bi = data.table(word_number = 1:9 ,
+                  word_start = c(0,2,6,8,9,10,11,14,15),
+                  word_end =   c(1,5,7,8,9,10,13,14,15))
+  qa = create_qa_mask(16, F, bi)
+  
+  #select for data quality
+  qa = qa[word1 ==0 | (word1 == 1 & word2 %in% c(0,1,2,4,8,9,10)), ]
+  
+  #select for land
+  qa = qa[word7 %in% c(1,2),intval]
+  
+  return(qa)
+  
+}
+
+
+
+
+###########
 
 #length(intToBits(test[1])) 
 length(intToBits(as.integer(unique_vals[1]))) #that is 32
@@ -140,8 +252,8 @@ str_bit[1]
 (2^32)-1
 unique_vals > (2^32)-1
 
-#This is too large
-#test <- data.table(INTU4_val=0:2^32-1)
+test <- data.table(INTU4_val=0:2^32-1)
+library(data.table)
 #https://stackoverflow.com/questions/43274706/apply-function-bitwise-and-on-each-cell-of-a-raster-in-r/43274922
 #as.binary(test)
 #class(intToBits(test))
