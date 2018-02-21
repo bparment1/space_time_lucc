@@ -69,6 +69,7 @@ convert_decimal_to_uint32 <- function(x){
   return(bin_val)
 }
 
+### This is little endian?
 convert_to_decimal <- function(bin_val){
   n <- length(bin_val)
   vals<- lapply(1:n,function(i,coef){coef[i]*2^(n-i)},coef=bin_val)
@@ -79,6 +80,7 @@ convert_to_decimal <- function(bin_val){
 
 #ARG1: input dir
 in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/"
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/mask_qc_h09v06/"
 
 ## PRODUCT 3: Reflectance
 # This is for MOD09
@@ -175,7 +177,7 @@ for(i in 1:length(list_band_no)){
     start_bit <- end_bit + 1
   }
   #start_bit <- 2
-  end_bit <- start_bit + 4 
+  end_bit <- start_bit + 3 
   bit_range <- paste(start_bit,end_bit,sep="-")
   qc_table_modis[1:9,c("bitNo")] <- rep(bit_range,9) 
   
@@ -206,14 +208,90 @@ qc_table_modis_modland[1:4,c("Sur_refl_qc_500m")] <- c("corrected product produc
                                                "corrected product not produced due to cloud effects all bands",
                                                "corrected producted not produced due to other reasons some or all bands may be fill value [Note that a value of (11) overrides a value of (01)]") 
 
-qc_table_modis <- rbind(qc_table_modis_modland,qc_modis_table_bands)
+qc_table_modis_other <- data.frame(bitNo=NA,param_name=NA,BitComb=NA,Sur_refl_qc_500m=NA)
+qc_table_modis_other[1:4,c("bitNo")] <- c(rep("30-30",2),
+                                          rep("31-31",2))
+qc_table_modis_other[1:4,c("param_name")] <- c(rep("atmospheric correction performed",2),
+                                               rep("adjacency correction performed",2))
+qc_table_modis_other[1:4,c("BitComb")] <- c("1","0","1","0") 
+qc_table_modis_other[1:4,c("Sur_refl_qc_500m")] <- c("yes","no","yes","no") 
+
+#qc_table_modis <- rbind(qc_table_modis_modland,qc_modis_table_bands)
+qc_table_modis <- rbind(qc_table_modis_modland,qc_modis_table_bands,qc_table_modis_other)
+
 View(qc_table_modis)
 
+write.table(qc_table_modis,file=file.path(out_dir,"qc_table_modis.txt"),sep=",")
+
+### 
+
+#selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
+selected_flags <- list(Sur_refl_qc_500m ="highest quality",
+                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
+                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
+
+#sbuset(qc_table_modis
+#lapply(selected_flags,function(x){subset(qc_table_modis,})
+
+#### Now read in the values and process to match the selected flags!!!
+
+i <- 1
+val <- unique_vals[i]
+
+bin_val <- convert_decimal_to_uint32(val)
+convert_to_decimal(bin_val)
+
+##hdf are in big endian format
+bin_val
+
+(2^30)
+val
+
+### Here is Big Endian format: least significant bit is on the right
+### x* 2^31 + x* 2^30 + x* 2^29 + ... + x* 2^1 + x* 2^0
+
+?bitShiftR()
+bitShiftR(val,1)
+(2^30)/2
+
+bitShiftR(val,1)
+(2^30)/2
+?bitwShiftL()
+unique_bit_range <- unique(qc_table_modis$bitNo)
+
+i <- 1 #modland
+
+bit_range_processed <- unique_bit_range[i]
+start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
+end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
+bin_val[start_bit:end_bit] # corrected produced at less than ...
+
+i <- 2 #band 1
+
+bit_range_processed <- unique_bit_range[i]
+start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
+end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
+bin_val[start_bit:end_bit] # corrected produced at less than ...
+
+i <- 3 #band 2
+
+bit_range_processed <- unique_bit_range[i]
+start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
+end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
+bin_val[start_bit:end_bit] # corrected produced at less than ...
+
+extract_qc_bit_info <- function(bit_range,bin_val){
+  bit_range_processed <- unique_bit_range[i]
+  start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
+  end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
+  bin_val[start_bit:end_bit] # corrected produced at less than ...
+  
+}
 
 #####################
 
 #Now generate reference table
-(create_qa_mask)
+#(create_qa_mask)
 
 #' A function to translate QA information into a datamask
 #' 
@@ -321,113 +399,6 @@ library(data.table)
 # Other logic:
 # 
   
-  QC_Data <- data.frame(Integer_Value = 0:65535,
-                        Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
-                        Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-                        QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
-                        QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
-                        QA_word9 = NA)
-  
-  
-  #QC_Data <- data.frame(,
-  #                      0,1, NA,NA,..,NA #
-  #                      0,0
-  #                      Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
-  #                      Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
-  #                      QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA,
-  #                      QA_word5 = NA,QA_word6 = NA,QA_word7 = NA,QA_word8 = NA,
-  #                      QA_word9 = NA)
-  
-  #Populate table...this is extremely slow...change???
-  for(i in QC_Data$Integer_Value){
-    AsInt <- as.integer(intToBits(i)[1:16]) #16bit unsigned integer
-    QC_Data[i+1,2:17]<- AsInt[16:1]
-  } 
-  
-  #Level 1: Overal MODIS Quality which is common to all MODIS product
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "VI Good Quality"    #(0-0)
-  QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "VI Produced,check QA"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "Not Produced,because of clouds"
-  QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "Not Produced, other reasons"
-  
-  #Level 2: VI usefulness (read from right to left)
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Highest quality, 1"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Lower quality, 2"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 3 "
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 4"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 5"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 6"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 7"
-  QC_Data$QA_word2[QC_Data$Bit5 == 0 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 8"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Decreasing quality, 9"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Decreasing quality, 10"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "Decreasing quality, 11"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==0 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Decreasing quality, 12"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Lowest quality, 13"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Quality so low that not useful, 14"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "L1B data faulty, 15"
-  QC_Data$QA_word2[QC_Data$Bit5 == 1 & QC_Data$Bit4==1 & QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "Not useful/not processed, 16"
-  
-  # Level 3: Aerosol quantity 
-  QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "Climatology"
-  QC_Data$QA_word3[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "Low"
-  QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "Average"
-  QC_Data$QA_word3[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "High"
-  
-  # Level 4: Adjacent cloud detected
-  QC_Data$QA_word4[QC_Data$Bit8==0] <- "No"
-  QC_Data$QA_word4[QC_Data$Bit8==1] <- "Yes"
-  
-  # Level 5: Atmosphere BRDF correction performed
-  QC_Data$QA_word5[QC_Data$Bit9 == 0] <- "No"
-  QC_Data$QA_word5[QC_Data$Bit9 == 1] <- "Yes"
-  
-  # Level 6: Mixed Clouds
-  QC_Data$QA_word6[QC_Data$Bit10 == 0] <- "No"
-  QC_Data$QA_word6[QC_Data$Bit10 == 1] <- "Yes"
-  
-  #Level 7: Land/Water Flag (read from right to left)
-  QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Shallow Ocean"
-  QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Land"
-  QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Ocean coastlines and lake shorelines"
-  QC_Data$QA_word7[QC_Data$Bit13==0 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Shallow inland water"
-  QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==0] <- "Ephemeral water"
-  QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 0 & QC_Data$Bit11==1] <- "Deep inland water"
-  QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==0] <- "Moderate or continental water"
-  QC_Data$QA_word7[QC_Data$Bit13==1 & QC_Data$Bit12 == 1 & QC_Data$Bit11==1] <- "Deep ocean"
-  
-  # Level 8: Possible snow/ice
-  QC_Data$QA_word8[QC_Data$Bit14 == 0] <- "No"
-  QC_Data$QA_word8[QC_Data$Bit14 == 1] <- "Yes"
-  
-  # Level 9: Possible shadow
-  QC_Data$QA_word9[QC_Data$Bit15 == 0] <- "No"
-  QC_Data$QA_word9[QC_Data$Bit15 == 1] <- "Yes"
-  
-  list_QC_Data[[2]]<- QC_Data
-}
-
-###Loading R library and packages                                                      
-
-library(sp)
-library(rgdal)
-library(spdep)
-library(gtools)
-library(maptools)
-library(parallel)
-library(rasterVis)
-library(raster)
-library(forecast) #ARIMA forecasting
-library(xts)
-library(zoo)
-library(lubridate)
-library(colorRamps) #contains matlab.like color palette
-library(rgeos)
-library(sphet) #contains spreg
-library(BMS) #contains hex2bin and bin2hex
-library(bitops)
-
-#Should use the data that is mosaiced!!
 
 create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   #Function to generate MODIS QC  flag table
@@ -700,3 +671,6 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   
   return(list_QC_Data)
 }
+
+
+################################## End of script  #################################
