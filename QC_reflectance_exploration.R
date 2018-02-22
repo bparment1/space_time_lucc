@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/21/2018
+#DATE MODIFIED: 02/23/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -91,7 +91,6 @@ r_qc_s1 <- raster(file.path(in_dir,"MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m
 r_var_s1 <- raster(file.path(in_dir,"MOD09A1_A2005009_h09v06_006_reflectance.tif"))
 
 dataType(r_qc_s1) #is FLT8S, 64 bits real numbers
-writeRaster(r_qc_s1,data) #is FLT8S, 64 bits real numbers
 out_dir_s <- getwd()
 #INT4U
 #https://www.rdocumentation.org/packages/raster/versions/2.6-7/topics/dataType
@@ -146,7 +145,7 @@ bin_val<- bin(test)
 bin_val
 bin_val <- as.numeric(as.logical(bin_val))
 
-debug(convert_decimal_to_uint32)
+#debug(convert_decimal_to_uint32)
 convert_decimal_to_uint32(61)
 bin(61)
 
@@ -238,6 +237,7 @@ selected_flags <- list(Sur_refl_qc_500m ="highest quality",
 i <- 1
 val <- unique_vals[i]
 
+undebug(convert_decimal_to_uint32)
 bin_val <- convert_decimal_to_uint32(val)
 convert_to_decimal(bin_val)
 
@@ -250,13 +250,13 @@ val
 ### Here is Big Endian format: least significant bit is on the right
 ### x* 2^31 + x* 2^30 + x* 2^29 + ... + x* 2^1 + x* 2^0
 
-?bitShiftR()
-bitShiftR(val,1)
-(2^30)/2
+#?bitShiftR()
+#bitShiftR(val,1)
+#(2^30)/2
 
-bitShiftR(val,1)
-(2^30)/2
-?bitwShiftL()
+#bitShiftR(val,1)
+#(2^30)/2
+#?bitwShiftL()
 unique_bit_range <- unique(qc_table_modis$bitNo)
 
 i <- 1 #modland
@@ -280,13 +280,78 @@ start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start 
 end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
 bin_val[start_bit:end_bit] # corrected produced at less than ...
 
-extract_qc_bit_info <- function(bit_range,bin_val){
-  bit_range_processed <- unique_bit_range[i]
+bit_range_processed <- unique_bit_range[i]
+
+#debug(extract_qc_bit_info)
+#test_bin_val_qc <- extract_qc_bit_info(bit_range_processed,bin_val=bin_val)
+#test_bin_val_qc
+
+extract_qc_bit_info <- function(bit_range_processed,bin_val){
+  #
   start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
   end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
-  bin_val[start_bit:end_bit] # corrected produced at less than ...
-  
+  bin_val_extracted <- bin_val[start_bit:end_bit] # corrected produced at less than ...
+  bitNo <- paste(bit_range_processed,collapse = "-")
+  bin_val_extracted <- paste(as.character(bin_val_extracted),collapse = "")
+  #test <- paste(test,collapse="")
+  #bin_val_extracted <- as.character(bin_val_extracted)
+  #data.frame(bitNo=bit_range_processed,bin_val_extracted)
+  df_bit_qc_info <-data.frame(bitNo=bit_range_processed,bin_val_extracted)
+  return(df_bit_qc_info)
 }
+
+### Do this for unique value 1:
+i <- 1
+val <- unique_vals[i]
+
+bin_val <- convert_decimal_to_uint32(val)
+convert_to_decimal(bin_val)
+
+test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
+test_bin_val_qc[[1]]
+## Now compare test_bin_val_qc with selected qc_table_modis
+
+names(qc_table_modis)
+
+qc_val <- do.call(rbind,test_bin_val_qc)
+View(qc_val)
+
+
+#selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
+selected_flags <- list(Sur_refl_qc_500m ="highest quality",
+                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
+                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
+
+#selected_flags <- list(Sur_refl_qc_500m ="highest quality",
+#                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
+#                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
+
+
+
+desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
+
+qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
+View(qc_table_modis_selected)
+
+### Now go through each value and compare?
+qc_val
+
+screen_qc_bitNo <- function(qc_table_modis_selected,qc_val){
+  
+  unique_bitNo  <- unique(qc_table_modis_selected$bitNo)
+  
+  list_matching_val <- vector("list",length=nrow(qc_val))
+  #for(i in 1:length(unique_bitNo)){
+  for(i in 1:nrow(qc_val)){
+    #bitNo_val <- qc_table_modis_selected$bitNo[1]
+    #bitNo_val <- unique_bitNo[i]
+    bitNo_val <- qc_val$bitNo[i]
+    list_match_val[[i]] <- qc_val[qc_val$bitNo==bitNo_val,2]%in%qc_table_modis_selected[qc_table_modis_selected$bitNo==bitNo_val,c("BitComb")]
+  }
+  qc_val$screen_qc <- as.numeric(list_match_val)
+  return(qc_val)
+}
+
 
 #####################
 
