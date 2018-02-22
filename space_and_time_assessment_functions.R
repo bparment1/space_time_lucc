@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/20/2017
+#DATE MODIFIED: 02/22/2017
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -277,7 +277,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
                               r_zones=rast_zonal,
                               file_format=file_format,
                               out_suffix=out_suffix_s)
-  View(mae_tot_tb)
+  #View(mae_tot_tb)
   mae_tot_tb <- cbind(ac_spat_obj$mae_tb,
                       ac_temp_obj$mae_tb)
   
@@ -324,27 +324,44 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
   #                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
   #                      ac_temp_obj$mae_zones_tb)
-  mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
-                        ac_temp_obj$mae_zones_tb)
-  mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb),
-                        t(ac_temp_obj$mae_zones_tb))
-  View(mae_zones_tb)
-  mae_zones_tb <- as.data.frame(mae_zones_tb)
-  http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/
-  n_zones <- length(unique(mae_zones_tb$zone))
+  #mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
+  #                      ac_temp_obj$mae_zones_tb)
+  mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb)[-1,],
+                        t(ac_temp_obj$mae_zones_tb)[-1,])
+  df_zone <- ac_spat_obj$mae_zones_tb
+  mae_zones_tb_spat <- format_mae_zones_tb(df_zone)
+  df_zone <- ac_spat_obj$mae_zones_tb
+  mae_zones_tb_temp <- format_mae_zones_tb(df_zone)
   
-  #mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
-  mae_zones_tb$method <- c(rep(name_method_space,n_zones),rep(name_method_time,n_zones))
+  #View(mae_zones_tb_spat)
+  mae_zones_tb_spat$method <- method_space
+
+  method_time <- unlist(strsplit(method_time,";"))
+  method_space <- unlist(strsplit(method_space,";"))
   
-  n_time <- ncol(mae_zones_tb) -1
-  pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-  #names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
-  names(mae_zones_tb) <- pred_names
+  name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
+  name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
   
-  write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+  format_mae_zones_tb <- function(df_zone){
+    #Reformat data from mae_zone computation in easy format
+    #
+    val_zone_mae <- t(df_zone)[-1,]
+    head(val_zone_mae)
+    val_mae <- as.vector(val_zone_mae)
+    df_zone_mae <- data.frame(mae=val_mae)
+    n_times_step <- nrow(df_zone_mae)/2
+    n_zones <- ncol(val_zone_mae)
+    df_zone_mae$zone <- unlist(lapply(1:n_zones,function(x)(rep(x,n_times_step))))
+    #mae_zones_tb <- mae_zones_tb[-1,]
+    #names(df_zone_mae_tb) <- paste0("zone_",1:ncol(mae_zones_tb))
+    df_zone_mae$time <- 1:n_times_step 
+    #mae_zones_tb$time <- 1:n_times_step 
+    return(df_zone_mae)
+  }
   
+
   ##### Let's set up the figure production now
-  @View(mae_zones_tb)
+  View(mae_zones_tb)
   #test <- rbind(mae_zones_tb, c(NA,1:10,NA))
   dim(mae_zones_tb)
   
