@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/14/2018
+#DATE MODIFIED: 02/22/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02132018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02222018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -75,7 +75,7 @@ proj_str <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=
 #ARG
 file_format <- ".rst" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"sbt_book_figures_02122018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_book_figures_02202018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 datafname <- NULL #Need to update this
 coord_names <- "x;y" #PARAM 9
@@ -395,6 +395,7 @@ dev.off()
 data_fname <- r_var
 #r_ref <- NULL
 
+#debug(accuracy_space_time_calc)
 accuracy_space_and_time_obj <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
                                  r_spat_pred=r_spat_pred,
                                  s_raster=data_fname,
@@ -483,6 +484,9 @@ title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note t
 par(op)
 dev.off()
 
+############################################################
+###Figure 5:  Average Temporal profiles by zones for the time series under study
+
 #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
 
 #mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
@@ -494,6 +498,7 @@ dev.off()
 mae_zones_tb <- accuracy_space_and_time_obj$mae_zones_tb
 
 n_zones <- length(unique(mae_zones_tb$zone))
+
 
 #mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
 
