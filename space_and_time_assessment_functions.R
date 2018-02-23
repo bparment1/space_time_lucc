@@ -310,7 +310,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   res_pix<-960
   col_mfrow<-1
   row_mfrow<-1
-  png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
+  png(filename=paste("Figure_temporal_profiles_MAE_overall_",out_suffix,".png",sep=""),
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
   temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
@@ -336,15 +336,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
   
-  #mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
-  #                      ac_temp_obj$mae_zones_tb[1:3,])
-  #mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
-  #                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
-  #                      ac_temp_obj$mae_zones_tb)
-  #mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
-  #                      ac_temp_obj$mae_zones_tb)
-  #mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb)[-1,],
-  #                      t(ac_temp_obj$mae_zones_tb)[-1,])
+
   df_zone <- ac_spat_obj$mae_zones_tb
   mae_zones_tb_spat <- format_mae_zones_tb(df_zone)
   df_zone <- ac_temp_obj$mae_zones_tb
@@ -364,6 +356,8 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
   
   #View(mae_zones_tb)
+
+  write.table(mae_tot_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
   
   ##### Let's set up the figure production now
   #View(mae_zones_tb)
@@ -376,6 +370,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   legend_val <- c("tempor model","spatial model")
   
+  i <- 1
   for(i in 1:n_zones){
     
     zone_val <- i
@@ -388,7 +383,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
     res_pix <- 960
     col_mfrow<- 1
     row_mfrow<- 0.7
-    png(filename=paste("Figure_temporal_profiles_MAE_zones_",out_suffix,".png",sep=""),
+    png(filename=paste("Figure_temporal_profiles_MAE_zones_",zone_val,"_",out_suffix,".png",sep=""),
         width=col_mfrow*res_pix,height=row_mfrow*res_pix)
     
     formula_str <- as.formula(paste0(paste0("mae"," ~ ","time")))
@@ -429,46 +424,16 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
            lwd=3,
            cex=1.5,
            bty="n")
-    title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
+    title_str <- paste0("Zone ",zone_val," MAE for spatial and temporal models ")
+    title(title_str,cex.main=2.3,font=2)
+    #title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
     par(op)
     dev.off()
     
   }
   
+  #### Add thing to convert using 
   
-  
-  
-  
-  
-  
-  mydata<- mae_zones_tb
-  dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-  #dd$lag <- mydata$lag 
-  #drop first few rows that contain no data but zones...
-  n_methods <- 2 #2 because we have 2 methods... (one for space and one for time)
-  n_start <-n_zones*2 +1 
-  dd <- dd[n_start:nrow(dd),]
-  
-  dd$zones <- mydata$zones
-  dd$method <- mydata$method
-  
-  dd$zones <- mydata$zone #use recycle rule
-  
-  #Note that to get the title correct, one needs to add
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  p <- xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-              strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
-              auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                              border = FALSE, lines = TRUE,cex=1.2))
-  try(print(p))
-  
-  dev.off()
-  #histogram(r_zonal)
   
   ############## Prepare return object #############
   
