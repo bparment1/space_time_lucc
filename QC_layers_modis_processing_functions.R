@@ -201,15 +201,35 @@ generate_qc_val_from_int32_reflectance <- function(val,bit_range_qc){
 }
 
 ## This can be a general function for other qc too
-apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,NA_flag_val=-9999,rast_mask=T,out_dir=".",out_suffix=""){
-  #This function generates and applies a mask based on the QC layer information
-  #Description of the QC table is available from LPDAAC:
-  #https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09a1
+apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,NA_flag_val=NULL,rast_mask=T,out_dir=".",out_suffix=""){
+  #
+  #This function generates and applies a mask based on the QC layer information.
+  #This function may be used with several MODIS products with current implementation for:
+  # - mod09a1
+  #
+  #MODIS products Description of the QC table is available from LPDAAC 
+  #Information https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/
+  #
   #AUTHORS: Benoit Parmentier
   #CREATED: 02/23/2018
   #MODIFIED: 02/23/2018
   
+  #INPUTS
+  #1) i: index for the list of files to process (by dates)
+  #2) rast_qc: list of raster with qc flags from MODIS
+  #3) rast_var: list of raster with variable from MODIS
+  #4) qc_table_modis_selected: MODIS QC table with selected BitComb to retain
+  #5) NA_flag_val: NA value to assign for the output
+  #6) rast_mask:
+  #
+  #OUTPUTS
+  #
+  #
+  #
+  
   ### Begin function ###
+
+  #### Part 1: extract information and set out_dir
   
   if(!file.exists(out_dir)){
     dir.create(out_dir)
@@ -218,13 +238,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   rast_qc <- rast_qc[[i]]
   rast_var <- rast_var[[i]]
   
-  #if(class(r_qc)=="character"){
-  #  r_qc <- raster(r_qc)
-  #}
-  #if(class(r_qc)=="character"){
-  #  r_var <- raster(r_var)
-  #}  
-  
+
   if(is.character(rast_qc)==TRUE){
     rast_name_qc <- rast_qc
     rast_qc <-raster(rast_qc)
@@ -238,6 +252,14 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   }else{
     rast_name_var <- filename(rast_var)
   }
+
+  if(is.null(NA_flag_val)){
+    NA_flag_val <- NAvalue(rast_var)
+  }
+  
+  data_type_str <- dataType(rast_var)
+  
+  #### Part 2: Process and interpret QC values from raster
   
   unique_vals <- unique(rast_qc) #first get unique values
   
@@ -252,11 +274,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   #length(list_qc_val)
   length(unique_vals)
   
-  ### Find if need to mask the values:
-  #### Now compare:
-  
-  #debug(screen_qc_bitNo)
-  #test <- screen_qc_bitNo(list_qc_val[[1]],qc_table_modis)
+  #### Part 3: Compare qc values selected to qc values present in the raster QC
   
   list_qc_val_screened <- lapply(list_qc_val,
                                  FUN=screen_qc_bitNo,
@@ -270,28 +288,23 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   df_qc_val$rc_val <- 1 #create new column with mask val to use
   df_qc_val$rc_val[df_qc_val$mask_val==1] <- NA #if mask_val is 1 then set to NA
   
-  ###### Reclassify QC image if necessary:
+  #View(df_qc_val)
   
-  #qc_mask_filename
-  if(sum(df_qc_val$mask_val)==0 & rast_mask==TRUE){
-    val <- 1 
-    setvalf <- function(x){rep(val,x)}
-    r_qc_m <- init(rast_qc, fun=setvalf) # mask layer is all one, nothing to mask
-  }
-  
-  if(sum(df_qc_val$mask_val)> 0 & rast_mask==TRUE){
-    r_qc_m <- subs(rast_qc, df_qc_val,by="val",which="rc_val")
-    #Use "subs" function to assign NA to values that are masked, column 1 contains the identifiers i.e. values in raster
-    #r_qc_m <- subs(r_qc, df_qc_val,by=1,which=3)
-  }
+  #### Part 4: Reclassify QC image and mask
 
-  ##### Apply mask:
+  ## Use "subs" function to assign NA to values that are masked, column 1 contains the identifiers i.e. values in raster
+  r_qc_m <- subs(rast_qc, df_qc_val,by="val",which="rc_val")
+  #r_qc_m <- subs(r_qc, df_qc_val,by=1,which=3)
+
+  ## Apply mask:
   
   rast_var_m <- mask(rast_var,r_qc_m)
   
+  #### Part 5: Write out images and return values
+  
   if(rast_mask==FALSE){  #then only write out variable that is masked out
-    raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
-    raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
+    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     
     #### change to compress if format is tif!! add this later...
     #file_format <- extension(rast_name_var)
@@ -301,6 +314,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
                 filename=file.path(out_dir,raster_name),
                 bylayer=FALSE,
                 bandorder="BSQ",
+                datatype=data_type_str,
                 overwrite=TRUE)
     
     ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
@@ -318,7 +332,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
     ## end of remove section
     return(raster_name)
   }else{ #if keep mask true
-    raster_name <-basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
     raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
 
     #### change to compress if format is tif!! add this later...
@@ -328,12 +342,19 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
                 filename=file.path(out_dir,raster_name),
                 bylayer=FALSE,
                 bandorder="BSQ",
+                datatype=data_type_str,
                 overwrite=TRUE)
     
     raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
     raster_name_qc <- paste(raster_name_qc,"_","mask","_",out_suffix,extension(rast_name_qc),sep="")
-    writeRaster(r_qc_m, NAflag=NA_flag_val,filename=file.path(out_dir,raster_name_qc)
-                ,bylayer=FALSE,bandorder="BSQ",overwrite=TRUE)
+    
+    writeRaster(r_qc_m, 
+                #NAflag=NA_flag_val,
+                filename=file.path(out_dir,raster_name_qc),
+                bylayer=FALSE,
+                bandorder="BSQ",
+                overwrite=TRUE)
+    
     r_stack_name <- list(file.path(out_dir,raster_name),file.path(out_dir,raster_name_qc))
     names(r_stack_name) <- c("var","mask")
     
@@ -354,20 +375,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
     return(r_stack_name)
   }
   
-  #writeRaster()#as tmp file!!!
-  ########Apply mask
-  
-  mask()
-  raster_name <- ""
-  writeRaster()
-  
-  ##### if keep_mask==TRUE
-  raster_name <- ""
-  writeRaster()
-  
-  return()
 }
-
 
 
 screen_for_qc_valid_fun <-function(i,list_param){
