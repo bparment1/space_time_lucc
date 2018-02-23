@@ -106,94 +106,6 @@ screen_qc_bitNo <- function(qc_table_modis_selected,qc_val){
   return(qc_val)
 }
 
-#####  Parameters and argument set up ###########
-
-#ARG1: input dir
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/"
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/mask_qc_h09v06/"
-
-## PRODUCT 3: Reflectance
-# This is for MOD09
-#
-#https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09a1
-#This is 32 bits
-r_qc_s1 <- raster(file.path(in_dir,"MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif"))
-r_var_s1 <- raster(file.path(in_dir,"MOD09A1_A2005009_h09v06_006_reflectance.tif"))
-
-dataType(r_qc_s1) #is FLT8S, 64 bits real numbers
-out_dir_s <- getwd()
-#INT4U
-#https://www.rdocumentation.org/packages/raster/versions/2.6-7/topics/dataType
-#INT4U is available but they are best avoided as R does not support 32-bit unsigned integers.
-data_type_str <- "INT4U"
-raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m_INTU4.tif"
-writeRaster(r_qc_s1,
-            filename=file.path(out_dir_s,raster_name_tmp),
-            #bylayer=multiband,
-            #suffix=paste(names(r),"_",out_suffix,sep=""),
-            #format=format_raster,
-            #suffix=paste(names(r)),
-            overwrite=TRUE,
-            #NAflag=NA_flag_val,
-            datatype=data_type_str)
-r <- raster(file.path(out_dir_s,raster_name_tmp))
-unique_vals_test <- unique(r)
-#The flags are 32 bits int
-#library(binaryLogic)
-unique_vals <- unique(r_qc_s1) #first get unique values
-unique_vals==unique_vals_test
-#convert decimal to intu32
-bin(255)
-1*2^7 + 1*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + 1*2^1 + 1*2^0 
-length(bin(255))
-
-bin(61)
-#[1] 1 1 1 1 0 1
-
-length(bin(61))
-
-0*2^7 + 0*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + 0*2^1 + + 1*2^0 
-
-#So you need to pad on the left!!!
-
-intToBits(as.integer(65))
-val <- (2^32)-1
-intToBits(val)
-
-test<- (intToBits(61))    
-length(intToBits(61))
-#rawToBits()
-class(test)  
-test[1]
-class(as.integer(65))
-#line1<-c(readBin(to.read,"int",5), 
-#         readBin(to.read,"double",1,size=4),
-#         readBin(to.read,"int",2))
-test <- (unique_vals[1]) #no need to do this
-test <- 10
-bin_val<- bin(test)
-bin_val
-bin_val <- as.numeric(as.logical(bin_val))
-
-#debug(convert_decimal_to_uint32)
-convert_decimal_to_uint32(61)
-bin(61)
-
-#add_zero <- 2
-#rep(0,add_zero)
-
-#debug(convert_to_decimal)
-test
-bin(test)
-convert_to_decimal(bin_val)
-test
-
-rep(NA,64)
-debug(generate_qc_MODIS_reflectance_MOD09_table)
-qc_table_modis <- generate_qc_MODIS_reflectance_MOD09_table()
-
-View(qc_table_modis)
-
 generate_qc_MODIS_reflectance_MOD09_table <- function(){
   #This function generates a MODIS quality flag table based on the information
   #from LPDAAC:
@@ -270,24 +182,46 @@ generate_qc_MODIS_reflectance_MOD09_table <- function(){
   return(qc_table_modis)
 }
 
-### 
+#####  Parameters and argument set up ###########
 
-#selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
-selected_flags <- list(Sur_refl_qc_500m ="highest quality",
-                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
-                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
+#ARG1: input dir
+in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/"
+out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/mask_qc_h09v06/"
 
-#sbuset(qc_table_modis
-#lapply(selected_flags,function(x){subset(qc_table_modis,})
+## PRODUCT 3: Reflectance
+# This is for MOD09
+#
+#https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09a1
+#This is 32 bits
+r_qc_s1 <- raster(file.path(in_dir,"MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif"))
+r_var_s1 <- raster(file.path(in_dir,"MOD09A1_A2005009_h09v06_006_reflectance.tif"))
 
-#### Now read in the values and process to match the selected flags!!!
-
-i <- 1
-val <- unique_vals[i]
-
-undebug(convert_decimal_to_uint32)
-bin_val <- convert_decimal_to_uint32(val)
-convert_to_decimal(bin_val)
+dataType(r_qc_s1) #is FLT8S, 64 bits real numbers
+out_dir_s <- getwd()
+#INT4U
+#https://www.rdocumentation.org/packages/raster/versions/2.6-7/topics/dataType
+#INT4U is available but they are best avoided as R does not support 32-bit unsigned integers.
+data_type_str <- "INT4U"
+raster_name_tmp <- "MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m_INTU4.tif"
+writeRaster(r_qc_s1,
+            filename=file.path(out_dir_s,raster_name_tmp),
+            #bylayer=multiband,
+            #suffix=paste(names(r),"_",out_suffix,sep=""),
+            #format=format_raster,
+            #suffix=paste(names(r)),
+            overwrite=TRUE,
+            #NAflag=NA_flag_val,
+            datatype=data_type_str)
+r <- raster(file.path(out_dir_s,raster_name_tmp))
+unique_vals_test <- unique(r)
+#The flags are 32 bits int
+#library(binaryLogic)
+unique_vals <- unique(r_qc_s1) #first get unique values
+unique_vals==unique_vals_test
+#convert decimal to intu32
+bin(255)
+1*2^7 + 1*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + 1*2^1 + 1*2^0 
+length(bin(255))
 
 ##hdf are in big endian format
 bin_val
@@ -298,42 +232,37 @@ val
 ### Here is Big Endian format: least significant bit is on the right
 ### x* 2^31 + x* 2^30 + x* 2^29 + ... + x* 2^1 + x* 2^0
 
-#?bitShiftR()
-#bitShiftR(val,1)
-#(2^30)/2
+bin(61)
+#[1] 1 1 1 1 0 1
 
-#bitShiftR(val,1)
-#(2^30)/2
-#?bitwShiftL()
-unique_bit_range <- unique(qc_table_modis$bitNo)
+length(bin(61))
 
-i <- 1 #modland
+0*2^7 + 0*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 1*2^2 + 0*2^1 + + 1*2^0 
 
-bit_range_processed <- unique_bit_range[i]
-start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
-end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
-bin_val[start_bit:end_bit] # corrected produced at less than ...
+#So you need to pad on the left!!!
 
-i <- 2 #band 1
+intToBits(as.integer(65))
+val <- (2^32)-1
+intToBits(val)
 
-bit_range_processed <- unique_bit_range[i]
-start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
-end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
-bin_val[start_bit:end_bit] # corrected produced at less than ...
+test<- (intToBits(61))    
+length(intToBits(61))
+#rawToBits()
+class(test)  
+test[1]
+#debug(generate_qc_MODIS_reflectance_MOD09_table)
+qc_table_modis <- generate_qc_MODIS_reflectance_MOD09_table()
 
-i <- 3 #band 2
+#View(qc_table_modis)
 
-bit_range_processed <- unique_bit_range[i]
-start_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[1]) +1 #start at 1 in R
-end_bit <- as.integer(unlist(strsplit(bit_range_processed,"-"))[2]) +1
-bin_val[start_bit:end_bit] # corrected produced at less than ...
+#### Now read in the values and process to match the selected flags!!!
 
-bit_range_processed <- unique_bit_range[i]
+i <- 1
+val <- unique_vals[i]
 
-#debug(extract_qc_bit_info)
-#test_bin_val_qc <- extract_qc_bit_info(bit_range_processed,bin_val=bin_val)
-#test_bin_val_qc
-
+#undebug(convert_decimal_to_uint32)
+bin_val <- convert_decimal_to_uint32(val)
+convert_to_decimal(bin_val)
 
 ### Do this for unique value 1:
 i <- 1
@@ -349,20 +278,9 @@ test_bin_val_qc[[1]]
 names(qc_table_modis)
 
 qc_val <- do.call(rbind,test_bin_val_qc)
-View(qc_val)
+#View(qc_val)
 
-
-#selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
-selected_flags <- list(Sur_refl_qc_500m ="highest quality",
-                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
-                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
-
-#selected_flags <- list(Sur_refl_qc_500m ="highest quality",
-#                       Sur_refl_qc_500m = "corrected product produced at ideal quality all bands",
-#                       Sur_refl_qc_500m = "corrected product produced at less than ideal quality some or all bands")
-
-
-
+#### This is where you set up the desired qc flags:
 desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
 
 qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
@@ -371,6 +289,49 @@ View(qc_table_modis_selected)
 ### Now go through each value and compare?
 qc_val
 
+#### Generate function to create mask from qc
+
+generate_mask_from_qc_layer <- function(r_qc,qc_table_modis_selected,out_dir,out_suffix){
+  #
+  #
+  generate_qc_val_from_int32_reflectance <- function(val){
+    #
+    #
+    
+    #i <- 1
+    #val <- unique_vals[i]
+    
+    bin_val <- convert_decimal_to_uint32(val)
+    convert_to_decimal(bin_val)
+    
+    test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
+    test_bin_val_qc[[1]]
+    
+    qc_val <- do.call(rbind,test_bin_val_qc)
+    #View(qc_val)
+    return(qc_val)
+  }
+  
+  ### Begin function ###
+  
+  if(class(r_qc)=="character"){
+    r_qc <- raster(r_qc)
+  }
+  
+  unique_vals <- unique(r_qc) #first get unique values
+  
+  ### Do this for unique value 1:
+  
+  list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance)
+  
+  #### Now compare:
+  screen_qc_bitNo(qc_table_modis,list_qc_val[[1]])
+  
+  ### Find if need to mask the values:
+  
+  
+  return()
+}
 
 #### Now apply mask
 
