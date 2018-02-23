@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02232018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02232018b.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -86,7 +86,11 @@ n_time_event <- "110;7;7" #PARAM 12 #timestep corresponding to the event for obs
 time_window_selected <- "105;114" #PARAM 13: use alll dates for now
 previous_step <- TRUE #PARAM 14
 date_range <- "2001.01.01;2010.12.31" #date
+#Closest date to the even for each example:
+date_event <- "2005-09-24" #Hurricane RITA
 
+
+cat_name <- NULL
 r_ref <- NULL
 temp_fname <- NULL #Need to update this
 spat_fname <- NULL #Need to update this
@@ -99,8 +103,6 @@ mosaic_out_suffix <- NULL
 ###########
 date_range_str <- unlist(strsplit(date_range,";"))
 dates <- generate_dates_by_step(date_range_str[1],date_range_str[2],16)$dates
-#Closest date to the even for each example:
-date_event <- "2005-09-24" #Hurricane RITA
 
 #method_space <- df_args[19,index_val] 
 #method_time <- df_args[20,index_val] 
@@ -370,7 +372,7 @@ freq_zonal_df <- as.data.frame(freq(r_zonal,merge=T))
 n_zones <- sum(as.numeric(!is.na(freq_zonal_df$value)))
 col_pal_all <- c("red","blue","green","brown","violet") #used in all the areas, use palette from earlier code
 
-if(!is.null(cat_name)){
+if(is.null(cat_name)){
   cat_name <- rev(paste("Zone",1:n_zones))
 }
 
