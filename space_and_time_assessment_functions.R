@@ -5,11 +5,11 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/22/2017
+#DATE MODIFIED: 02/23/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
-#TO DO:
+#TO DO: Add movie generation: one for raster images and one for sbt sequence + time profile
 #
 #COMMIT: splitting function and main script for the assessment
 #
@@ -145,6 +145,23 @@ calc_ac_stat_fun <- function(r_pred_s,r_var_s,r_zones,file_format=".tif",out_suf
   names(ac_obj) <- c("mae_tb","rmse_tb","sd_mae_tb","mae_zones_tb","rmse_zones_tb","sd_mae_zones_tb","sd_rmse_tb")
   
   return(ac_obj)
+}
+
+format_mae_zones_tb <- function(df_zone){
+  #Reformat data from mae_zone computation in easy format
+  #
+  val_zone_mae <- t(df_zone)[-1,]
+  head(val_zone_mae)
+  val_mae <- as.vector(val_zone_mae)
+  df_zone_mae <- data.frame(mae=val_mae)
+  n_times_step <- nrow(df_zone_mae)/2
+  n_zones <- ncol(val_zone_mae)
+  df_zone_mae$zone <- unlist(lapply(1:n_zones,function(x)(rep(x,n_times_step))))
+  #mae_zones_tb <- mae_zones_tb[-1,]
+  #names(df_zone_mae_tb) <- paste0("zone_",1:ncol(mae_zones_tb))
+  df_zone_mae$time <- 1:n_times_step 
+  #mae_zones_tb$time <- 1:n_times_step 
+  return(df_zone_mae)
 }
 
 
@@ -326,120 +343,99 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #                      ac_temp_obj$mae_zones_tb)
   #mae_zones_tb <- rbind(ac_spat_obj$mae_zones_tb,
   #                      ac_temp_obj$mae_zones_tb)
-  mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb)[-1,],
-                        t(ac_temp_obj$mae_zones_tb)[-1,])
+  #mae_zones_tb <- rbind(t(ac_spat_obj$mae_zones_tb)[-1,],
+  #                      t(ac_temp_obj$mae_zones_tb)[-1,])
   df_zone <- ac_spat_obj$mae_zones_tb
   mae_zones_tb_spat <- format_mae_zones_tb(df_zone)
-  df_zone <- ac_spat_obj$mae_zones_tb
+  df_zone <- ac_temp_obj$mae_zones_tb
   mae_zones_tb_temp <- format_mae_zones_tb(df_zone)
   
   #View(mae_zones_tb_spat)
-  mae_zones_tb_spat$method <- method_space
-
-  method_time <- unlist(strsplit(method_time,";"))
-  method_space <- unlist(strsplit(method_space,";"))
+  mae_zones_tb_spat$method <- name_method_space
+  mae_zones_tb_temp$method <- name_method_time
   
-  name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
-  name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
+  mae_zones_tb_spat$type <- "spatial"
+  mae_zones_tb_temp$type <- "temporal"
   
-  format_mae_zones_tb <- function(df_zone){
-    #Reformat data from mae_zone computation in easy format
-    #
-    val_zone_mae <- t(df_zone)[-1,]
-    head(val_zone_mae)
-    val_mae <- as.vector(val_zone_mae)
-    df_zone_mae <- data.frame(mae=val_mae)
-    n_times_step <- nrow(df_zone_mae)/2
-    n_zones <- ncol(val_zone_mae)
-    df_zone_mae$zone <- unlist(lapply(1:n_zones,function(x)(rep(x,n_times_step))))
-    #mae_zones_tb <- mae_zones_tb[-1,]
-    #names(df_zone_mae_tb) <- paste0("zone_",1:ncol(mae_zones_tb))
-    df_zone_mae$time <- 1:n_times_step 
-    #mae_zones_tb$time <- 1:n_times_step 
-    return(df_zone_mae)
-  }
+  mae_zones_tb <- rbind(mae_zones_tb_spat,mae_zones_tb_temp)
+  #method_time <- unlist(strsplit(method_time,";"))
+  #method_space <- unlist(strsplit(method_space,";"))
+  #name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
+  #name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
   
-
-  ##### Let's set up the figure production now
-  View(mae_zones_tb)
-  #test <- rbind(mae_zones_tb, c(NA,1:10,NA))
-  dim(mae_zones_tb)
-  
-  #dim(mae_tot_tb)
-  mydata<- mae_zones_tb
-  #mydata <- test
-  dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-  #dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-  
-  mae_zones_tb_long <- dd #long format
-  names(mae_zones_tb_long)
-  names(dd)
-  mae_zones_tb <- as.data.frame(t(mae_zones_tb))
   #View(mae_zones_tb)
-  method_time <- unlist(strsplit(method_time,";"))
-  method_space <- unlist(strsplit(method_space,";"))
   
-  name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
-  name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
-  #mae_tot_tb <- as.data.frame(mae_tot_tb)
-  #row.names(mae_tot_tb) <- NULL
-  #names(mae_tot_tb)<- c(name_method_space,name_method_time)
-  mae_zones_tb$time <- 1:nrow(mae_zones_tb)
+  ##### Let's set up the figure production now
+  #View(mae_zones_tb)
+  #test <- rbind(mae_zones_tb, c(NA,1:10,NA))
+  #dim(mae_zones_tb)
   
-  View(mae_zones_tb)
-  ## Input params for the plot:
-  #https://stackoverflow.com/questions/5506046/how-do-i-put-more-space-between-the-axis-labels-and-axis-title-in-an-r-boxplot
+  ### Now generate plot
+  #y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
+  y_range <- range(mae_zones_tb$mae)
   
-  y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
   legend_val <- c("tempor model","spatial model")
   
-  res_pix <- 960
-  col_mfrow<- 1
-  row_mfrow<- 0.7
-  png(filename=paste("Figure_temporal_profiles_MAE_zones_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
-  spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
-  
-  #par(mgp=c(0,1,0))
-  ## margin for side 2 is 7 lines in size
-  #op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
-  op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
-  
-  plot(temp_formula_str,type="b",
-       col="cyan",
-       pch=16, #filled in circles...
-       lwd=3,
-       data=mae_zones_tb,
-       ylim=y_range,
-       ylab="Mean Absolute Error (MAE)",
-       xaxt="n",
-       xlab="Time",
-       cex.lab=2,
-       cex.axis=1.5,
-       cex=1.5)
-  lines(spat_formula_str, 
-        type="b",
-        lwd=3,
-        pch=16, #filled in circles
-        col="magenta",
-        data=mae_tot_tb)
-  
-  x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
-  axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
-  #axis(2, cex.axis = 2)
-  
-  legend("topleft",
-         legend=legend_val,
-         col=c("cyan","magenta"),
-         lty=1,
+  for(i in 1:n_zones){
+    
+    zone_val <- i
+    data_mae <- subset(mae_zones_tb,mae_zones_tb$zone==zone_val)
+    data_mae_space <- subset(data_mae,method==name_method_space)
+    data_mae_time <- subset(data_mae,method==name_method_time)
+    
+    #View(data_mae)
+    
+    res_pix <- 960
+    col_mfrow<- 1
+    row_mfrow<- 0.7
+    png(filename=paste("Figure_temporal_profiles_MAE_zones_",out_suffix,".png",sep=""),
+        width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+    
+    formula_str <- as.formula(paste0(paste0("mae"," ~ ","time")))
+    #spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+    
+    #par(mgp=c(0,1,0))
+    ## margin for side 2 is 7 lines in size
+    #op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
+    op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
+    
+    plot(formula_str,type="b",
+         col="cyan",
+         pch=16, #filled in circles...
          lwd=3,
-         cex=1.5,
-         bty="n")
-  title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
-  par(op)
-  dev.off()
+         data= data_mae_time,
+         ylim=y_range,
+         ylab="Mean Absolute Error (MAE)",
+         xaxt="n",
+         xlab="Time",
+         cex.lab=2,
+         cex.axis=1.5,
+         cex=1.5)
+    lines(formula_str, 
+          type="b",
+          lwd=3,
+          pch=16, #filled in circles
+          col="magenta",
+          data=data_mae_space)
+    
+    x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+    axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
+    #axis(2, cex.axis = 2)
+    
+    legend("topleft",
+           legend=legend_val,
+           col=c("cyan","magenta"),
+           lty=1,
+           lwd=3,
+           cex=1.5,
+           bty="n")
+    title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
+    par(op)
+    dev.off()
+    
+  }
+  
+  
   
   
   
