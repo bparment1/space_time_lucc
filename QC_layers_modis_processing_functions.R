@@ -32,18 +32,32 @@ library(lubridate)
 library(miscFuncs) #contains binary/bit processing helper functions
 library(data.table)
 
-################### list of functions
+###### Functions used in this script sourced from other files
 
-#[1] convert_decimal_to_uint32
-#[2] convert_to_decimal
-#[3] extract_qc_bit_info
-#[4] generate_mask_from_qc_layer
-#[5] generate_qc_MODIS_reflectance_MOD09_table
-#[6] generate_qc_val_from_int32_reflectance
-#[7] screen_qc_bitNo
+#function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02202018.R" #PARAM 1
 
-########### Functions 
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
 
+#zonal stratum for NLU
+##### Functions used in this script 
+
+create_dir_fun <- function(out_dir,out_suffix){
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    out_dir <- file.path(out_dir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(out_dir)){
+    dir.create(out_dir)
+  }
+  return(out_dir)
+}
 
 convert_decimal_to_uint32 <- function(x){
   bin_val <- bin(x)
@@ -182,7 +196,7 @@ generate_qc_MODIS_reflectance_MOD09_table <- function(){
   return(qc_table_modis)
 }
 
-generate_qc_val_from_int32_reflectance <- function(val,bit_range_qc){
+generate_qc_val_from_int32_reflectance <- function(val){
   #
   #
   
@@ -192,7 +206,7 @@ generate_qc_val_from_int32_reflectance <- function(val,bit_range_qc){
   bin_val <- convert_decimal_to_uint32(val)
   convert_to_decimal(bin_val)
   
-  test_bin_val_qc <- lapply(bit_range_qc,FUN=extract_qc_bit_info,bin_val=bin_val)
+  test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
   test_bin_val_qc[[1]]
   
   qc_val <- do.call(rbind,test_bin_val_qc)
@@ -214,13 +228,8 @@ generate_mask_from_qc_layer <- function(r_qc,qc_table_modis_selected,out_dir="."
   unique_vals <- unique(r_qc) #first get unique values
   
   ### Do this for unique value 1:
-  debug(generate_qc_val_from_int32_reflectance)
-  qc_val <- generate_qc_val_from_int32_reflectance(unique_vals)
   
-  #unique_bit_range <- unique(qc_table_modis$bitNo)
-  bit_range_qc <- unique(qc_table_modis$bitNo) #specific bit range to use to interpret binary
-  
-  list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance,bit_range_qc)
+  list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance)
   #length(list_qc_val)
   length(unique_vals)
   
