@@ -90,7 +90,7 @@ convert_to_decimal <- function(bin_val){
   sum(unlist(vals))
 }
 
-screen_qc_bitNo <- function(qc_table_modis_selected,qc_val){
+screen_qc_bitNo <- function(qc_val,qc_table_modis_selected){
   
   unique_bitNo  <- unique(qc_table_modis_selected$bitNo)
   
@@ -103,7 +103,18 @@ screen_qc_bitNo <- function(qc_table_modis_selected,qc_val){
     list_match_val[[i]] <- qc_val[qc_val$bitNo==bitNo_val,2]%in%qc_table_modis_selected[qc_table_modis_selected$bitNo==bitNo_val,c("BitComb")]
   }
   qc_val$screen_qc <- as.numeric(list_match_val)
-  return(qc_val)
+  sum_val <- sum(qc_val$screen_qc)
+  
+  if(sum_val==nrow(qc_val)){
+    mask_val <- 0 #do not mask, keep value
+  }else{
+    mask_val <- 0 #mask
+  }
+  
+  obj_screen_qc_bitNo <- list(qc_val,mask_val)
+  names(obj_screen_qc_bitNo) <- c("qc_val","mask_val")
+  
+  return(obj_screen_qc_bitNo)
 }
 
 generate_qc_MODIS_reflectance_MOD09_table <- function(){
@@ -180,6 +191,24 @@ generate_qc_MODIS_reflectance_MOD09_table <- function(){
   
   write.table(qc_table_modis,file=file.path(out_dir,"qc_table_modis.txt"),sep=",")
   return(qc_table_modis)
+}
+
+generate_qc_val_from_int32_reflectance <- function(val){
+  #
+  #
+  
+  #i <- 1
+  #val <- unique_vals[i]
+  
+  bin_val <- convert_decimal_to_uint32(val)
+  convert_to_decimal(bin_val)
+  
+  test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
+  test_bin_val_qc[[1]]
+  
+  qc_val <- do.call(rbind,test_bin_val_qc)
+  #View(qc_val)
+  return(qc_val)
 }
 
 #####  Parameters and argument set up ###########
@@ -289,28 +318,13 @@ View(qc_table_modis_selected)
 ### Now go through each value and compare?
 qc_val
 
+debug(generate_mask_from_qc_layer)
 #### Generate function to create mask from qc
+generate_mask_from_qc_layer(r_qc= r_qc_s1, qc_table_modis=qc_table_modis,out_dir=out_dir_s,out_suffix="")
 
-generate_mask_from_qc_layer <- function(r_qc,qc_table_modis_selected,out_dir,out_suffix){
+generate_mask_from_qc_layer <- function(r_qc,qc_table_modis_selected,out_dir=".",out_suffix=""){
   #
   #
-  generate_qc_val_from_int32_reflectance <- function(val){
-    #
-    #
-    
-    #i <- 1
-    #val <- unique_vals[i]
-    
-    bin_val <- convert_decimal_to_uint32(val)
-    convert_to_decimal(bin_val)
-    
-    test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
-    test_bin_val_qc[[1]]
-    
-    qc_val <- do.call(rbind,test_bin_val_qc)
-    #View(qc_val)
-    return(qc_val)
-  }
   
   ### Begin function ###
   
@@ -323,12 +337,32 @@ generate_mask_from_qc_layer <- function(r_qc,qc_table_modis_selected,out_dir,out
   ### Do this for unique value 1:
   
   list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance)
-  
-  #### Now compare:
-  screen_qc_bitNo(qc_table_modis,list_qc_val[[1]])
+  #length(list_qc_val)
+  length(unique_vals)
   
   ### Find if need to mask the values:
+  #### Now compare:
+  list_qc_val_screened <- lapply(list_qc_val,
+                                 FUN=screen_qc_bitNo,
+                                 qc_table_modis = qc_table_modis)
+  names(list_qc_val_screened[[1]])
+  rm(list_qc_val)
   
+  mask_val <- unlist(lapply(list_qc_val_screened,FUN=function(x){x$mask_val}))
+  
+  df_qc_val <- data.frame(val=unique_vals,mask_val=mask_val)
+  #View(df_qc_val)
+  
+  ###### Reclassify QC image if necessary:
+  
+  if(sum(df_qc_val$mask_val)==0){
+    qc_mask <- init(r_qc,0)
+  }else{
+    qc_mask <- subs(r_qc, df_qc_val,by="val",which="mask_val")
+  }
+  
+  #####
+  writeRaster()
   
   return()
 }
