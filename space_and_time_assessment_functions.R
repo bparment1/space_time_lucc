@@ -357,20 +357,22 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   #View(mae_zones_tb)
 
-  write.table(mae_tot_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
+  write.table(mae_zones_tb,
+              file=file.path(out_dir,paste("mae_zones_tb","_",out_suffix,".txt",sep="")))
   
   ##### Let's set up the figure production now
   #View(mae_zones_tb)
-  #test <- rbind(mae_zones_tb, c(NA,1:10,NA))
-  #dim(mae_zones_tb)
-  
+
+
   ### Now generate plot
   #y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
-  y_range <- range(mae_zones_tb$mae)
   
+  y_range <- range(mae_zones_tb$mae)
   legend_val <- c("tempor model","spatial model")
   
   i <- 1
+  list_figures_mae_profiles_png <- vector("list",length=n_zones)
+    
   for(i in 1:n_zones){
     
     zone_val <- i
@@ -383,7 +385,9 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
     res_pix <- 960
     col_mfrow<- 1
     row_mfrow<- 0.7
-    png(filename=paste("Figure_temporal_profiles_MAE_zones_",zone_val,"_",out_suffix,".png",sep=""),
+    
+    png_filename <- paste("Figure_temporal_profiles_MAE_zones_",zone_val,"_",out_suffix,".png",sep="")
+    png(filename=png_filename,
         width=col_mfrow*res_pix,height=row_mfrow*res_pix)
     
     formula_str <- as.formula(paste0(paste0("mae"," ~ ","time")))
@@ -430,9 +434,36 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
     par(op)
     dev.off()
     
+    list_figures_mae_profiles_png[[i]] <- png_filename 
   }
   
   #### Add thing to convert using 
+  
+  #Use ImageMagick
+  #convert Figure_4a_agri_hinterland_cat_sum_flow_10182016.png Figure_4b_meat_hinterland_cat_sum_flow_10182016.png Figure_4c_livestock_hinterland_cat_sum_flow_10182016.png -append test.png
+  #use convert fig1.png fig2.png fig3.png -append to join vertically
+  #use convert fig1.png fig2.png fig3.png +append to join left to right
+  
+  #paste(unlist(list_figures_mae_profiles_png),collapse=" ")
+  
+  png_filename_mae_combined <- file.path(out_dir,paste("Figure_3_mae_profiles_by_zones_","_",out_suffix,".png",sep=""))
+  png_filename_mae_combined <- paste("Figure_3_mae_profiles_by_zones_","_",out_suffix,".png",sep="")
+  
+  cmd_str <- paste("convert",
+                   #png_filename4a,
+                   #png_filename4b,
+                   #png_filename4c,
+                   paste(unlist(list_figures_mae_profiles_png),collapse=" "),
+                   "+append",
+                   png_filename_mae_combined,sep=" ")
+  system(cmd_str)
+  
+  #To look up later to change resolution with ImageMagick
+  #http://www.imagemagick.org/discourse-server/viewtopic.php?t=18241
+  #convert -units PixelsPerInch rose1.png -resample 300 rose2d.jpg
+  
+  #http://superuser.com/questions/479197/i-want-to-change-dpi-with-imagemagick-without-changing-the-actual-byte-size-of-t
+  #convert -units PixelsPerInch input.png -density 300 output.png
   
   
   ############## Prepare return object #############
