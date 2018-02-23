@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/22/2018
+#DATE MODIFIED: 02/23/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02222018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02232018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -362,30 +362,41 @@ dev.off()
 #######################################################
 ########## Figure 3:  Strata: Zonal areas maps
 
-col_pal_all <- c("red","blue","green") #used in all the areas
-
 ############
 ##Figure 3a: Zonal figure
+
+freq_zonal_df <- as.data.frame(freq(r_zonal,merge=T))
+
+n_zones <- sum(as.numeric(!is.na(freq_zonal_df$value)))
+col_pal_all <- c("red","blue","green","brown","violet") #used in all the areas, use palette from earlier code
+
+if(!is.null(cat_name)){
+  cat_name <- rev(paste("Zone",1:n_zones))
+}
+
+title_str <- "FEMA flood zones"
 
 ### Find number of zones from freq tb
 layout_m <- c(1,1)
 png(paste("Figure","_3a_","zonal_variable_",out_suffix,".png", sep=""),
     height=480*layout_m[2],width=480*layout_m[1])
 
-cat_name <- rev(c("Zone 3","Zone 4","Zone 5"))
-cat_name <- rev(c("Zone 2","Zone 1"))
-par(xpd = FALSE)
-col_pal <- col_pal_all
+#cat_name <- rev(c("Zone 3","Zone 4","Zone 5"))
+#cat_name <- rev(c("Zone 2","Zone 1"))
+#par(xpd = FALSE)
+col_pal <- col_pal_all[1:n_zones]
 plot(r_zonal,col=col_pal,legend=F)
 #plot(r_zonal2,col=c("red","green"))EDG
 
-par(xpd = TRUE)
-legend(x = -87.4, y = 19.2, legend = cat_name, fill = rev(col_pal), 
+#par(xpd = TRUE)
+#"bottomright", "bottom", "bottomleft", "left", "topleft", "top", "topright", "right" and "center".
+legend("topleft", legend = cat_name, fill = rev(col_pal), 
        title="Zones",
-       cex = 0.9, inset = 0.9,bty="n")
-
+       cex = 0.9, 
+       #inset = 0.9,
+       bty="n")
+title(title_str)
 dev.off()
-
 
 ############################################################
 ###Figure 4:  Average Temporal profiles overall for the time series under study
