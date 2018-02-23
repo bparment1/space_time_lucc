@@ -32,7 +32,7 @@ library(data.table)
 ###### Functions used in this script sourced from other files
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-functions_qc_modis_processing <- "QC_modis_processing_functions_02232018.R"
+functions_qc_modis_processing <- "QC_modis_processing_functions_02232018b.R"
 source(file.path(script_path,functions_qc_modis_processing)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
@@ -138,26 +138,16 @@ val <- unique_vals[i]
 bin_val <- convert_decimal_to_uint32(val)
 convert_to_decimal(bin_val)
 
-test_bin_val_qc <- lapply(unique_bit_range,FUN=extract_qc_bit_info,bin_val=bin_val)
-test_bin_val_qc[[1]]
-## Now compare test_bin_val_qc with selected qc_table_modis
-
-names(qc_table_modis)
-
-qc_val <- do.call(rbind,test_bin_val_qc)
-#View(qc_val)
-
 #### This is where you set up the desired qc flags:
 desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
 
 qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
 View(qc_table_modis_selected)
 
-### Now go through each value and compare?
-qc_val
-
 debug(generate_mask_from_qc_layer)
 #### Generate function to create mask from qc
+unique_bit_range <- unique(qc_table_modis$bitNo)
+
 generate_mask_from_qc_layer(r_qc= r_qc_s1, qc_table_modis=qc_table_modis,out_dir=out_dir_s,out_suffix="")
 
 #### Now apply mask
