@@ -1,17 +1,21 @@
 #######################################    MODIS processing   #######################################
 ############################ Exploration of MOD09 reflectance QC Flags #######################################
 #This script explores the processing of QC flags for MODIS reflectance (MOD09).       
+#It relies on functions to help the processing of QC flags for MODIS.
+#The current available products are:
+# - reflectance (MOD09).       
+# - land surface temperature
+# - NDVI 
 #
 #
 #AUTHORS: Benoit Parmentier                                             
-#DATE CREATED: 11/07/2017 
+#DATE CREATED: 02/20/2018 
 #DATE MODIFIED: 02/23/2018
-#Version: 1
-
-#PROJECT: Space beats time Framework
+#Version 1
+#PROJECT: General use for MOD09A1 quality flag processing
 #TO DO:
 #
-#COMMIT: splitting function and main script for the assessment
+#COMMIT: testing the application of reflectance flags function
 #
 
 #################################################################################################
@@ -32,7 +36,7 @@ library(data.table)
 ###### Functions used in this script sourced from other files
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-functions_qc_modis_processing <- "QC_modis_processing_functions_02232018c.R"
+functions_qc_modis_processing <- "QC_modis_processing_functions_02232018e.R"
 source(file.path(script_path,functions_qc_modis_processing)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
@@ -144,14 +148,27 @@ desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
 qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
 #View(qc_table_modis_selected)
 
-#debug(generate_mask_from_qc_layer)
+#debug(apply_mask_from_qc_layer)
 #### Generate function to create mask from qc
 #unique_bit_range <- unique(qc_table_modis$bitNo)
 
-generate_mask_from_qc_layer(r_qc= r_qc_s1, qc_table_modis=qc_table_modis,out_dir=out_dir_s,out_suffix="")
+#apply_mask_from_qc_layer(r_qc= r_qc_s1, qc_table_modis=qc_table_modis,out_dir=out_dir_s,out_suffix="")
+#
+i <- 1
+out_suffix_s <- "masked"
 
-#### Now apply mask
+list_obj_mask <- apply_mask_from_qc_layer(i,
+                         rast_qc=r_qc_s1,
+                         rast_var=r_var_s1,
+                         qc_table_modis_selected,
+                         NA_flag_val= NULL,
+                         rast_mask=TRUE,
+                         out_dir=".",
+                         out_suffix=out_suffix_s)
 
-plot(r_qc_s1)
+r_var_m <- raster(list_obj_mask$var)
+r_mask <- raster(list_obj_mask$mask)
+
+plot(stack(r_var_m,r_mask))
 
 ################################## End of script  #################################
