@@ -36,7 +36,7 @@ library(data.table)
 ###### Functions used in this script sourced from other files
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-functions_qc_modis_processing <- "QC_modis_processing_functions_02232018e.R"
+functions_qc_modis_processing <- "QC_modis_processing_functions_02232018f.R"
 source(file.path(script_path,functions_qc_modis_processing)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
@@ -66,6 +66,13 @@ out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_refle
 #This is 32 bits
 r_qc_s1 <- raster(file.path(in_dir,"MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif"))
 r_var_s1 <- raster(file.path(in_dir,"MOD09A1_A2005009_h09v06_006_reflectance.tif"))
+
+list_r_qc_s <- list.files(path=in_dir,
+                          pattern="MOD09A1_A200.*._h09v06_006_sur_refl_qc_500m.tif",
+                          full.names=T)
+list_r_var_s <- list.files(path=in_dir,
+                           pattern="MOD09A1_A200.*._h09v06_006_reflectance.tif",
+                           full.names=T)
 
 dataType(r_qc_s1) #is FLT8S, 64 bits real numbers
 out_dir_s <- getwd()
@@ -163,8 +170,22 @@ list_obj_mask <- apply_mask_from_qc_layer(i,
                          qc_table_modis_selected,
                          NA_flag_val= NULL,
                          rast_mask=TRUE,
+                         qc_info=F,
                          out_dir=".",
                          out_suffix=out_suffix_s)
+
+list_obj_mask <- mclapply(1:length(list_r_var_s)[1:2],
+                          FUN= apply_mask_from_qc_layer,
+                          rast_qc=list_r_qc_s,
+                          rast_var=list_r_var_s,
+                          qc_table_modis_selected,
+                          NA_flag_val= NULL,
+                          rast_mask=TRUE,
+                          qc_info=F,
+                          out_dir=".",
+                          out_suffix=out_suffix_s,
+                          mc.cores=num_cores,
+                          mc.preschedule=T)
 
 r_var_m <- raster(list_obj_mask$var)
 r_mask <- raster(list_obj_mask$mask)
