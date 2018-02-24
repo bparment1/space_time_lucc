@@ -40,7 +40,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02102018.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02232018.R" #PARAM 1
 function_space_and_time_assessment <- "space_and_time_assessment_functions_02232018b.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
@@ -49,7 +49,7 @@ script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #pa
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
 
-#zonal stratum for NLU
+
 ##### Functions used in this script 
 
 create_dir_fun <- function(out_dir,out_suffix){
@@ -439,301 +439,14 @@ method_space <- unlist(strsplit(method_space,";"))
 name_method_time <- paste0("temp_",method_time[1],"_",method_time[2])
 name_method_space <- paste0("spat_",method_space[1],"_",method_space[2])
 mae_tot_tb <- as.data.frame(mae_tot_tb)
-row.names(mae_tot_tb) <- NULL
-names(mae_tot_tb)<- c(name_method_space,name_method_time)
-mae_tot_tb$time <- 1:nrow(mae_tot_tb)
 
-## Input params for the plot:
-#https://stackoverflow.com/questions/5506046/how-do-i-put-more-space-between-the-axis-labels-and-axis-title-in-an-r-boxplot
-
-y_range <- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
-legend_val <- c("tempor model","spatial model")
-  
-res_pix <- 960
-col_mfrow<- 1
-row_mfrow<- 0.7
-png(filename=paste("Figure_temporal_profiles_MAE_tot_",out_suffix,".png",sep=""),
-    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-
-temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
-spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
-
-#par(mgp=c(0,1,0))
-## margin for side 2 is 7 lines in size
-#op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
-op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
-
-plot(temp_formula_str,type="b",
-     col="cyan",
-     pch=16, #filled in circles...
-     lwd=3,
-     data=mae_tot_tb,
-     ylim=y_range,
-     ylab="Mean Absolute Error (MAE)",
-     xaxt="n",
-     xlab="Time",
-     cex.lab=2,
-     cex.axis=1.5,
-     cex=1.5)
-lines(spat_formula_str, 
-      type="b",
-      lwd=3,
-      pch=16, #filled in circles
-      col="magenta",
-      data=mae_tot_tb)
-
-x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
-axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
-#axis(2, cex.axis = 2)
-
-legend("topleft",
-       legend=legend_val,
-       col=c("cyan","magenta"),
-       lty=1,
-       lwd=3,
-       cex=1.5,
-       bty="n")
-title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
-par(op)
-dev.off()
+### Can call future function to plot tot mae and avg mae by zones
 
 ############################################################
 ###Figure 5:  Average Temporal profiles by zones for the time series under study
 
-#### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
-
-#mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
-#                      ac_temp_obj$mae_zones_tb[1:3,])
-#mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
-#                      ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
-#                      ac_temp_obj$mae_zones_tb)
-
-mae_zones_tb <- accuracy_space_and_time_obj$mae_zones_tb
-
-n_zones <- length(unique(mae_zones_tb$zone))
-
-
-#mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
-
-#n_time <- ncol(mae_zones_tb) -1
-#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-#names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
-#names(mae_zones_tb) <- pred_names
-
-#write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
-
-mydata<- mae_zones_tb
-dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-#dd$lag <- mydata$lag 
-#drop first few rows that contain no data but zones...
-n_methods <- 2 #2 because we have 2 methods... (one for space and one for time)
-n_start <-n_zones*2 +1 
-#n_start <-n_zones*2 +1
-dd <- dd[n_start:nrow(dd),]
-
-dd$zones <- mydata$zones
-dd$method <- mydata$method
-
-dd$zones <- mydata$zone #use recycle rule
-
-#Note that to get the title correct, one needs to add
-res_pix<-960
-col_mfrow<-1
-row_mfrow<-1
-png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
-    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-
-p <- xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-            strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
-            auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                            border = FALSE, lines = TRUE,cex=1.2))
-try(print(p))
-
-dev.off()
-#histogram(r_zonal)
-
-#####################end of added on 02/10/2018
-
-
-
-#View(dat_out1a)
-#zones_tb_avg<- zonal(r_var1,r_zonal1,fun='mean')
-
-#zones_avg_df <- as.data.frame(zones_tb_avg)
-#n_zones <- length(unique(zones_avg_df$zone))
-
-#n_time <- ncol(zones_avg_df) - 1
-#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-############
-##Figure 4a: Dean case for a year?
-
-#mean_vals <- colMeans(data_tb1[,6:281],na.rm=T)
-#col_pal <- c("black",col_pal_all)
-
-#layout_m <- c(1.5,1.1)
-
-#png(paste("Figure","_4a_","average_temporal_profiles_by_zones_subset","NDVI_Dean_",out_suffix,".png", sep=""),
-#    height=520*layout_m[2],width=520*layout_m[1])
-
-#plot(1:23,mean_vals[139:161],type="b",pch=1,col=col_pal[1],ylim=c(3000,10000),ylab="NDVI",xlab="Time step (16 days)") #overall
-# lines(1:23,zones_avg_df[1,139:161],type="b",pch=2,col=col_pal[2]) #zone 3
-# lines(1:23,zones_avg_df[2,139:161],type="b",pch=3,col=col_pal[3]) #zone 4
-# lines(1:23,zones_avg_df[3,139:161],type="b",pch=4,col=col_pal[4]) #zone 5
-# abline(v=15.5,lty="dashed")
-# legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
-#         cex=1.2, col=col_pal,bty="n",
-#         lty=1,pch=1:4)
-# legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
-# title("Overall and zonal averages NDVI in the Dean study area",cex=1.8, font=2)
-# 
-# dev.off()
-
-############
-##Figure 4b: Light use NLU for Katrina the whole time series
-
-zones_tb_avg2<- zonal(r_var2,r_zonal2,fun='mean')
-
-zones_avg_df2 <- as.data.frame(zones_tb_avg2)
-n_zones <- length(unique(zones_avg_df2$zone))
-
-n_time <- ncol(zones_avg_df2) -1
-#pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-
-##Subset to a year...for clarity
-
-#zones_avg_df
-
-mean_vals <- colMeans(data_tb2[,3:24],na.rm=T)
-#pixval <- data_tb[800,var_names]
-#pix300 <- data_tb[300,var_names]
-col_pal <- c(col_pal_all[1:2])
-
-layout_m <- c(1.5,1)
-
-png(paste("Figure","_4b_","average_temporal_profiles_by_zones_subset","_light_data_",out_suffix,".png", sep=""),
-    height=480*layout_m[2],width=480*layout_m[1])
-
-plot(1:22,mean_vals[1:22],type="b",pch=1,col=col_pal[1],ylim=c(50,65),
-     ylab="Light Intensity",xlab="Time step (annual)") #overall
-lines(1:22,zones_avg_df2[1,2:23],type="b",pch=2,col=col_pal[2]) #zone 4
-lines(1:22,zones_avg_df2[2,2:23],type="b",pch=3,col=col_pal[3]) #zone 5
-#lines(1:22,zones_avg_df[3,2:23],type="b",pch=4,col="blue") #zone 6
-abline(v=13.5,lty="dashed")
-legend("topleft",legend=c("Overall","zone 1","zone 2"),
-       cex=0.8, col=col_pal,bty="n",
-       lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=0.8,lty="dashed",bty="n")
-title("Average light in the Katrina study area and by zones",cex=1.6, font=2)
-
-dev.off()
-
-############
-##Figure 4c: Katrina case  temporal profiles
-
-zones_tb_avg3<- zonal(r_var3,r_zonal3,fun='mean')
-zones_avg_df3 <- as.data.frame(zones_tb_avg3)
-n_zones <- length(unique(zones_avg_df3$zone))
-
-mean_vals <- colMeans(data_tb3[,6:281],na.rm=T)
-col_pal <- c("black",col_pal_all)
-
-layout_m <- c(1.5,1.1)
-
-png(paste("Figure","_4c_","average_temporal_profiles_by_zones_subset_","NDVI_Katrina_",out_suffix,".png", sep=""),
-    height=520*layout_m[2],width=520*layout_m[1])
-
-plot(1:23,mean_vals[139:161],type="b",pch=1,col=col_pal[1],ylim=c(3000,10000),ylab="NDVI",xlab="Time step (16 days)") #overall
-lines(1:23,zones_avg_df3[1,139:161],type="b",pch=2,col=col_pal[2]) #zone 3
-lines(1:23,zones_avg_df3[2,139:161],type="b",pch=3,col=col_pal[3]) #zone 4
-lines(1:23,zones_avg_df3[3,139:161],type="b",pch=4,col=col_pal[4]) #zone 5
-abline(v=15.5,lty="dashed")
-legend("topleft",legend=c("Overall","zone 3","zone 4", "zone 5"),
-       cex=1.2, col=col_pal,bty="n",
-       lty=1,pch=1:4)
-legend("topright",legend=c("hurricane event"),cex=1.2,lty="dashed",bty="n")
-title("Overall and zonal averages NDVI in the Katrina Study area")
-dev.off()
-
-
-#########################################################################
-##### Figure 8:  Temporal MAE patterns Dean four dates
-##### Accuracy assessment by MAE for Dean data
-
-#mae_zones_tb1 <- read.table(file.path(in_dir1,"mae_zones_tb_EDGY_predictions_03182015.txt"))
-#mae_tot_tb1 <- read.table(file.path(in_dir1,"mae_tot_tb_EDGY_predictions_03182015.txt"))
-
-##Make this a function for any variable
-#layout_m <- c(1,1.2)
-
-#Arguments
-plot_filename <- paste("Figure_8_accuracy_","mae","_by_zone_and_four_timesteps","_","NDVI_Dean_",out_suffix,".png", sep="")
-var_name <- "NDVI"
-event_timestep <- 1.5
-pix_res <- 480
-input_data_df <- mae_zones_tb1
-layout_m <- c(1,3)
-
-#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-
-#debug(plot_by_zones_and_timestep_fun)
-plot_zones_obj1 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
-
-## Now do the same for total...
-#Arguments
-plot_filename <- paste("Figure_8_accuracy_","mae","_by_total_and_four_timesteps","_","NDVI_Dean_",out_suffix,".png", sep="")
-var_name <- "NDVI"
-event_timestep <- 1.5
-pix_res <- 520
-input_data_df <- mae_tot_tb1
-layout_m <- c(1,1)
-
-#debug(plot_by_tot_and_timestep_fun)
-plot_tot_obj1 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
-
-#################################################################
-#### Figure 10:  Temporal MAE patterns Katrina NDVI four dates
-
-#Arguments
-plot_filename <- paste("Figure_10_accuracy_","mae","_by_zone_and_four_timesteps","_","NDVI_Katrina_",out_suffix,".png", sep="")
-var_name <- "NDVI"
-event_timestep <- 1.5
-pix_res <- 480
-#input_data_df <- mae_zones_tb3
-layout_m <- c(1,3)
-
-##Format the data first to zoom in the four relevant time steps +zones+method columns
-input_data_df <- mae_zones_tb3[,c(1,8:11,18)]
-names(input_data_df)[1] <- "zones"
-#replace temp_reg by temp!!
-input_data_df$method <- as.character(input_data_df$method)
-input_data_df$method[input_data_df$method=="temp_reg"]<- "temp"
-#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-
-#debug(plot_by_zones_and_timestep_fun)
-plot_zones_obj3 <- plot_by_zones_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
-
-
-## Now do the same for total...
-#Arguments
-plot_filename <- paste("Figure_10_accuracy_","mae","_by_total_and_four_timesteps","_","NDVI_Katrina",out_suffix,".png", sep="")
-var_name <- "NDVI"
-event_timestep <- 1.5
-pix_res <- 520
-input_data_df <- mae_tot_tb3[c(7:10),]
-layout_m <- c(1,1)
-
-#debug(plot_by_tot_and_timestep_fun)
-plot_tot_obj3 <- plot_by_tot_and_timestep_fun(plot_filename,var_name,event_timestep,pix_res,input_data_df,layout_m)
-
-###################################################
 #FIGURE 1: temporal profiles for a specific time period (year here for NDVI)
 
-### Figure for Katrina
-
-
-#########################
-######### NDVI Katrina
 
 start_date <- "2005-01-01"
 end_date<- "2005-12-31"
@@ -753,7 +466,18 @@ out_dir
 #start_date,end_date,dates,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str
 #debug(plot_temporal_time_series_profile_by_zones)
 
-plot_temporal_time_series_profile_by_zones(start_date,end_date,dates,date_event,n_time_event,data_tb,r_var,r_zonal,var_name,y_range,x_label,title_str,out_dir,out_suffix_str)
+plot_temporal_time_series_profile_by_zones(start_date,
+                                           end_date,dates,
+                                           date_event,
+                                           n_time_event,
+                                           data_tb,r_var,
+                                           r_zonal,
+                                           var_name,
+                                           y_range,
+                                           x_label,
+                                           title_str,
+                                           out_dir,
+                                           out_suffix_str)
 
 
 ################################### END OF SCRIPT #######################################
