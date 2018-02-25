@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/23/2018
+#DATE MODIFIED: 02/25/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -465,6 +465,86 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #http://superuser.com/questions/479197/i-want-to-change-dpi-with-imagemagick-without-changing-the-actual-byte-size-of-t
   #convert -units PixelsPerInch input.png -density 300 output.png
   
+  ####### Generate animation:
+  
+  browser()
+  
+  x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+  
+  i<-1
+  l_dates <- x_labels
+  r_mosaiced_scaled <- r_obs
+  NA_flag_val
+  region_name <- "RITA"
+  variable_name <- "NDVI"
+  zlim_val <- NULL
+  stat_opt <- T
+  
+  list_param <- list(i,l_dates,r_mosaiced_scaled,NA_flag_val, 
+  out_dir,out_suffix,region_name,variable_name,zlim_val,stat_opt)
+  
+  names(list_param) <- c("i","l_dates","r_mosaiced_scaled","NA_flag_val", 
+                         "out_dir","out_suffix","region_name","variable_name","zlim_val","stat_opt")
+  
+  debug(plot_raster_mosaic)
+  test <- plot_raster_mosaic(i,list_param)
+
+  #list_figures <- lapply(1:length(l_dates),
+  #       FUN=plot_raster_mosaic,
+  #       list_param=list_param)
+  
+  list_plot_fig_obj <- mclapply(1:length(l_dates),
+                                  FUN = plot_raster_mosaic,
+                                  list_param = list_param,
+                                  mc.preschedule = FALSE,
+                                  mc.cores = num_cores)
+  #list_plot_fig_obj[[1]]$min_max_df
+  #list_plot_fig_obj[[1]]$stat_df
+  #list_plot_fig_obj[[1]]$png_filename
+  
+  lf_plot_fig <- lapply(list_plot_fig_obj,function(x){x$png_filename})
+  lf_raster <- filename(r_obs)
+  
+  out_suffix_str <- out_suffix #need to change this
+  if(stat_opt==TRUE){
+    l_stat_df <- lapply(list_plot_fig_obj,function(x){x$stat_df})
+    stat_df <- do.call(rbind,l_stat_df)
+    stat_df$date <- l_dates
+    stat_df$files <- lf_raster
+    
+    ### Write out information
+    stat_df_fname <- file.path(out_dir, paste0("stat_df_", out_suffix_str, ".txt"))
+    write.table(stat_df,stat_df_fname,sep=",",row.names = F)
+    
+  }else{
+    stat_df <- NULL
+  }
+  l_min_max_df <- lapply(list_plot_fig_obj,function(x){x$stat_df})
+  min_max_df <- do.call(rbind,l_min_max_df)
+  min_max_df$date <- l_dates
+  min_max_df$files <- lf_raster
+  ### Write out information
+  min_max_df_fname <- file.path(out_dir, paste0("min_max_df_", out_suffix_str, ".txt"))
+  write.table(min_max_df,file = min_max_df_fname,sep = ",",row.names = F)
+  
+  if(is.null(zlim_val)){
+    out_suffix_movie <- paste("min_max_", out_suffix_str, sep = "")
+  } else{
+    zlim_val_str <- paste(zlim_val, sep = "_", collapse = "_")
+    out_suffix_movie <- paste(zlim_val_str, "_", out_suffix, sep = "")
+  }
+  filenames_figures_mosaic <- paste0("list_figures_animation_", out_suffix_movie, ".txt")
+  
+  write.table(unlist(lf_plot_fig),
+              filenames_figures_mosaic,row.names = F,col.names = F,quote = F)
+  
+
+  ####### NOW DO AVERAGE PROFILES ########
+  
+  #debug(compute_avg_by_zones)
+  #test <- compute_avg_by_zones(r_stack,r_zonal,out_suffix_str="",out_dir=".")
+    
+  
   
   ############## Prepare return object #############
   
@@ -473,3 +553,241 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   return(space_and_time_prediction_obj)
 }
+
+
+#create animation from figures:
+generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50,format_file=".gif",out_suffix="",out_dir=".",out_filename_figure_animation=NULL){
+  #This function generates an animation given a list of files or textfile. The default format is .gif.
+  #The function requires ImageMagick to produce animation.
+  #INPUTS:
+  #1) filenames_figures: list of files as "list" or "character, or file name of a text file containing the list of figures.
+  #2) frame_speed: delay option in constructing the animation, default is 50,
+  #the unit is 1/100th of second so 50 is 2 frame per second
+  #3) format_file=".gif", ".mp4" or ".avi
+  #4) out_suffix: ouput string added as suffix, default is ""
+  #5) out_dir: output directory, default is current directory
+  #6) out_filename_figure_animation: output filename if NULL (default)
+  #                                   then generated from input suffix
+  
+  #OUTPUTS:
+  #1) out_filename_figure_animation: file containing the movie
+  
+  ######## Beging script #############
+  
+  if(is.null(out_filename_figure_animation)){
+    #out_filename_figure_movies <- file.path(out_dir,paste("mosaic_movie_",out_suffix_movie,".gif",sep=""))
+    out_filename_figure_animation <- file.path(out_dir,paste("animation_frame_",frame_speed,"_",out_suffix,format_file,sep=""))
+  }
+  
+  if(class(filenames_figures)=="list" | (length(filenames_figures)>1)){ #if length of object greater than 1 then assume a list of files
+    #filename_figures_mosaic <- file.path(out_dir,"mosaic_plot_fig.txt")
+    out_filenames_figures <- file.path(out_dir,paste("list_figures_animation_",out_suffix,".txt",sep=""))
+    write.table(unlist(filenames_figures),out_filenames_figures,row.names = F,col.names = F,quote = F)
+    filenames_figures <- out_filenames_figures
+  }
+  
+  #now generate movie with imageMagick
+  
+  if(format_file==".gif"){ #file format for the animation
+    if(file.exists(out_filename_figure_animation)){
+      file.remove(out_filename_figure_animation)
+    }
+    
+    #-delay 20
+    #delay_option <- 60
+    delay_option <- frame_speed #this might change if format is changed
+    
+    cmd_str <- paste("convert",
+                     paste("-delay",delay_option),
+                     paste0("@",filenames_figures),
+                     out_filename_figure_animation)
+    #convert @myimages.txt mymovie.gif
+    #save cmd_str in text file!!!
+    
+  }
+  
+  #if format is .mp4
+  if(format_file==".mp4" | format_file==".avi"){
+    
+    if(file.exists(out_filename_figure_animation)){
+      file.remove(out_filename_figure_animation)
+    }
+    
+    #ffmpeg -f image2 -pattern_type glob -i '*.png' out.mp4
+    #ffmpeg -f image2 -r 1 -pattern_type glob -i '*.png' out.mp4
+    
+    #-r1 one second by frame
+    #rate of one per second:
+    #ffmpeg -f image2 -r 1 -pattern_type glob -i '*.png' out.mp4
+    #crf: used for compression count rate factor is between 18 to 24, the lowest is the highest quality
+    #ffmpeg -f image2 -r 1 -vcodec libx264 -crf 24 -pattern_type glob -i '*.png' out.mp4
+    frame_rate <- frame_speed/100 # convert frame rate in second
+    cmd_str <- paste("ffmpeg",
+                     paste("-f","image2",sep=" "),
+                     paste("-r",frame_rate,sep=" "),
+                     paste("-pattern_type glob -i","'*.png'",sep=" "),
+                     #paste("-pattern_type glob -i ",filenames_figures),
+                     out_filename_figure_animation,sep=" ")
+    
+  }
+  system(cmd_str)
+  
+  #####
+  
+  return(out_filename_figure_animation)
+  
+}
+
+
+plot_raster_mosaic <- function(i,list_param){
+  #Function to plot raster image
+  #
+  #INPUTS
+  #1) l_dates
+  #2) r_stack
+  #3) NA_flag_val
+  #4) out_dir,
+  #5) out_suffix_str
+  #6) region_name
+  #7) variable_name
+  #8) zlim_val
+  #
+  
+  ############# Start script #########
+  
+  l_dates <- list_param$l_dates
+  r_mosaiced_scaled <- list_param$r_mosaiced_scaled
+  NA_flag_val <- list_param$NA_flag_val
+  out_dir <- list_param$out_dir
+  out_suffix <- list_param$out_suffix
+  region_name <- list_param$region_name
+  variable_name <- list_param$variable_name
+  zlim_val <- list_param$zlim_val
+  stat_opt <- list_param$stat_opt #if TRUE computer stats for the image
+  
+  #for (i in 1:length(nlayers(r_mosaic_scaled))){
+  
+  date_proc <- l_dates[i]
+  r_pred <- subset(r_mosaiced_scaled,i)
+  NAvalue(r_pred)<- NA_flag_val 
+  
+  raster_name <- filename(r_pred)
+  extension_str <- extension(raster_name)
+  raster_name_tmp <- gsub(extension_str,"",basename(raster_name))
+  
+  date_proc <- l_dates[i]
+  if(class(date_proc)!="Date"){
+    date_val <- as.Date(strptime(date_proc,"%Y%m%d"))
+    #month_name <- month.name(date_val)
+  }else{
+    date_val <- date_proc
+  }
+  
+  if(is.na(date_val)){
+    date_str <- date_proc #it means it is a label e.g. T-4
+  }else{
+    month_str <- format(date_val, "%b") ## Month, char, abbreviated
+    year_str <- format(date_val, "%Y") ## Year with century
+    day_str <- as.numeric(format(date_val, "%d")) ## numeric month
+    date_str <- paste(month_str," ",day_str,", ",year_str,sep="")
+  }
+  
+  res_pix <- 1200
+  #res_pix <- 480
+  col_mfrow <- 1
+  row_mfrow <- 1
+  
+  
+  if(is.null(zlim_val)){
+    
+    if(is.na(minValue(r_pred))){ #if min is NA
+      r_pred <- setMinMax(r_pred) #then set min and max values
+    }
+    
+    min_max_val <- c(minValue(r_pred),maxValue(r_pred))
+    min_max_df <- data.frame(min=min_max_val[1],max=min_max_val[2])
+    
+    zlim_val_str <- paste(min_max_val,sep="_",collapse="_")
+    #png_filename <-  file.path(out_dir,paste("Figure4_clim_mosaics_day_","_",date_proc,"_",region_name,"_zlim_",zlim_val_str,"_",out_suffix,".png",sep =""))
+    #raster_name_tmp
+    png_filename <-  file.path(out_dir,paste("Figure_",raster_name_tmp,"_zlim_",zlim_val_str,"_",out_suffix,".png",sep =""))
+    
+    title_str <-  paste("Predicted ",variable_name, " on ",date_str , " ", sep = "")
+    #browser()
+    
+    png(filename=png_filename,width = col_mfrow * res_pix,height = row_mfrow * res_pix)
+    
+    plot(r_pred,main =title_str,cex.main =1.5,col=matlab.like(255),
+         legend.shrink=0.8,legend.width=0.8)
+    #axis.args = list(cex.axis = 1.6), #control size of legend z
+    #legend.args=list(text='dNBR', side=4, line=2.5, cex=2.2))
+    #legend.args=list(text='dNBR', side=4, line=2.49, cex=1.6))
+    dev.off()
+  }else{
+    min_max_val <- NULL
+    zlim_val_str <- paste(zlim_val,sep="_",collapse="_")
+    #png_filename <-  file.path(out_dir,paste("Figure_mosaics_day_","_",date_proc,"_",region_name,"_",zlim_val_str,"_",out_suffix,".png",sep =""))
+    
+    png_filename <-  file.path(out_dir,paste("Figure_",raster_name_tmp,"_zlim_",zlim_val_str,"_",out_suffix,".png",sep =""))
+    
+    title_str <-  paste("Predicted ",variable_name, " on ",date_str , " ", sep = "")
+    
+    png(filename=png_filename,width = col_mfrow * res_pix,height = row_mfrow * res_pix)
+    
+    plot(r_pred,main =title_str,cex.main =1.5,col=matlab.like(255),
+         zlim=zlim_val, #this time we set the range limit for visualization
+         legend.shrink=0.8,legend.width=0.8)
+    #axis.args = list(cex.axis = 1.6), #control size of legend z
+    #legend.args=list(text='dNBR', side=4, line=2.5, cex=2.2))
+    #legend.args=list(text='dNBR', side=4, line=2.49, cex=1.6))
+    dev.off()
+  }
+  
+  ### Option to compute stats for the raster image
+  if(stat_opt==TRUE){
+    if(is.null(min_max_val)){
+      min_val <- cellStats(r_pred,stat="min",na.rm=T)
+      max_val <- cellStats(r_pred,stat="max",na.rm=T)
+    }else{
+      min_val <- min_max_val[1]
+      max_val <- min_max_val[2]
+    }
+    
+    NA_no <- freq(r_pred,value=NA)
+    n_cell <- ncell(r_pred)
+    perc_NA <- 100*(NA_no/n_cell)
+    if(dataType(r_pred)=="INT2S" | dataType(r_pred)=="INT4S"){
+      #integer overflow for sum
+      #filename(r_pred)
+      r_pred_tmp <- r_pred
+      raster_name_tmp <- paste(raster_name_tmp,"_tmp",file_format,sep="")
+      writeRaster(r_pred_tmp,raster_name_tmp,datatype="FLT8S",overwrite=T) #this very slow
+      r_pred_tmp <-raster(raster_name_tmp) #read in the converted image
+      #dataType(r_pred_tmp)
+      mean_val <- cellStats(r_pred_tmp,stat="mean",na.rm=T)
+      sd_val <- cellStats(r_pred_tmp,stat="sd",na.rm=T)
+      file.remove(raster_name_tmp)
+    }else{
+      mean_val <- cellStats(r_pred,stat="mean",na.rm=T)
+      sd_val <- cellStats(r_pred,stat="sd",na.rm=T)
+    }
+    stat_df <- data.frame(min=min_val,
+                          max=max_val,
+                          sd=sd_val,
+                          mean=mean_val,
+                          NA_no=NA_no,
+                          n_cell=n_cell,
+                          perc_NA)
+  }else{
+    stat_df <- NULL
+  }
+  
+  fig_obj <- list(png_filename,min_max_df,stat_df)
+  names(fig_obj) <- c("png_filename","min_max_df","stat_df")
+  
+  #return(png_filename)
+  return(fig_obj)
+}
+  
+###################### END OF SCRIPT ##########################  
+  
