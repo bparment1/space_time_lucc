@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/23/2018
+#DATE MODIFIED: 02/25/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -40,15 +40,14 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 ###### Functions used in this script sourced from other files
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02232018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02232018b.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02252018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
-
 
 ##### Functions used in this script 
 
@@ -75,7 +74,7 @@ proj_str <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=
 #ARG
 file_format <- ".rst" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"sbt_book_figures_02202018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_book_figures_02252018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 datafname <- NULL #Need to update this
 coord_names <- "x;y" #PARAM 9
@@ -88,7 +87,6 @@ previous_step <- TRUE #PARAM 14
 date_range <- "2001.01.01;2010.12.31" #date
 #Closest date to the even for each example:
 date_event <- "2005-09-24" #Hurricane RITA
-
 
 cat_name <- NULL
 r_ref <- NULL
@@ -407,6 +405,16 @@ dev.off()
 #debug(accuracy_space_time_calc)
 data_fname <- r_var
 #r_ref <- NULL
+
+#function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02252018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018.R" #PARAM 1
+
+script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+#script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
+#source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
 
 #debug(accuracy_space_time_calc)
 accuracy_space_and_time_obj <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
