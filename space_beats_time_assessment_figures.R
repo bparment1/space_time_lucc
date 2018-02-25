@@ -41,7 +41,7 @@ library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02252018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018.R" #PARAM 1
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018c.R" #PARAM 1
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
@@ -407,14 +407,14 @@ data_fname <- r_var
 #r_ref <- NULL
 
 #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_11242015_functions.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02252018.R" #PARAM 1
-function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018.R" #PARAM 1
+#function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_02252018.R" #PARAM 1
+#function_space_and_time_assessment <- "space_and_time_assessment_functions_02252018c.R" #PARAM 1
 
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts" #path on Atlas
 #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
-source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
+#source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
+#source(file.path(script_path,function_space_and_time_assessment)) #source all functions used in this script 1.
 
 #debug(accuracy_space_time_calc)
 accuracy_space_and_time_obj <- accuracy_space_time_calc(r_temp_pred=r_temp_pred,
