@@ -476,17 +476,22 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   r_mosaiced_scaled <- r_obs
   NA_flag_val
   region_name <- "RITA"
-  variable_name <- "NDVI"
+  variable_name <- "NDVI" #need to change title to observed instead of predicted!!!
   zlim_val <- NULL
   stat_opt <- T
+  out_dir_s <- "./fig_animation"
+  
+  if(!file.exists(out_dir_s)){
+    dir.create(out_dir_s)
+  }
   
   list_param <- list(i,l_dates,r_mosaiced_scaled,NA_flag_val, 
-  out_dir,out_suffix,region_name,variable_name,zlim_val,stat_opt)
+  out_dir_s,out_suffix,region_name,variable_name,zlim_val,stat_opt)
   
   names(list_param) <- c("i","l_dates","r_mosaiced_scaled","NA_flag_val", 
                          "out_dir","out_suffix","region_name","variable_name","zlim_val","stat_opt")
   
-  debug(plot_raster_mosaic)
+  #debug(plot_raster_mosaic)
   test <- plot_raster_mosaic(i,list_param)
 
   #list_figures <- lapply(1:length(l_dates),
@@ -537,15 +542,27 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   write.table(unlist(lf_plot_fig),
               filenames_figures_mosaic,row.names = F,col.names = F,quote = F)
+  #browser()
+  #frame_speed <- 25
+  frame_speed <- 50
+  animation_format <- ".mp4"
   
-
+  #debug(generate_animation_from_figures_fun)
+  out_dir <- "." #problem with file path that includes Google Drive (space), resolves this issue later
+  out_filename_figure_animation <- generate_animation_from_figures_fun(filenames_figures = filenames_figures_mosaic,
+                                                                       frame_speed = frame_speed,
+                                                                       format_file = animation_format,
+                                                                       in_dir = "./fig_animation",
+                                                                       out_suffix = out_suffix_movie,
+                                                                       out_dir = out_dir,
+                                                                       out_filename_figure_animation = NULL)
+  
+  
   ####### NOW DO AVERAGE PROFILES ########
   
   #debug(compute_avg_by_zones)
   #test <- compute_avg_by_zones(r_stack,r_zonal,out_suffix_str="",out_dir=".")
     
-  
-  
   ############## Prepare return object #############
   
   space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
@@ -556,7 +573,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
 
 
 #create animation from figures:
-generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50,format_file=".gif",out_suffix="",out_dir=".",out_filename_figure_animation=NULL){
+generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50,format_file=".gif",in_dir=NULL,out_suffix="",out_dir=".",out_filename_figure_animation=NULL){
   #This function generates an animation given a list of files or textfile. The default format is .gif.
   #The function requires ImageMagick to produce animation.
   #INPUTS:
@@ -564,6 +581,7 @@ generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50
   #2) frame_speed: delay option in constructing the animation, default is 50,
   #the unit is 1/100th of second so 50 is 2 frame per second
   #3) format_file=".gif", ".mp4" or ".avi
+  #4) in_dir : location where figures for animations are stored
   #4) out_suffix: ouput string added as suffix, default is ""
   #5) out_dir: output directory, default is current directory
   #6) out_filename_figure_animation: output filename if NULL (default)
@@ -621,11 +639,21 @@ generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50
     #ffmpeg -f image2 -r 1 -pattern_type glob -i '*.png' out.mp4
     #crf: used for compression count rate factor is between 18 to 24, the lowest is the highest quality
     #ffmpeg -f image2 -r 1 -vcodec libx264 -crf 24 -pattern_type glob -i '*.png' out.mp4
+    
+    #out_fig <- read.table(filenames_figures)
+    #out_fig
+    if(is.null(in_dir)){
+      in_dir <- "./fig_animation" #Assume that the figures are here...
+    }
+    
     frame_rate <- frame_speed/100 # convert frame rate in second
+    pattern_files <- paste0("'",file.path(in_dir,"*.png"),"'")
     cmd_str <- paste("ffmpeg",
                      paste("-f","image2",sep=" "),
                      paste("-r",frame_rate,sep=" "),
-                     paste("-pattern_type glob -i","'*.png'",sep=" "),
+                     #paste("-pattern_type glob -i","'*.png'",sep=" "),
+                     #paste("-pattern_type glob -i","'./fig_animation/*.png'",sep=" "),
+                     paste("-pattern_type glob -i",pattern_files,sep=" "),
                      #paste("-pattern_type glob -i ",filenames_figures),
                      out_filename_figure_animation,sep=" ")
     
