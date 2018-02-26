@@ -10,7 +10,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 02/20/2018 
-#DATE MODIFIED: 02/23/2018
+#DATE MODIFIED: 02/26/2018
 #Version 1
 #PROJECT: General use for MOD09A1 quality flag processing
 #TO DO:
@@ -32,11 +32,12 @@ require(XML)
 library(lubridate)
 library(miscFuncs) #contains binary/bit processing helper functions
 library(data.table)
+library(parallel)
 
 ###### Functions used in this script sourced from other files
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-functions_qc_modis_processing <- "QC_modis_processing_functions_02232018f.R"
+functions_qc_modis_processing <- "QC_modis_processing_functions_02262018.R"
 source(file.path(script_path,functions_qc_modis_processing)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
@@ -58,6 +59,8 @@ create_dir_fun <- function(out_dir,out_suffix){
 #ARG1: input dir
 in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/"
 out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/mask_qc_h09v06/"
+
+num_cores <- 4
 
 ## PRODUCT 3: Reflectance
 # This is for MOD09
@@ -164,9 +167,10 @@ qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
 i <- 1
 out_suffix_s <- "masked"
 
+debug(apply_mask_from_qc_layer)
 list_obj_mask <- apply_mask_from_qc_layer(i,
-                         rast_qc=r_qc_s1,
-                         rast_var=r_var_s1,
+                         rast_qc=list_r_qc_s,
+                         rast_var=list_r_var_s,
                          qc_table_modis_selected,
                          NA_flag_val= NULL,
                          rast_mask=TRUE,
@@ -174,7 +178,7 @@ list_obj_mask <- apply_mask_from_qc_layer(i,
                          out_dir=".",
                          out_suffix=out_suffix_s)
 
-list_obj_mask <- mclapply(1:length(list_r_var_s)[1:2],
+list_obj_mask <- mclapply(1:length(list_r_var_s),
                           FUN= apply_mask_from_qc_layer,
                           rast_qc=list_r_qc_s,
                           rast_var=list_r_var_s,
@@ -185,10 +189,13 @@ list_obj_mask <- mclapply(1:length(list_r_var_s)[1:2],
                           out_dir=".",
                           out_suffix=out_suffix_s,
                           mc.cores=num_cores,
-                          mc.preschedule=T)
+                          mc.preschedule=FALSE)
+
+r_var_m <- brick(list_obj_mask[[1]]$var)
+nlayers(r_var_m)
 
 r_var_m <- raster(list_obj_mask$var)
-r_mask <- raster(list_obj_mask$mask)
+r_mask <- raster(list_obj_mask[[1]]$mask)
 
 plot(stack(r_var_m,r_mask))
 
