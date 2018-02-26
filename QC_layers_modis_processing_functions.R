@@ -7,8 +7,8 @@
 # - NDVI 
 #
 #AUTHORS: Benoit Parmentier                                             
-#DATE CREATED: 02/23/2017 
-#DATE MODIFIED: 02/23/2018
+#DATE CREATED: 02/23/2018 
+#DATE MODIFIED: 02/26/2018
 #Version: 1
 
 #PROJECT: General use
@@ -31,13 +31,14 @@ require(XML)
 library(lubridate)
 library(miscFuncs) #contains binary/bit processing helper functions
 library(data.table)
+library(parallel)
 
 ################### list of functions
 
 #[1] convert_decimal_to_uint32
 #[2] convert_to_decimal
 #[3] extract_qc_bit_info
-#[4] generate_mask_from_qc_layer
+#[4] apply_mask_from_qc_layer
 #[5] generate_qc_MODIS_reflectance_MOD09_table
 #[6] generate_qc_val_from_int32_reflectance
 #[7] screen_qc_bitNo
@@ -206,7 +207,7 @@ generate_qc_val_from_int32_reflectance <- function(val,bit_range_qc){
 }
 
 ## This can be a general function for other qc too
-apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,NA_flag_val=NULL,rast_mask=T,qc_info=F,out_dir=".",out_suffix=""){
+apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,NA_flag_val=NULL,rast_mask=T,qc_info=F,multiband=TRUE,out_dir=".",out_suffix=""){
   #
   #This function generates and applies a mask based on the QC layer information.
   #This function may be used with several MODIS products with current implementation for:
@@ -222,11 +223,12 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   #INPUTS
   #1) i: index for the list of files to process (by dates)
   #2) rast_qc: list of raster with qc flags from MODIS
-  #3) rast_var: list of raster with variable from MODIS
+  #3) rast_var: list of raster with variable(s)/band(s) from MODIS
   #4) qc_table_modis_selected: MODIS QC table with selected BitComb to retain
   #5) NA_flag_val: NA value to assign for the output
   #6) rast_mask: write out raster mask if TRUE
   #7) qc_info: if TRUE,  qc table and qc interpreted information is written out as table 
+  #8) multiband: default to TRUE, one file is created if multiband input for rast_Var
   #8) out_dir: output directory
   #9) out_suffix: output suffix
   #
@@ -258,7 +260,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
     ## This is multiband: might need to check depending on product type
     rast_name_var <- rast_var
     #rast_var<-raster(rast_var)
-    rast_var <- brick(rast_name_var)
+    rast_var <- brick(rast_name_var) 
     
   }else{
     rast_name_var <- filename(rast_var)
@@ -338,17 +340,68 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   #### change to compress if format is tif!! add this later...
   #file_format <- extension(rast_name_var)
   
-  if(nlayers(rast_var_m)>1){
-    #
-  }else{
+  n_layer <- nlayers(rast_var_m)
+  #Write out as brick
+  data_type_str <- dataType(rast_var_m) #find the dataType, this should be a future input param
+  if(is.null(NA_flag_val)){
+    NA_flag_val <- NAvalue(rast_var_m)
+  }
+  
+  browser()
+  file_format <- extension(rast_name_var) 
+    
+  if(n_layer>1){
+    suffix_str <- as.character(unlist(strsplit(x=names(rast_var_m), split="[.]")))
+    suffix_str <- paste(suffix_str,collapse="_") #this is the name of the hdf file with "." replaced by "_"
+    
+    if(multiband==TRUE){
+      raster_name_tmp <- basename(rast_name_var)
+      bylayer_val <- FALSE #don't write out separate layer files for each "band"
+    }
+    if(multiband==FALSE){
+      raster_name_tmp <- basename(rast_name_var)
+      bylayer_val <- TRUE #write out separate layer files for each "band"
+    }
+    
+    if(file_format==".tif"){
+      writeRaster(rast_var_m,
+                  filename=file.path(out_dir,raster_name_tmp),
+                  bylayer=bylayer_val,
+                  #suffix=paste(names(r),"_",out_suffix,sep=""),
+                  #format=format_raster,
+                  suffix=suffix_str,
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str,
+                  options=c("COMPRESS=LZW"))
+    }else{
+      #Don't use compression option if not tif
+
+      writeRaster(rast_var_m,
+                  filename=file.path(out_dir,raster_name_tmp),
+                  bylayer=multiband,
+                  #suffix=paste(names(r),"_",out_suffix,sep=""),
+                  #format=format_raster,
+                  suffix=suffix_str,
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str)
+    }
+    
+  }
+  
+  if(n_layers==1){
+    raster_name_tmp <- basename(rast_name_var)
+    
     writeRaster(rast_var_m, 
                 NAflag=NA_flag_val,
-                filename=file.path(out_dir,raster_name),
+                filename=file.path(out_dir,raster_name_tmp),
                 bylayer=FALSE,
                 bandorder="BSQ",
                 datatype=data_type_str,
                 overwrite=TRUE)
   }
+  
   rm(rast_var)
   
   if(rast_mask==TRUE){  #then only write out variable that is masked out
