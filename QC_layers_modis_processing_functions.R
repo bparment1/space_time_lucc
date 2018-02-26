@@ -101,8 +101,10 @@ screen_qc_bitNo <- function(qc_val,qc_table_modis_selected){
     mask_val <- 1 #mask
   }
   
-  qc_table_modis_selected[qc_table_modis_selected$bitNo==bitNo_val,c("BitComb")]
-  test <- merge(qc_val,qc_table_modis_selected,by.x="bin_val_extracted",by.y="BitComb")
+  #qc_table_modis_selected[qc_table_modis_selected$bitNo==bitNo_val,c("BitComb")]
+  #test <- merge(qc_val,qc_table_modis_selected,by.x="bin_val_extracted",by.y="BitComb")
+  #test <- merge(qc_val,qc_table_modis_selected,by.x="bin_val_extracted",by.y="BitComb")
+  
   obj_screen_qc_bitNo <- list(qc_val,mask_val)
   names(obj_screen_qc_bitNo) <- c("qc_val","mask_val")
   
@@ -284,9 +286,9 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   length(unique_vals)
   
   #### Part 3: Compare qc values selected to qc values present in the raster QC
-  debug(screen_qc_bitNo)
-  list_qc_val_screened <- screen_qc_bitNo(list_qc_val[[1]],
-                                 qc_table_modis = qc_table_modis)
+  #undebug(screen_qc_bitNo)
+  #list_qc_val_screened <- screen_qc_bitNo(list_qc_val[[1]],
+  #                               qc_table_modis = qc_table_modis)
   
   list_qc_val_screened <- lapply(list_qc_val,
                                  FUN=screen_qc_bitNo,
@@ -295,7 +297,18 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   rm(list_qc_val)
   
   if(qc_info==TRUE){
-    #d
+    qc_val_screened <- (lapply(list_qc_val_screened,FUN=function(x){x$qc_val}))
+    qc_val_screened[[1]]
+    names(qc_val_screened) <- unique_vals
+    qc_val_screened <- do.call(rbind,qc_val_screened)
+    unique_vals_int <- rownames(qc_val_screened)
+    #list_unique_vals_int <- strsplit(unique_vals_int,"[.]")
+    qc_val_screened$int_val <- unlist(lapply(unique_vals_int,
+                                             FUN=function(x){strsplit(x,"[.]")[[1]][1]}))
+    rownames(qc_val_screened) <- NULL
+    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+    df_filename <- paste("qc_modis_val_table","_",raster_name,".txt",sep="")
+    write.table(qc_val_screened,file=df_filename,sep=",")  
   }
   
   mask_val <- unlist(lapply(list_qc_val_screened,FUN=function(x){x$mask_val}))
@@ -314,19 +327,20 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   r_qc_m <- subs(rast_qc, df_qc_val,by="val",which="rc_val")
   #r_qc_m <- subs(r_qc, df_qc_val,by=1,which=3)
 
-  ## Apply mask:
+  ## Apply mask: this works for multiband too!!!
   
   rast_var_m <- mask(rast_var,r_qc_m)
   
   #### Part 5: Write out images and return values
+  raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+  raster_name <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
   
-  if(rast_mask==FALSE){  #then only write out variable that is masked out
-    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
-    raster_name <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
-    
-    #### change to compress if format is tif!! add this later...
-    #file_format <- extension(rast_name_var)
-    
+  #### change to compress if format is tif!! add this later...
+  #file_format <- extension(rast_name_var)
+  
+  if(nlayers(rast_var_m)>1){
+    #
+  }else{
     writeRaster(rast_var_m, 
                 NAflag=NA_flag_val,
                 filename=file.path(out_dir,raster_name),
@@ -334,64 +348,42 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
                 bandorder="BSQ",
                 datatype=data_type_str,
                 overwrite=TRUE)
-    
-    ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
-    ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
-    ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
-    ## Start remove
-    rm(rast_var)
-    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed, only RASTER, tempdir() from R basic
-    files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
-    if(length(files_to_remove)>0){
-      file.remove(files_to_remove)
-    }
-    #now remove temp files from raster package located in rasterTmpDir
-    removeTmpFiles(h=0) #did not work if h is not set to 0
-    ## end of remove section
-    return(raster_name)
-  }else{ #if keep mask true
-    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
-    raster_name<- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
-
-    #### change to compress if format is tif!! add this later...
-    #file_format <- extension(rast_name_var)
-    writeRaster(rast_var_m, 
-                NAflag=NA_flag_val,
-                filename=file.path(out_dir,raster_name),
-                bylayer=FALSE,
-                bandorder="BSQ",
-                datatype=data_type_str,
-                overwrite=TRUE)
-    
+  }
+  rm(rast_var)
+  
+  if(rast_mask==TRUE){  #then only write out variable that is masked out
     raster_name_qc <-basename(sub(extension(rast_name_qc),"",rast_name_qc))
     raster_name_qc <- paste(raster_name_qc,"_","mask","_",out_suffix,extension(rast_name_qc),sep="")
-    
+    raster_name_qc <- file.path(out_dir,raster_name_qc)
     writeRaster(r_qc_m, 
                 #NAflag=NA_flag_val,
-                filename=file.path(out_dir,raster_name_qc),
+                filename=raster_name_qc,
                 bylayer=FALSE,
                 bandorder="BSQ",
                 overwrite=TRUE)
-    
-    r_stack_name <- list(file.path(out_dir,raster_name),file.path(out_dir,raster_name_qc))
-    names(r_stack_name) <- c("var","mask")
-    
-    ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
-    ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
-    ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
-    ## Start remove
-    rm(rast_var_m)
     rm(r_qc_m)
-    tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
-    files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
-    if(length(files_to_remove)>0){
-      file.remove(files_to_remove)
-    }
-    #now remove temp files from raster package located in rasterTmpDir
-    removeTmpFiles(h=0) #did not work if h is not set to 0
-    ## end of remove section
-    return(r_stack_name)
+  }else{
+    raster_name_qc <- NULL
   }
+
+  ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
+  ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
+  ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
+  ## Start remove
+  
+  tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+  if(length(files_to_remove)>0){
+    file.remove(files_to_remove)
+  }
+  #now remove temp files from raster package located in rasterTmpDir
+  removeTmpFiles(h=0) #did not work if h is not set to 0
+  ## end of remove section
+
+  r_stack_name <- list(file.path(out_dir,raster_name),raster_name_qc)
+  names(r_stack_name) <- c("var","mask")
+  
+  return(r_stack_name)
   
 }
 
