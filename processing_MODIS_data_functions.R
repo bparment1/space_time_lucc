@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/16/2018
+#MODIFIED ON : 02/26/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -110,6 +110,7 @@ processing_modis_data <- function(in_dir,
                                   file_format_download,
                                   infile_modis_grid,
                                   save_textfile,
+                                  qc_info,
                                   out_dir_processing_steps){
   
   ##################################
