@@ -560,6 +560,8 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   ####### NOW DO AVERAGE PROFILES ########
   
+  plot(stat_df$mean,type="l")
+  
   #debug(compute_avg_by_zones)
   #test <- compute_avg_by_zones(r_stack,r_zonal,out_suffix_str="",out_dir=".")
     
