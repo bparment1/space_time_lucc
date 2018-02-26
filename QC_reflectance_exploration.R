@@ -37,7 +37,7 @@ library(parallel)
 ###### Functions used in this script sourced from other files
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts" #path on bpy50 #PARAM 2
-functions_qc_modis_processing <- "QC_modis_processing_functions_02262018.R"
+functions_qc_modis_processing <- "QC_modis_processing_functions_02262018b.R"
 source(file.path(script_path,functions_qc_modis_processing)) #source all functions used in this script 1.
 
 ##### Functions used in this script 
@@ -61,6 +61,8 @@ in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflec
 out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/mask_qc_h09v06/"
 
 num_cores <- 4
+multiband <- TRUE #This is only used for multiband products?
+qc_info <- FALSE
 
 ## PRODUCT 3: Reflectance
 # This is for MOD09
@@ -167,7 +169,7 @@ qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
 i <- 1
 out_suffix_s <- "masked"
 
-debug(apply_mask_from_qc_layer)
+#undebug(apply_mask_from_qc_layer)
 list_obj_mask <- apply_mask_from_qc_layer(i,
                          rast_qc=list_r_qc_s,
                          rast_var=list_r_var_s,
@@ -175,7 +177,8 @@ list_obj_mask <- apply_mask_from_qc_layer(i,
                          NA_flag_val= NULL,
                          rast_mask=TRUE,
                          qc_info=F,
-                         out_dir=".",
+                         multiband=multiband,
+                         out_dir=out_dir,
                          out_suffix=out_suffix_s)
 
 list_obj_mask <- mclapply(1:length(list_r_var_s),
@@ -186,7 +189,8 @@ list_obj_mask <- mclapply(1:length(list_r_var_s),
                           NA_flag_val= NULL,
                           rast_mask=TRUE,
                           qc_info=F,
-                          out_dir=".",
+                          multiband=multiband,
+                          out_dir=out_dir,
                           out_suffix=out_suffix_s,
                           mc.cores=num_cores,
                           mc.preschedule=FALSE)
