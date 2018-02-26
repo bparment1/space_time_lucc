@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/16/2018
+#MODIFIED ON : 02/26/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: import MOD09 with multiband output option added
 #
@@ -83,13 +83,15 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02152018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02152018.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02262018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02262018.R"
+function_qc_modis_processing <-"QC_modis_processing_functions_02262018b.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
 source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
+source(file.path(script_path,function_qc_modis_processing)) #source all functions used in this script.
 
 ################################
 ###### Parameters and arguments
@@ -161,6 +163,8 @@ file_format_download <- "hdf"
 infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
 #Constant5:
 save_textfile <- TRUE
+#Constant6:
+qc_info <- FALSE #do not write out qc info table 
 
 ## Maybe add in_dir for all the outputs
 #Constant6:
@@ -176,14 +180,15 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02152018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02152018.R"
+function_raster_processing <-"MODIS_and_raster_processing_functions_02262018.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02262018.R"
 
 script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
 source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
 
+debug(processing_modis_data)
 modis_processed_obj  <- processing_modis_data(in_dir,
                                               out_dir,
                                               CRS_reg,
@@ -210,6 +215,7 @@ modis_processed_obj  <- processing_modis_data(in_dir,
                                               file_format_download,
                                               infile_modis_grid,
                                               save_textfile,
+                                              qc_info,
                                               out_dir_processing_steps)
 
 
