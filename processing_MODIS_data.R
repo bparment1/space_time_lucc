@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/26/2018
+#MODIFIED ON : 02/27/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: import MOD09 with multiband output option added
 #
@@ -84,10 +84,11 @@ load_obj <- function(f){
 }
 
 function_raster_processing <-"MODIS_and_raster_processing_functions_02262018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02262018.R"
-function_qc_modis_processing <-"QC_modis_processing_functions_02262018b.R"
+function_processing_modis_data <-"processing_MODIS_data_functions_02272018.R"
+function_qc_modis_processing <-"QC_modis_processing_functions_02272018.R"
 
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+script_path <- "/nfs/bparmentier-data/Data//Space_beats_time/sbt_scripts"  #path to script functions
 
 source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
 source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
@@ -98,10 +99,12 @@ source(file.path(script_path,function_qc_modis_processing)) #source all function
 
 #ARG1
 #in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param1
-in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
+#in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
+in_dir <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance"
 #ARG2
 #out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
-out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
+#out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
+out_dir <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance"
 
 #ARG3
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -115,10 +118,14 @@ out_suffix <- "RITA_02132018"
 #ARG7
 create_out_dir_param=FALSE #param7
 #ARG8
-infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
+#infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
+infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+
 #ARG9
 #local raster name defining resolution, extent
-ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
+
+ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
 #ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG10
 MODIS_product <- "MOD09A1.006" #Reflectance 500m (day) #param12
@@ -160,7 +167,9 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 #Constatn3:
 file_format_download <- "hdf"  
 #Constant4:
-infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
+#infile_modis_grid <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
+infile_modis_grid <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/modis_reference_grid/modis_sinusoidal_grid_world.shp" #param11
+
 #Constant5:
 save_textfile <- TRUE
 #Constant6:
@@ -180,13 +189,13 @@ names(out_dir_processing_steps) <- c("download_dir","import_dir","mask_qc_dir","
 
 #debug(processing_modis_data)
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02262018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02262018.R"
+#function_raster_processing <-"MODIS_and_raster_processing_functions_02262018.R"
+#function_processing_modis_data <-"processing_MODIS_data_functions_02262018.R"
 
-script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
+#script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 
-source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
-source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
+#source(file.path(script_path,function_raster_processing)) #source all functions used in this script.
+#source(file.path(script_path,function_processing_modis_data)) #source all functions used in this script.
 
 debug(processing_modis_data)
 modis_processed_obj  <- processing_modis_data(in_dir,
