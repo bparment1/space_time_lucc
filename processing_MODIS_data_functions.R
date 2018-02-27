@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/26/2018
+#MODIFIED ON : 02/27/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -163,7 +163,7 @@ processing_modis_data <- function(in_dir,
   }
   
   #debug(modis_product_download)
-  browser()
+  #browser()
   if(steps_to_run$download==TRUE){
     #debug(modis_product_download)
     #9:36 to 10: for MOD09 4 tiles
@@ -193,7 +193,8 @@ processing_modis_data <- function(in_dir,
   ##### Add a check for missing here??: clean up and make a function:
   #undebug(extract_dates_from_raster_name)
   ##This assumes MODIS data!!!
-  browser()
+  #browser()
+  
   df_m_list_hdf <- extract_dates_from_raster_name(1,list_files_by_tiles,split_char=".")
   df_m_list_hdf <- lapply(1:nrow(list_files_by_tiles),
                           FUN=extract_dates_from_raster_name,
@@ -248,7 +249,9 @@ processing_modis_data <- function(in_dir,
   #View(hdf_df)
   
   write.table(hdf_df,"hdf_subdataset.txt",sep=",")
+  
   browser()
+  
   if(product_type=="NDVI"){
     #Will Need to change if EVI!!!
     #1 km 16 days EVI
@@ -313,6 +316,7 @@ processing_modis_data <- function(in_dir,
   qc_modis_name <-  unlist(lapply(modis_layer_str2, function(x){unlist(strsplit(x,":"))[3]}))
   
   browser()
+  
   #### Remote white space if present
   var_modis_name <- gsub(" ","_",var_modis_name) #suffix name for product, may contain white space so replace with "_"
   qc_modis_name <- gsub(" ","_",qc_modis_name)
