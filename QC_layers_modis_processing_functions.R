@@ -52,9 +52,8 @@ convert_decimal_to_uint32 <- function(x){
   
   if(length(bin_val)< 32){
     add_zero <- 32-length(bin_val) 
+    bin_val <- c(rep(0,add_zero),bin_val)
   }
-  
-  bin_val <- c(rep(0,add_zero),bin_val)
   
   return(bin_val)
 }
@@ -218,7 +217,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 02/23/2018
-  #MODIFIED: 02/26/2018
+  #MODIFIED: 02/28/2018
   
   #INPUTS
   #1) i: index for the list of files to process (by dates)
@@ -281,7 +280,7 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   #qc_val <- generate_qc_val_from_int32_reflectance(unique_vals)
   #browser()
   #unique_bit_range <- unique(qc_table_modis$bitNo)
-  bit_range_qc <- unique(qc_table_modis$bitNo) #specific bit range to use to interpret binary
+  bit_range_qc <- unique(qc_table_modis_selected$bitNo) #specific bit range to use to interpret binary
   
   list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance,bit_range_qc)
   #length(list_qc_val)
@@ -294,7 +293,9 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   
   list_qc_val_screened <- lapply(list_qc_val,
                                  FUN=screen_qc_bitNo,
-                                 qc_table_modis = qc_table_modis)
+                                 #qc_table_modis = qc_table_modis)
+                                 qc_table_modis = qc_table_modis_selected)
+  
   names(list_qc_val_screened[[1]])
   rm(list_qc_val)
   
@@ -347,15 +348,25 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
     NA_flag_val <- NAvalue(rast_var_m)
   }
   
-  browser()
+  #browser()
   file_format <- extension(rast_name_var) 
     
   if(n_layer>1){
-    suffix_str <- as.character(unlist(strsplit(x=names(rast_var_m), split="[.]")))
-    suffix_str <- paste(suffix_str,collapse="_") #this is the name of the hdf file with "." replaced by "_"
+    #suffix_str <- as.character(unlist(strsplit(x=names(rast_var_m), split="[.]")))
+    #suffix_str <- paste(suffix_str,collapse="_") #this is the name of the hdf file with "." replaced by "_"
+    suffix_str <- 1:n_layer
+    if(out_suffix!=""){
+      suffix_str <- paste(suffix_str,out_suffix,sep="_")
+    }
     
     if(multiband==TRUE){
-      raster_name_tmp <- basename(rast_name_var)
+      #raster_name_tmp <- basename(rast_name_var)
+      raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+      if(out_suffix!=""){
+        raster_name_tmp <- paste(raster_name,"_","masked_",out_suffix,extension(rast_name_var),sep="")
+      }else{
+        raster_name_tmp <- paste(raster_name,"_","masked",extension(rast_name_var),sep="")
+      }
       bylayer_val <- FALSE #don't write out separate layer files for each "band"
     }
     if(multiband==FALSE){
@@ -390,8 +401,10 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
     
   }
   
-  if(n_layers==1){
-    raster_name_tmp <- basename(rast_name_var)
+  if(n_layer==1){
+    #raster_name_tmp <- basename(rast_name_var)
+    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name_tmp <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
     
     writeRaster(rast_var_m, 
                 NAflag=NA_flag_val,
