@@ -591,14 +591,14 @@ processing_modis_data <- function(in_dir,
       }
       
       if(product_type=="reflectance"){
-        #i <- 1
+        i <- 1
         #out_suffix_s <- "masked"
         out_suffix_s <- out_suffix
         
         #undebug(apply_mask_from_qc_layer)
         list_obj_mask <- apply_mask_from_qc_layer(i,
-                                                  rast_qc=list_r_qc_s,
-                                                  rast_var=list_r_var_s,
+                                                  rast_qc=list_r_qc[[j]],
+                                                  rast_var=list_r_var[[j]],
                                                   qc_table_modis_selected,
                                                   NA_flag_val= NULL,
                                                   rast_mask=TRUE,
@@ -607,16 +607,16 @@ processing_modis_data <- function(in_dir,
                                                   out_dir=out_dir_s,
                                                   out_suffix=out_suffix_s)
         
-        list_obj_mask <- mclapply(1:length(list_r_var_s),
+        list_obj_mask <- mclapply(1:length(list_r_qc[[j]]),
                                   FUN= apply_mask_from_qc_layer,
-                                  rast_qc=list_r_qc_s,
-                                  rast_var=list_r_var_s,
+                                  rast_qc=list_r_qc[[j]],
+                                  rast_var=list_r_var[[j]],
                                   qc_table_modis_selected,
                                   NA_flag_val= NULL,
                                   rast_mask=TRUE,
                                   qc_info=F,
                                   multiband=multiband,
-                                  out_dir=out_dir,
+                                  out_dir=out_dir_s,
                                   out_suffix=out_suffix_s,
                                   mc.cores=num_cores,
                                   mc.preschedule=FALSE)
@@ -663,6 +663,8 @@ processing_modis_data <- function(in_dir,
     for (j in 1:length(list_tiles_modis)){
       file_pattern <- paste0(".*.",product_type,".*.",
                              out_suffix,file_format,"$")
+      
+      ### Assume that the data is in the mask_qc folder
       
       in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
       in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
