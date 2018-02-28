@@ -51,7 +51,7 @@ convert_decimal_to_uint32 <- function(x){
   bin_val <- as.numeric(as.logical(bin_val))
   
   if(length(bin_val)< 32){
-    add_zero <- 32-length(bin_val) 
+    add_zero <- 32-length(bin_val)
     bin_val <- c(rep(0,add_zero),bin_val)
   }
   
@@ -283,6 +283,15 @@ apply_mask_from_qc_layer <- function(i,rast_qc,rast_var,qc_table_modis_selected,
   bit_range_qc <- unique(qc_table_modis_selected$bitNo) #specific bit range to use to interpret binary
   
   list_qc_val <- lapply(unique_vals,FUN=generate_qc_val_from_int32_reflectance,bit_range_qc)
+  #list_qc_val <- mclapply(unique_vals,
+  #                        FUN=generate_qc_val_from_int32_reflectance,
+  #                        bit_range_qc,
+  #                        mc.cores = 1,
+  #                        mc.preschedule = F)
+
+  #debug(generate_qc_val_from_int32_reflectance)
+  #test <- generate_qc_val_from_int32_reflectance(unique_vals[225],bit_range_qc)
+  
   #length(list_qc_val)
   length(unique_vals)
   
