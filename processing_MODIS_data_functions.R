@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/27/2018
+#MODIFIED ON : 02/28/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -499,22 +499,32 @@ processing_modis_data <- function(in_dir,
   #QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
 
   if(product_type=="reflectance"){
-    dataType(r_qc_s1)
-    #MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif
-    #r_qc_s1 <- raster("/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif")
-    #debug(create_MODIS_QC_table)
-    QC_obj <- create_MODIS_QC_table(LST=FALSE, NDVI=FALSE,reflectance = TRUE) #Get table corresponding to QC for LST
-    names(QC_obj)
     
-    names(qc_lst_valid)
-    qc_valid<-qc_lst_valid$Integer_Value #value integer values
-    #NA_flag_val <- -9999
+    #### This is where you set up the desired qc flags:
+    desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
     
-    #r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
-    list_r_lst <- vector("list",length(list_tiles_modis)) #to contain image
-    list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
-    list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
+    #debug(generate_qc_MODIS_reflectance_MOD09_table)
+    qc_table_modis <- generate_qc_MODIS_reflectance_MOD09_table()
+    
+    #View(qc_table_modis)
+    
+    #### Now read in the values and process to match the selected flags!!!
+    
+    qc_table_modis_selected <- qc_table_modis[desired_qc_rows,]
+    #View(qc_table_modis_selected)
+    
+    #debug(apply_mask_from_qc_layer)
+    #### Generate function to create mask from qc
+    #unique_bit_range <- unique(qc_table_modis$bitNo)
+    
+    #apply_mask_from_qc_layer(r_qc= r_qc_s1, qc_table_modis=qc_table_modis,out_dir=out_dir_s,out_suffix="")
+    #
   }
+  
+  #r_lst_LST <- download_modis_obj$list_files_by_tiles[,j]
+  list_r_var <- vector("list",length(list_tiles_modis)) #to contain image
+  list_r_qc <- vector("list",length(list_tiles_modis)) #to contain qc mask image
+  list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
   
   #26 minutes for 230 files to apply NDVI mask
   if(steps_to_run$apply_QC_flag==TRUE){
@@ -529,14 +539,18 @@ processing_modis_data <- function(in_dir,
       #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
       
-      out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
+      if(product_type=="reflectance"){
+        out_suffix_s <- paste(product_type,sep="") #for MODIS product (var)
+      }else{
+        out_suffix_s <- paste(var_modis_name,sep="") #for MODIS product (var)
+      }
       file_format_s <-file_format
       #undebug(create_raster_list_from_file_pat)
-      list_r_lst[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",
+      list_r_var[[j]] <- create_raster_list_from_file_pat(out_suffix_s,file_pat="",
                                                           in_dir=out_dir_s,
                                                           out_prefix="",
                                                           file_format=file_format_s)
-      
+
       #out_dir_s <- file.path(dirname(out_dir),list_tiles_modis)[j]
       #out_dir_s <- file.path(out_dir,list_tiles_modis)[j] #same as above
       #debug(create_raster_list_from_file_pat)
@@ -549,30 +563,65 @@ processing_modis_data <- function(in_dir,
       
       ##### Now prepare the input for screening using QC flag values
       
-      ##Set output dir
+      ##Set output dir for QC mask operation
       out_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
       #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
       
-      list_param_screen_qc <- list(qc_valid,
-                                   list_r_qc[[j]], 
-                                   list_r_lst[[j]],
-                                   rast_mask=TRUE,
-                                   NA_flag_val,out_dir_s,out_suffix) 
-      names(list_param_screen_qc) <- c("qc_valid",
-                                       "rast_qc", 
-                                       "rast_var","rast_mask",
-                                       "NA_flag_val","out_dir","out_suffix") 
-      #undebug(screen_for_qc_valid_fun)
-      #test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
-      #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
-      #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+      if(product_type%in%c("NDVI",LST)){
+        list_param_screen_qc <- list(qc_valid,
+                                     list_r_qc[[j]], 
+                                     list_r_var[[j]],
+                                     rast_mask=TRUE,
+                                     NA_flag_val,out_dir_s,out_suffix) 
+        names(list_param_screen_qc) <- c("qc_valid",
+                                         "rast_qc", 
+                                         "rast_var","rast_mask",
+                                         "NA_flag_val","out_dir","out_suffix") 
+        #undebug(screen_for_qc_valid_fun)
+        #test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+        #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
+        #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
+        
+        list_r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
+                                     FUN=screen_for_qc_valid_fun,
+                                     list_param=list_param_screen_qc,
+                                     mc.preschedule=FALSE,
+                                     mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      }
       
-      list_r_stack[[j]] <-mclapply(1:length(list_r_qc[[j]]),
-                                   FUN=screen_for_qc_valid_fun,
-                                   list_param=list_param_screen_qc,
-                                   mc.preschedule=FALSE,
-                                   mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+      if(product_type=="reflectance"){
+        #i <- 1
+        #out_suffix_s <- "masked"
+        out_suffix_s <- out_suffix
+        
+        #undebug(apply_mask_from_qc_layer)
+        list_obj_mask <- apply_mask_from_qc_layer(i,
+                                                  rast_qc=list_r_qc_s,
+                                                  rast_var=list_r_var_s,
+                                                  qc_table_modis_selected,
+                                                  NA_flag_val= NULL,
+                                                  rast_mask=TRUE,
+                                                  qc_info=F,
+                                                  multiband=multiband,
+                                                  out_dir=out_dir_s,
+                                                  out_suffix=out_suffix_s)
+        
+        list_obj_mask <- mclapply(1:length(list_r_var_s),
+                                  FUN= apply_mask_from_qc_layer,
+                                  rast_qc=list_r_qc_s,
+                                  rast_var=list_r_var_s,
+                                  qc_table_modis_selected,
+                                  NA_flag_val= NULL,
+                                  rast_mask=TRUE,
+                                  qc_info=F,
+                                  multiband=multiband,
+                                  out_dir=out_dir,
+                                  out_suffix=out_suffix_s,
+                                  mc.cores=num_cores,
+                                  mc.preschedule=FALSE)
+        
+      }
       
     }
   }
