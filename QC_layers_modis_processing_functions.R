@@ -2,13 +2,13 @@
 ############################  QC Flags processing related functions #######################################
 #This script contains functions to help the processing of QC flags for MODIS.
 #The current available products are:
-# - reflectance (MOD09).       
+# - reflectance (MOD09A1).       
 # - land surface temperature
 # - NDVI 
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 02/23/2018 
-#DATE MODIFIED: 02/27/2018
+#DATE MODIFIED: 03/01/2018
 #Version: 1
 
 #PROJECT: General use

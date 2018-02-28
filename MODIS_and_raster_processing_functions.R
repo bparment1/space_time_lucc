@@ -4,9 +4,9 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/26/2018
+#MODIFIED ON: 02/28/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
-#COMMIT: multiband option changes for import of MOD09
+#COMMIT: multiband option changes for mosaic of MOD09A1
 #
 #TODO:
 #1)Modify generation of CRS for additional projected system (only LCC, Lambert Conformal at this stage)
@@ -81,10 +81,17 @@ mosaic_m_raster_list<-function(j,list_param){
   out_names<-list_param$out_rastnames
   file_format <- list_param$file_format
   NA_flag_val <- list_param$NA_flag_val
-  ## Start
+  multiband <- list_param$multiband
   
-  input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
-  mosaiced_rast<-input.rasters[[1]]
+  #### Start function ####
+  
+  if(multiband==TRUE){
+    input.rasters <- lapply(as.character(mosaic_list[[j]]), brick)
+  }else{
+    input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
+  }
+  
+  mosaiced_rast <- input.rasters[[1]]
   
   for (k in 2:length(input.rasters)){
     mosaiced_rast<-mosaic(mosaiced_rast,input.rasters[[k]], fun=mean)
