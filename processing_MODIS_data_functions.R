@@ -527,6 +527,7 @@ processing_modis_data <- function(in_dir,
   list_r_stack <- vector("list",length(list_tiles_modis)) #to contain results
   
   #26 minutes for 230 files to apply NDVI mask
+  #12 minutes per tile for MOD09
   if(steps_to_run$apply_QC_flag==TRUE){
     for(j in 1:length(list_tiles_modis)){
       #list all files first
@@ -595,8 +596,9 @@ processing_modis_data <- function(in_dir,
         #out_suffix_s <- "masked"
         out_suffix_s <- out_suffix
         
+        ## error in 37 for h09v06
         #undebug(apply_mask_from_qc_layer)
-        list_obj_mask <- apply_mask_from_qc_layer(i,
+        list_r_stack[[j]] <- apply_mask_from_qc_layer(i,
                                                   rast_qc=list_r_qc[[j]],
                                                   rast_var=list_r_var[[j]],
                                                   qc_table_modis_selected,
@@ -607,7 +609,7 @@ processing_modis_data <- function(in_dir,
                                                   out_dir=out_dir_s,
                                                   out_suffix=out_suffix_s)
         
-        list_obj_mask <- mclapply(1:length(list_r_qc[[j]]),
+        list_r_stack[[j]] <- mclapply(1:length(list_r_qc[[j]]),
                                   FUN= apply_mask_from_qc_layer,
                                   rast_qc=list_r_qc[[j]],
                                   rast_var=list_r_var[[j]],
@@ -736,16 +738,18 @@ processing_modis_data <- function(in_dir,
                             out_rastnames_var,
                             out_dir_mosaic,
                             file_format,
-                            NA_flag_val)
+                            NA_flag_val,
+                            multiband)
     
     names(list_param_mosaic)<-c("j",
                                 "mosaic_list",
                                 "out_rastnames",
                                 "out_path",
                                 "file_format",
-                                "NA_flag_val")
-    #debug(mosaic_m_raster_list)
-    #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
+                                "NA_flag_val",
+                                "multiband")
+    debug(mosaic_m_raster_list)
+    list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
     #list_var_mosaiced <-mclapply(1:11, 
     #                             list_param=list_param_mosaic, 
     #                             mosaic_m_raster_list,
