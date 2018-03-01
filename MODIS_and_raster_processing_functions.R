@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 02/28/2018
+#MODIFIED ON: 03/01/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: multiband option changes for mosaic of MOD09A1
 #
@@ -73,18 +73,35 @@ mosaic_m_raster_list<-function(j,list_param){
   # read the individual rasters into a list of RasterLayer objects
   # this may be changed so that it is not read in the memory!!!
   
-  #parse output...
+  ## CREATED ON: 09/16/2013
+  ## MODIFIED ON: 03/01/2018
+  ## AUTHOR: Benoit Parmentier
+  ##
+  ## INPUTS
+  # 1)
+  # 2)
+  # 3)
+  ## OUTPUTS
+  # 1)
+  #
+  
+  #### Start function ####
+  
+  ### Step 1: Parse inputs
   
   #j<-list_param$j
   mosaic_list<-list_param$mosaic_list
   out_dir<-list_param$out_dir
+  out_suffix <- list_param$out_suffix
   out_names<-list_param$out_rastnames
   file_format <- list_param$file_format
   NA_flag_val <- list_param$NA_flag_val
   multiband <- list_param$multiband
   
-  #### Start function ####
   
+  ### Step 2: Mosaic lists of files
+  
+  ## Check input to see if this is a multiband file
   r_in <- brick(as.character(mosaic_list[[j]])[1])
   n_layer <- nlayers(r_in)
   
@@ -101,12 +118,13 @@ mosaic_m_raster_list<-function(j,list_param){
     #mosaiced_rast<-mosaic(mosaiced_rast,raster(input.rasters[[k]]), fun=mean)
   }
   
+  #### Step 3: Write out images and return values
+  
   data_name<-paste("mosaiced_",sep="") #can add more later...
   #raster_name<-paste(data_name,out_names[j],".tif", sep="")
-  raster_name<-paste(data_name,out_names[j],file_format, sep="")
-  raster_name<-paste(data_name,out_names[j], sep="")
+  #raster_name<-paste(data_name,out_names[j],file_format, sep="")
+  raster_name<-paste(data_name,out_names[j], sep="") #don't add file format here
   
-  #### Part 5: Write out images and return values
   #raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
   #raster_name <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
   
@@ -115,6 +133,7 @@ mosaic_m_raster_list<-function(j,list_param){
   
   #Write out as brick
   data_type_str <- dataType(mosaiced_rast) #find the dataType, this should be a future input param
+  
   if(is.null(NA_flag_val)){
     NA_flag_val <- NAvalue(mosaiced_rast)
   }
@@ -124,8 +143,9 @@ mosaic_m_raster_list<-function(j,list_param){
   if(n_layer>1){
     suffix_str <- 1:n_layer
     if(out_suffix!=""){
-      suffix_str <- paste(suffix_str,out_suffix,sep="_")
+      suffix_str <- paste(out_suffix,suffix_str,sep="_")
     }
+    #if not, don't add out_sufffix
     
     if(multiband==TRUE){
       #raster_name_tmp <- basename(rast_name_var)
@@ -136,13 +156,16 @@ mosaic_m_raster_list<-function(j,list_param){
         raster_name_tmp <- paste(raster_name,file_format,sep="")
       }
       bylayer_val <- FALSE #don't write out separate layer files for each "band"
+      rast_list <- file.path(out_dir,raster_name_tmp) #as return from function
     }
     if(multiband==FALSE){
-      raster_name_tmp <- paste(raster_name,file_format,sep="")
+      raster_name_tmp <- paste(raster_name,file_format,sep="") #don't add output suffix because in suffix_str
       bylayer_val <- TRUE #write out separate layer files for each "band"
+      rast_list <- file.path(out_dir,(paste(raster_name,"_",suffix_str,file_format,sep=""))) 
     }
     
     if(file_format==".tif"){
+      #Use compression option for tif
       writeRaster(mosaiced_rast,
                   filename=file.path(out_dir,raster_name_tmp),
                   bylayer=bylayer_val,
@@ -166,33 +189,23 @@ mosaic_m_raster_list<-function(j,list_param){
   
   if(n_layer==1){
     #raster_name_tmp <- basename(rast_name_var)
-    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
-    raster_name_tmp <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
-    
-    writeRaster(rast_var_m, 
+    #raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name_tmp <- paste(raster_name,"_",out_suffix,file_format,sep="")
+    writeRaster(mosaiced_rast, 
                 NAflag=NA_flag_val,
                 filename=file.path(out_dir,raster_name_tmp),
                 bylayer=FALSE,
                 bandorder="BSQ",
                 datatype=data_type_str,
                 overwrite=TRUE)
+    rast_list <- file.path(out_dir,raster_name_tmp)
   }
-  
-  
-  
-  
-  writeRaster(mosaiced_rast, 
-              NAflag=NA_flag_val,
-              filename=file.path(out_path,raster_name),
-              overwrite=TRUE)  
-  #Writing the data in a raster file format...  
-  rast_list<-file.path(out_path,raster_name)
   
   ## The Raster and rgdal packages write temporary files on the disk when memory is an issue. This can potential build up
   ## in long  loops and can fill up hard drives resulting in errors. The following  sections removes these files 
   ## as they are created in the loop. This code section  can be transformed into a "clean-up function later on
   ## Start remove
-  tempfiles<-list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  tempfiles <- list.files(tempdir(),full.names=T) #GDAL transient files are not removed
   files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
   if(length(files_to_remove)>0){
     file.remove(files_to_remove)
