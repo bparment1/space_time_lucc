@@ -77,7 +77,7 @@ mosaic_m_raster_list<-function(j,list_param){
   
   #j<-list_param$j
   mosaic_list<-list_param$mosaic_list
-  out_path<-list_param$out_path
+  out_dir<-list_param$out_dir
   out_names<-list_param$out_rastnames
   file_format <- list_param$file_format
   NA_flag_val <- list_param$NA_flag_val
@@ -85,7 +85,10 @@ mosaic_m_raster_list<-function(j,list_param){
   
   #### Start function ####
   
-  if(multiband==TRUE){
+  r_in <- brick(as.character(mosaic_list[[j]])[1])
+  n_layer <- nlayers(r_in)
+  
+  if(n_layer>1){
     input.rasters <- lapply(as.character(mosaic_list[[j]]), brick)
   }else{
     input.rasters <- lapply(as.character(mosaic_list[[j]]), raster)
@@ -94,15 +97,94 @@ mosaic_m_raster_list<-function(j,list_param){
   mosaiced_rast <- input.rasters[[1]]
   
   for (k in 2:length(input.rasters)){
-    mosaiced_rast<-mosaic(mosaiced_rast,input.rasters[[k]], fun=mean)
+    mosaiced_rast <- mosaic(mosaiced_rast,input.rasters[[k]], fun=mean)
     #mosaiced_rast<-mosaic(mosaiced_rast,raster(input.rasters[[k]]), fun=mean)
   }
   
   data_name<-paste("mosaiced_",sep="") #can add more later...
   #raster_name<-paste(data_name,out_names[j],".tif", sep="")
   raster_name<-paste(data_name,out_names[j],file_format, sep="")
+  raster_name<-paste(data_name,out_names[j], sep="")
   
-  writeRaster(mosaiced_rast, NAflag=NA_flag_val,filename=file.path(out_path,raster_name),overwrite=TRUE)  
+  #### Part 5: Write out images and return values
+  #raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+  #raster_name <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
+  
+  #### change to compress if format is tif!! add this later...
+  #file_format <- extension(mosaic_list[[j]])[1] #assumes that all inputs have the same file type, take first
+  
+  #Write out as brick
+  data_type_str <- dataType(mosaiced_rast) #find the dataType, this should be a future input param
+  if(is.null(NA_flag_val)){
+    NA_flag_val <- NAvalue(mosaiced_rast)
+  }
+  
+  #browser()
+
+  if(n_layer>1){
+    suffix_str <- 1:n_layer
+    if(out_suffix!=""){
+      suffix_str <- paste(suffix_str,out_suffix,sep="_")
+    }
+    
+    if(multiband==TRUE){
+      #raster_name_tmp <- basename(rast_name_var)
+      #raster_name <- basename(sub(file_format,"",raster_name))
+      if(out_suffix!=""){
+        raster_name_tmp <- paste(raster_name,"_",out_suffix,file_format,sep="")
+      }else{
+        raster_name_tmp <- paste(raster_name,file_format,sep="")
+      }
+      bylayer_val <- FALSE #don't write out separate layer files for each "band"
+    }
+    if(multiband==FALSE){
+      raster_name_tmp <- paste(raster_name,file_format,sep="")
+      bylayer_val <- TRUE #write out separate layer files for each "band"
+    }
+    
+    if(file_format==".tif"){
+      writeRaster(mosaiced_rast,
+                  filename=file.path(out_dir,raster_name_tmp),
+                  bylayer=bylayer_val,
+                  suffix=suffix_str,
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str,
+                  options=c("COMPRESS=LZW"))
+    }else{
+      #Don't use compression option if not tif
+      writeRaster(mosaiced_rast,
+                  filename=file.path(out_dir,raster_name_tmp),
+                  bylayer=multiband,
+                  suffix=suffix_str,
+                  overwrite=TRUE,
+                  NAflag=NA_flag_val,
+                  datatype=data_type_str)
+    }
+    
+  }
+  
+  if(n_layer==1){
+    #raster_name_tmp <- basename(rast_name_var)
+    raster_name <- basename(sub(extension(rast_name_var),"",rast_name_var))
+    raster_name_tmp <- paste(raster_name,"_",out_suffix,extension(rast_name_var),sep="")
+    
+    writeRaster(rast_var_m, 
+                NAflag=NA_flag_val,
+                filename=file.path(out_dir,raster_name_tmp),
+                bylayer=FALSE,
+                bandorder="BSQ",
+                datatype=data_type_str,
+                overwrite=TRUE)
+  }
+  
+  
+  
+  
+  writeRaster(mosaiced_rast, 
+              NAflag=NA_flag_val,
+              filename=file.path(out_path,raster_name),
+              overwrite=TRUE)  
   #Writing the data in a raster file format...  
   rast_list<-file.path(out_path,raster_name)
   
