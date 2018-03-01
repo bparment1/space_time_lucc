@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/28/2018
+#MODIFIED ON : 03/01/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -737,6 +737,7 @@ processing_modis_data <- function(in_dir,
                             mosaic_list_var,
                             out_rastnames_var,
                             out_dir_mosaic,
+                            out_suffix="",
                             file_format,
                             NA_flag_val,
                             multiband)
@@ -744,12 +745,13 @@ processing_modis_data <- function(in_dir,
     names(list_param_mosaic)<-c("j",
                                 "mosaic_list",
                                 "out_rastnames",
-                                "out_path",
+                                "out_dir",
+                                "out_suffix",
                                 "file_format",
                                 "NA_flag_val",
                                 "multiband")
-    debug(mosaic_m_raster_list)
-    list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
+    #debug(mosaic_m_raster_list)
+    #list_var_mosaiced <- mosaic_m_raster_list(1,list_param_mosaic)
     #list_var_mosaiced <-mclapply(1:11, 
     #                             list_param=list_param_mosaic, 
     #                             mosaic_m_raster_list,
@@ -768,7 +770,6 @@ processing_modis_data <- function(in_dir,
     
     #r_test <- stack(list_var_mosaiced)
     #plot(r_test,y=1:2)
-    
     
   }
   
