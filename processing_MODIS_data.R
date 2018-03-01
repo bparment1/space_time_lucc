@@ -22,9 +22,9 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 02/28/2018
+#MODIFIED ON : 03/01/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: import MOD09 with multiband output option added
+#COMMIT: testing mosaicing for MOD09A1 multibands
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -83,9 +83,9 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <-"MODIS_and_raster_processing_functions_02282018.R"
-function_processing_modis_data <-"processing_MODIS_data_functions_02282018b.R"
-function_qc_modis_processing <-"QC_layers_modis_processing_functions_02282018b.R"
+function_raster_processing <- "MODIS_and_raster_processing_functions_03012018.R"
+function_processing_modis_data <- "processing_MODIS_data_functions_03012018.R"
+function_qc_modis_processing <-"QC_layers_modis_processing_functions_03012018.R"
 
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
 script_path <- "/nfs/bparmentier-data/Data//Space_beats_time/sbt_scripts"  #path to script functions
