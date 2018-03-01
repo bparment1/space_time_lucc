@@ -24,7 +24,7 @@
 #CREATED ON : 09/16/2013  
 #MODIFIED ON : 03/01/2018
 #PROJECT: General MODIS processing of all projects
-#COMMIT: testing mosaicing for MOD09A1 multibands
+#COMMIT: testing multiband support for reprojection for MOD09A1 multibands
 #
 #TODO: 
 #1)Test additional Quality Flag levels for ALBEDO and other products (MOD09)
@@ -83,8 +83,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <- "MODIS_and_raster_processing_functions_03012018.R"
-function_processing_modis_data <- "processing_MODIS_data_functions_03012018.R"
+function_raster_processing <- "MODIS_and_raster_processing_functions_03012018c.R"
+function_processing_modis_data <- "processing_MODIS_data_functions_03012018b.R"
 function_qc_modis_processing <-"QC_layers_modis_processing_functions_03012018.R"
 
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
@@ -109,6 +109,8 @@ out_dir <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectan
 #ARG3
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
+#
+method_proj_val <- "bilinear" #can be "ngb"
 #ARG4
 file_format <- ".tif" #raster format used #param4
 #ARG5
@@ -148,6 +150,7 @@ qc_name <- NULL #"QC_Night", not implemented for NDVI at this stage
 num_cores <- 4 #option for parallel processes
 #AR19: if NULL, used default options, Maybe a textfile with be better here as input?
 selected_flags <- list(QA_word1 ="VI Good Quality",QA_word1 ="VI Produced,check QA") #if NULL use default
+
 #Select level 2:
 #qc_product_l2_valid <- list(x=qc_lst_valid,QA_word2 %in% unique(QC_data_ndvi$QA_word2)[1:8]) #"Highest quality, 1","Lower quality, 2","Decreasing quality, 3",...,"Decreasing quality, 8" 
 #ARG20
