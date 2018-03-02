@@ -222,26 +222,28 @@ mosaic_m_raster_list<-function(j,list_param){
 ### This is a very general function to process raster to match a raster of reference,
 create__m_raster_region <-function(j,list_param){
   #This processes a list of raster to match to a region of interest defined by a reference raster
-  #INPUT Arguments: raster name of the file,reference file with
-  # j: file to be processed with input parameters
-  # raster_name: list of raster to process i.e. match the region of interest
-  # reg_ref_rast: reference raster used to defined the region of interest and spatial parameters
-  # out_rast_name: output raster name, if NULL then use out_suffix to the input name to generate output name
-  # agg_param: aggregation parameters: this is a vector used in in the aggregate function. It has three items:
+  #INPUTS Arguments: raster name of the file,reference file with
+  # 1) j: file to be processed with input parameters
+  # 2) raster_name: list of raster to process i.e. match the region of interest
+  # 3) reg_ref_rast: reference raster used to defined the region of interest and spatial parameters
+  # 4) out_rast_name: output raster name, if NULL then use out_suffix to the input name to generate output name
+  # 5) method_proj_val: from Raster package: "ngb" for categorical or continuous, "bilinear" suitable for continuous
+  # 6) agg_param: aggregation parameters: this is a vector used in in the aggregate function. It has three items:
   #                                     -TRUE/FALSE: if true then aggregate
   #                                     -agg_fact: aggregation factor, if NULL compute on the fly
   #                                     -agg_fun: aggregation function to use, the default is mean
-  # file_format: output format used in the raster e.g. .tif, .rst
-  # NA_flag_val: flag value used for no data
-  # input_proj_str: defined projection,default null in which case it is extract from the input raster
-  # out_suffix : output suffix added to output names if no output raster name is given
-  # out_dir:  <- list_param$out_dir
-  # Output: spatial grid data frame of the subset of tiles
+  # 7) file_format: output format used in the raster e.g. .tif, .rst
+  # 8) NA_flag_val: flag value used for no data
+  # 9) input_proj_str: defined projection,default null in which case it is extract from the input raster
+  # 10) out_suffix : output suffix added to output names if no output raster name is given
+  # 11) out_dir:  <- list_param$out_dir
+  # 12) Output: spatial grid data frame of the subset of tiles
+  #OUTPUTS:
   #
   # Authors: Benoit Parmentier
   # Created: 10/01/2015
   # Modified: 03/01/2018
-  #TODO:
+  # TODO:
   # - Add option to disaggregate...
   # - Modify agg param to be able to use different ones by file j for the mcapply function
   #
@@ -250,6 +252,7 @@ create__m_raster_region <-function(j,list_param){
   raster_name <- list_param$raster_name[[j]] #list of raster ot project and crop, this is a list!!
   reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
   out_rast_name <- list_param$out_rast_name[j] #if NULL then use out_suffix to add to output name
+  method_proj_val <- list_param$method_proj_val
   agg_param <- list_param$agg_param #TRUE,agg_fact,agg_fun
   file_format <- list_param$file_format #.tif, .rst
   NA_flag_val <- list_param$NA_flag_val #flag value used for no data
@@ -337,7 +340,7 @@ create__m_raster_region <-function(j,list_param){
   data_type_str <- dataType(layer_rast)
   layer_projected_rast <- projectRaster(from=layer_crop_rast,
                                         to=reg_ref_rast,
-                                        method="ngb",
+                                        method=method_proj_val, #This is "ngb" or "bilinear"
                                         bylayer=bylayer_val,
                                         suffix=suffix_str, #ignored if bylayer=F or not multiband
                                         NAflag=NA_flag_val,
