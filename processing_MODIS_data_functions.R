@@ -883,6 +883,7 @@ processing_modis_data <- function(in_dir,
                                        file_format,
                                        NA_flag_val,
                                        input_proj_str=NULL,
+                                       multiband,
                                        out_suffix="",
                                        out_dir_s)
     names(list_param_create_region) <- c("raster_name",
@@ -891,10 +892,11 @@ processing_modis_data <- function(in_dir,
                                            "file_format",
                                            "NA_flag_val",
                                            "input_proj_str",
+                                           "multiband",
                                            "out_suffix",
                                            "out_dir")
     #undebug(create__m_raster_region)
-    r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
+    #r_filename <- create__m_raster_region(1,list_param=list_param_create_region)
     #r <- raster(r_filename)
     reg_var_list <- mclapply(1:length(lf_r),
                                FUN=create__m_raster_region,
@@ -924,20 +926,24 @@ processing_modis_data <- function(in_dir,
         #dat_out <- na.omit(dat_out)
       
         out_filename <- paste0("dat_reg_var_list_",product_type,"_",out_suffix,".txt")
+        out_filename <- file.path(out_dir_s,out_filename)
         write.table(dat_reg_var,
-                    file.path(out_dir_s,out_filename),
+                    out_filename,
                     row.names=F,sep=",",col.names=T)
         
         #write.table(dat_reg_var)
+    }else{
+      out_filename <- NULL
     }
       
   }### End of step 5: reproject  
   
   ####### NOW prepare object to Return here:
   
-  list()
+  processing_modis_obj <- list(lf,out_filename)
+  names(processing_modis_obj) <- c("project_files","out_filename")
   
-  return()
+  return(processing_modis_obj)
 }
 
 
