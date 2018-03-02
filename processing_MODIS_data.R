@@ -105,13 +105,12 @@ in_dir <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectanc
 #out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI" #param2
 #out_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance" #param1
 out_dir <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance"
-
 #ARG3
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-#
-method_proj_val <- "bilinear" #can be "ngb"
 #ARG4
+method_proj_val <- "bilinear" # "ngb"
+#ARG5
 file_format <- ".tif" #raster format used #param4
 #ARG5
 NA_flag_val <- -9999
@@ -204,6 +203,7 @@ debug(processing_modis_data)
 modis_processed_obj  <- processing_modis_data(in_dir,
                                               out_dir,
                                               CRS_reg,
+                                              method_proj_val,
                                               file_format, 
                                               NA_flag_val,
                                               out_suffix,
