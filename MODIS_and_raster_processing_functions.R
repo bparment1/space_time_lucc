@@ -240,7 +240,7 @@ create__m_raster_region <-function(j,list_param){
   #
   # Authors: Benoit Parmentier
   # Created: 10/01/2015
-  # Modified: 01/20/2016
+  # Modified: 03/01/2018
   #TODO:
   # - Add option to disaggregate...
   # - Modify agg param to be able to use different ones by file j for the mcapply function
@@ -254,18 +254,21 @@ create__m_raster_region <-function(j,list_param){
   file_format <- list_param$file_format #.tif, .rst
   NA_flag_val <- list_param$NA_flag_val #flag value used for no data
   input_proj_str <- list_param$input_proj_str #default null?
+  multiband <- list_param$multiband #if TRUE then write out multiple bands in one file, else in multiple
   out_suffix <- list_param$out_suffix
   out_dir <- list_param$out_dir
   
-  ## Start #
+  ##### Start function #
   
   ## Create raster object if not already present
   if(class(raster_name)!="RasterLayer"){
-    layer_rast<-raster(raster_name)
+    #layer_rast<-raster(raster_name)
+    layer_rast<- brick(raster_name) #
   }else{
     layer_rast <- raster_name
     raster_name <- filename(layer_rast)
   }
+  n_layer <- nlayers(layer_rast)
   
   ## Create output raster name if out_rast_name is null
   if(is.null(out_rast_name)){
@@ -288,6 +291,7 @@ create__m_raster_region <-function(j,list_param){
   
   layer_crop_rast <- crop(layer_rast, region_temp_projected) #crop using the extent from the region tile
   #layer_projected_rast<-projectRaster(from=layer_crop_rast,crs=proj4string(reg_outline),method="ngb")
+  
   if(agg_param[1]==TRUE){
     agg_fact <- as.numeric(agg_param[2]) #in case we have a string/char type
     agg_fun <- agg_param[3]
@@ -301,13 +305,52 @@ create__m_raster_region <-function(j,list_param){
                                           out_dir=out_dir)
     layer_crop_rast <- raster(r_agg_raster_name)
   }
+  
+  #### multiband support
+  
+  if(n_layer>1){
+    suffix_str <- 1:n_layer
+    if(out_suffix!=""){
+      suffix_str <- paste(out_suffix,suffix_str,sep="_")
+    }
+    #if not, don't add out_sufffix
+    
+    if(multiband==TRUE){
+      #raster_name_tmp <- basename(rast_name_var)
+      #raster_name <- basename(sub(file_format,"",raster_name))
+      if(out_suffix!=""){
+        raster_name_tmp <- paste(raster_name,"_",out_suffix,file_format,sep="")
+      }else{
+        raster_name_tmp <- paste(raster_name,file_format,sep="")
+      }
+      bylayer_val <- FALSE #don't write out separate layer files for each "band"
+      rast_list <- file.path(out_dir,raster_name_tmp) #as return from function
+    }
+    if(multiband==FALSE){
+      raster_name_tmp <- paste(raster_name,file_format,sep="") #don't add output suffix because in suffix_str
+      bylayer_val <- TRUE #write out separate layer files for each "band"
+      rast_list <- file.path(out_dir,(paste(raster_name,"_",suffix_str,file_format,sep=""))) 
+    }
+  }
+  
   #Should check if different projection!!!
+  data_type_str <- dataType(layer_rast)
   layer_projected_rast <- projectRaster(from=layer_crop_rast,
                                         to=reg_ref_rast,
                                         method="ngb",
+                                        bylayer=bylayer_val,
+                                        suffix=suffix_str, #ignored if bylayer=F or not multiband
                                         NAflag=NA_flag_val,
+                                        datatype=data_type_str,
+                                        options=c("COMPRESS=LZW"), #this is ignored if not .tif format
                                         filename=out_rast_name,
                                         overwrite=TRUE)
+  
+  tempfiles <- list.files(tempdir(),full.names=T) #GDAL transient files are not removed
+  files_to_remove<-grep(out_suffix,tempfiles,value=T) #list files to remove
+  if(length(files_to_remove)>0){
+    file.remove(files_to_remove)
+  }
   
   #NAvalue() #set above
   #Need cleanup of tmp files here!!! building up to 19gb!
