@@ -87,6 +87,7 @@ load_obj <- function(f){
 processing_modis_data <- function(in_dir,
                                   out_dir,
                                   CRS_reg,
+                                  method_proj_val,
                                   file_format, 
                                   NA_flag_val,
                                   out_suffix,
@@ -112,6 +113,12 @@ processing_modis_data <- function(in_dir,
                                   save_textfile,
                                   qc_info,
                                   out_dir_processing_steps){
+  
+
+  #AUTHOR: Benoit Parmentier                                                                       
+  #CREATED ON : 02/08/2018  
+  #MODIFIED ON : 03/01/2018
+  
   
   ##################################
   
@@ -837,10 +844,13 @@ processing_modis_data <- function(in_dir,
       #infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
       #Use one mosaiced modis tile as reference image...We will need to add a function 
       ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
+      method_proj_val <- "bilinear" 
+      method_proj_val <- "ngb" 
+      
       ref_rast_prj <-projectRaster(from=ref_rast_tmp,
                                    res=res(ref_rast_tmp), #set resolution to the same as input
                                    crs=CRS_reg,
-                                   method="ngb")
+                                   method=method_proj_val)
       #to define a local reference system and reproject later!!
       #Assign new projection system here in the argument CRS_reg (!it is used later)
       if(!is.null(infile_reg_outline)){
@@ -848,6 +858,7 @@ processing_modis_data <- function(in_dir,
         reg_sf <- st_transform(reg_sf,crs=CRS_reg)
         reg_sp <-as(reg_sf, "Spatial") 
         ref_rast <- crop(ref_rast_prj,reg_sp)    
+        writeRaster()
       }
     }  
       #Use the reference raster
