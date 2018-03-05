@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 03/01/2018
+#MODIFIED ON : 03/05/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -117,7 +117,7 @@ processing_modis_data <- function(in_dir,
 
   #AUTHOR: Benoit Parmentier                                                                       
   #CREATED ON : 02/08/2018  
-  #MODIFIED ON : 03/01/2018
+  #MODIFIED ON : 03/05/2018
   
   
   ##################################
@@ -844,8 +844,8 @@ processing_modis_data <- function(in_dir,
       #infile_reg_outline<- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_Houston/rita_outline_reg/Study_Area_Rita_New.shp"
       #Use one mosaiced modis tile as reference image...We will need to add a function 
       ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
-      method_proj_val <- "bilinear" 
-      method_proj_val <- "ngb" 
+      #method_proj_val <- "bilinear" 
+      #method_proj_val <- "ngb" 
       
       ref_rast_prj <-projectRaster(from=ref_rast_tmp,
                                    res=res(ref_rast_tmp), #set resolution to the same as input
@@ -857,9 +857,15 @@ processing_modis_data <- function(in_dir,
         reg_sf <- st_read(infile_reg_outline)
         reg_sf <- st_transform(reg_sf,crs=CRS_reg)
         reg_sp <-as(reg_sf, "Spatial") 
-        ref_rast <- crop(ref_rast_prj,reg_sp)    
-        writeRaster()
+        ref_rast <- crop(ref_rast_prj,reg_sp)  
+        ref_rast_name_generated <- paste("ref_rast_",out_suffix,file_format,sep="")
+        writeRaster(ref_rast,file.path(out_dir,ref_rast_name_generated))
       }
+      
+      ##This is the mosaiced and reproject tiles matching:
+      ref_rast_prj_name_generated <- paste("ref_mosaiced_input_rast_",out_suffix,file_format,sep="")
+      writeRaster( ref_rast_prj,file.path(out_dir,ref_rast_prj_name_generated))
+      
     }  
       #Use the reference raster
     if(!is.null(ref_rast_name)){
@@ -958,5 +964,5 @@ processing_modis_data <- function(in_dir,
 }
 
 
-############################## END OF SCRIPT ########################
+############################## END OF SCRIPT #################################
 
