@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 03/01/2018
+#MODIFIED ON : 03/05/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: testing multiband support for reprojection for MOD09A1 multibands
 #
@@ -83,8 +83,8 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-function_raster_processing <- "MODIS_and_raster_processing_functions_03012018c.R"
-function_processing_modis_data <- "processing_MODIS_data_functions_03012018b.R"
+function_raster_processing <- "MODIS_and_raster_processing_functions_03052018.R"
+function_processing_modis_data <- "processing_MODIS_data_functions_03052018.R"
 function_qc_modis_processing <-"QC_layers_modis_processing_functions_03012018.R"
 
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"  #path to script functions
@@ -121,6 +121,7 @@ create_out_dir_param=FALSE #param7
 #ARG8
 #infile_reg_outline <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/new_strata_rita_10282017.shp"
 infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/Houston_City_Limit/Houston_City_Limit.shp"
 
 #ARG9
 #local raster name defining resolution, extent
