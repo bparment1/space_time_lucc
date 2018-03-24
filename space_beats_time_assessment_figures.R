@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/25/2018
+#DATE MODIFIED: 03/24/2018
 #Version: 1
 #PROJECT: SBT framework - Book chapter with Rita results
 #COMMENTS: 
@@ -74,7 +74,7 @@ proj_str <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=
 #ARG
 file_format <- ".rst" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"sbt_book_figures_02252018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"sbt_book_figures_03242018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 datafname <- NULL #Need to update this
 coord_names <- "x;y" #PARAM 9
@@ -487,6 +487,81 @@ plot_temporal_time_series_profile_by_zones(start_date,
                                            out_dir,
                                            out_suffix_str)
 
+############################################################
+###Figure 6: categorical map of focus area
+
+#r_all_res <- stack(r_res_spat,r_res_temp)
+names(r_all_res)
+
+r_diff <- r_res_temp - r_res_spat
+plot(r_diff,col=matlab.like(255))
+r_test <- r_diff > 0 #sbt pixel flagging
+plot(r_test)
+plot(r_diff,col=matlab.like(255))
+l_mean <- cellStats(r_diff,stat="mean")
+l_sd <- cellStats(r_diff,stat="sd")
+class(l_sd)
+l_sd
+plot(l_sd,type="b")
+plot(l_mean,type="b")
+
+r_center <- r_diff - l_mean
+r_std_diff <- r_center/l_sd
+plot(r_std_diff)
+plot(r_std_diff>1) #one standard deivation
+plot(r_std_diff>2) #two standard deviation
+
+r_std_diff_1 <- r_std_diff>1
+r_std_diff_2 <- r_std_diff>2
+
+r_std_diff_2 <- r_std_diff_2*2
+plot(r_std_diff_1)
+
+r_focus_area_s <- r_std_diff_1 + r_std_diff_2
+plot(r_focus_area_s)
+### Take only the identified step:
+
+r_focus_area <- subset(r_focus_area,2)
+
+plot(r_focus_area)
+
+############
+##Figure 6: focus area with damage (for emergency relief)
+
+freq_focus_df <- as.data.frame(freq(r_focus_area,merge=T))
+
+n_val <- sum(as.numeric(!is.na(freq_zonal_df$value)))
+#col_pal_all <- c("red","blue","green","brown","violet") #used in all the areas, use palette from earlier code
+col_pal_all <- c("grey","pink","red") #used in all the areas, use palette from earlier code
+
+if(is.null(cat_name)){
+  cat_name <- rev(paste("","Area",1:n_val))
+}
+
+title_str <- "Potential Target Areas"
+
+#NAvalue(r_focus_area) <- 0
+### Find number of zones from freq tb
+layout_m <- c(1,0.7)
+png(paste("Figure","_6_","focus_area_",out_suffix,".png", sep=""),
+    height=480*layout_m[2],width=480*layout_m[1])
+
+#cat_name <- rev(c("Zone 3","Zone 4","Zone 5"))
+#cat_name <- rev(c("Zone 2","Zone 1"))
+#par(xpd = FALSE)
+col_pal <- col_pal_all
+plot(r_focus_area,col=col_pal,colNA="lightblue",legend=F)
+#plot(r_zonal2,col=c("red","green"))EDG
+#plot(r_focus_area)
+#par(xpd = TRUE)
+#"bottomright", "bottom", "bottomleft", "left", "topleft", "top", "topright", "right" and "center".
+legend("topleft", legend = cat_name, fill = rev(col_pal), 
+       #title="Areas",
+       cex = 0.8, 
+       #inset = 0.9,
+       bty="n")
+title(title_str)
+dev.off()
 
 ################################### END OF SCRIPT #######################################
 
