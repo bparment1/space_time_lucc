@@ -67,6 +67,10 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
   l_rast_original <- l_rast
   l_rast <- unlist(lf_agg) 
   
+  
+  no_cat <- which(zonal_colnames==sub(extension(l_rast_original),"",basename(l_rast_original)))
+  
+  #which(zonal_colnames)==basename(l_rast_original))
   ###Break out and get mean per class and do majority rule!
   
   if(use_majority==TRUE){
@@ -74,8 +78,11 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     #l_rast_original
     #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
     #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
+    #raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
+    raster_name <- l_rast[no_cat]
+    
+    #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
+    out_suffix_str <- paste0("agg",agg_fact,"_zonal_",out_suffix)
     #debug(generate_soft_cat_aggregated_raster_fun)
     lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
                                                            reg_ref_rast=NULL,
