@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 11/07/2017
+#DATE MODIFIED: 05/16/2017
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -17,7 +17,7 @@
 #TO DO:
 # Simplify and clean up code
 #
-#COMMIT: fixing output dir to save arima outputs
+#COMMIT: fixing aggregation for categorical variable
 #
 #################################################################################################
 
@@ -68,10 +68,12 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
   l_rast <- unlist(lf_agg) 
   
   
-  no_cat <- which(zonal_colnames==sub(extension(l_rast_original),"",basename(l_rast_original)))
+  no_cat <- which(zonal_colnames==sub(extension(l_rast_original),"",
+                                      basename(l_rast_original)))
   
   #which(zonal_colnames)==basename(l_rast_original))
   ###Break out and get mean per class and do majority rule!
+  #browser()
   
   if(use_majority==TRUE){
     
@@ -79,10 +81,11 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
     #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
     #raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    raster_name <- l_rast[no_cat]
+    raster_name <- l_rast_original[no_cat]
     
     #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
     out_suffix_str <- paste0("agg",agg_fact,"_zonal_",out_suffix)
+    out_suffix_str <- NULL
     #debug(generate_soft_cat_aggregated_raster_fun)
     lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
                                                            reg_ref_rast=NULL,
@@ -110,7 +113,7 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     plot(r_reclass_obj$r_rec)
     rast_zonal <- r_reclass_obj$r_rec
     #zonal_colnames
-    raster_name <- paste0("agg_",agg_fact,"_","r_",zonal_colnames,"_",out_suffix,file_format)
+    raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,"_",out_suffix,file_format)
     
     writeRaster(rast_zonal,
                 filename=file.path(out_dir,raster_name),
