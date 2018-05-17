@@ -7,7 +7,7 @@
 # Event type: Rita from 09/18 to 09/26
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/16/2018
+#DATE MODIFIED: 05/17/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -23,7 +23,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: Rita predictions for tile 2 region: first attempt
+#COMMIT: fixing error in zonal_cat name file after aggregation
 #
 
 #Rscript space_and_time_predictions_07292017b.R "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_09292017.csv"
@@ -54,7 +54,7 @@ library(sf)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05162018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05172018.R"
 
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
