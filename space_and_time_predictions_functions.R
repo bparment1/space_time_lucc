@@ -84,7 +84,7 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     raster_name <- l_rast_original[no_cat]
     
     #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
-    out_suffix_str <- paste0("agg",agg_fact,"_zonal_",out_suffix)
+    out_suffix_str <- paste0("agg_",agg_fact,"_zonal_",out_suffix)
     out_suffix_str <- NULL
     #debug(generate_soft_cat_aggregated_raster_fun)
     lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
@@ -113,10 +113,11 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     plot(r_reclass_obj$r_rec)
     rast_zonal <- r_reclass_obj$r_rec
     #zonal_colnames
-    raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,"_",out_suffix,file_format)
+    #out_raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,"_",out_suffix,file_format)
+    out_raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,file_format)
     
     writeRaster(rast_zonal,
-                filename=file.path(out_dir,raster_name),
+                filename=file.path(out_dir,out_raster_name),
                 overwrite=TRUE)  
     
   }
@@ -126,12 +127,8 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     
   }
   
-  #r_srtm_Katrina_rec2
-  #-rw-rw-r-- 1 bparmentier bparmentier 1894 Apr  7 12:33 r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
-  #-rw-rw-r-- 1 bparmentier bparmentier 1016 Apr  7 12:34 agg_5_r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
-  
-  ###
-  zonal_colnames <- gsub(extension(raster_name),"",raster_name)
+  ### Return categorical var:
+  zonal_colnames <- gsub(extension(out_raster_name),"",out_raster_name)
   ##
   
   ##########################
