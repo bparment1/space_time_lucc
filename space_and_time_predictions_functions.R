@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/16/2017
+#DATE MODIFIED: 05/20/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -42,6 +42,7 @@ library(rgeos)
 library(sphet) #contains spreg
 library(BMS) #contains hex2bin and bin2hex
 library(bitops)
+library(sf)
 
 ###### Functions used in this script
 
@@ -148,10 +149,55 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                       file_format=".tif",
                                       rast_ref=NULL,
                                       zonal_colnames,
-                                      num_cores=1,out_dir=".", 
+                                      num_cores=1,
+                                      out_dir=".", 
                                       out_suffix=NULL){
-  #Function to run space and time model given several inputs
   #
+  #This function  runs space and time models given several inputs.
+  #Default models are ARIMA and spatial lag models.
+  #Spatial models included: lagsarlm (spdep package) with "mle" and 
+  # estimation_method: "eigen", "LU", "Chebyshev"
+  # Other spatial model method include: gmm and lm.
+  # Note that the lm method generates a lag variable and uses OLS. This is not
+  # advised as there will be a biased and different standard errors in the estimates.
+  #Temporal models included: ARIMA and LM/OLS.
+  #
+  #AUTHORS: Benoit Parmentier
+  #CREATED: 06/23/2017
+  #MODIFIED: 05/21/2018
+  #
+  ##INPUTS
+  #1) n_time_event: time step number of the event
+  #2) time_window_selected: subset window used to run the models
+  #3) method_space: method and algorithm used for spatial models
+  #                  defaults are c("mle","eigen"): maximum likelihood estimator and eigen
+  #4) method_time: method and algorithm used for temporal models
+  #                 defauts are c("arima","arima",T):
+  #                 - arima model
+  #                 - algorithm arima
+  #                 - reinitialization is TRUE
+  #5) NA_flag_val: No data value, default is -9999
+  #6) file_format: output raster file format, default is ".tif",
+  #7) rast_ref: reference raster used as mask, default is NULL
+  #             then the first image of the time series is used
+  #8) zonal_colnames: variable name for the zonal/strata variable
+  #9) num_cores: number of cores used, with default value 1
+  #10) out_dir: output directory used, default is to use the current working dir "." 
+  #11) out_suffix: output suffix added to the names of all outputs
+  #                default value is "NULL"
+  #
+  ##OUTPUTS
+  # Output is a list with the following items":
+  #1) filename_dat_out:
+  #2) s_raster: 
+  #3) mae_tot_tb:
+  #4) mae_zones_tb:
+  #  
+  #
+  
+  ####################################################
+  
+  ###### Start script ######
   
   if(is.null(out_suffix)){
     out_suffix=""
@@ -183,14 +229,18 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
   #time_step_end <- n_time_event + 8
-  time_step_subset <- time_step_start +1 # this is because we miss the first date of pred!!
+  # this is because we miss the first date of pred!!
+  time_step_subset <- time_step_start + 1 
   #time_window_selected <- time_step_subset:time_step_end
   
   time_window_predicted <- time_step_subset:time_step_end #100 to 116
-  r_spat_var <- subset(s_raster,time_window_selected) #predict before and after event
+  #### Subset raster stack for spatial model:
+  r_spat_var <- subset(s_raster,
+                       time_window_selected) #predict before and after event
   
+  ##### Use a raster reference image to define the study area:
   if(is.null(rast_ref)){
-    rast_ref <- subset(s_raster,1)
+    rast_ref <- subset(s_raster,1) #use default first image
   }
   
   ########
@@ -212,15 +262,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #Use 100 to 116
   #out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
   
-  estimator <- method_space[1]
-  estimation_method <- method_space[2]
+  estimator <- method_space[1] #spatial method used for space model
+  estimation_method <- method_space[2] # algorithm used for the space model
   
-  #estimator <- "mle"
-  #estimation_method <- "eigen"
-  #estimation_method <- "LU"
-  #estimation_method <- "Chebyshev"
-  #estimator <- gmm
-  
+  ## 
   #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
@@ -238,7 +283,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #test <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
   
   
-  pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,FUN=predict_spat_reg_fun,
+  pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,
+                                                 FUN=predict_spat_reg_fun,
                                                  list_param=list_param_spat_reg,
                                                  mc.preschedule=FALSE,
                                                  mc.cores = num_cores)
@@ -277,17 +323,11 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
                                                                     "_","no_previous_",out_suffix,".RData",sep="")))
   
-  #pred_spat_mle_eigen: extract raster images from object
-  spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-  spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
-  levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-  levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-  
   ##############################################################################################
   ############## PART III TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
   
-  estimator <- method_time[1]
-  estimation_method <- method_time[2]
+  estimator <- method_time[1] #temporal method used
+  estimation_method <- method_time[2] #algorithm used for the temporal method
   re_initialize_arima <- method_time[3] # set to TRUE or FALSE for ARIMA method
   
   #rast_ref <- subset(s_raster,1) #first image ID
@@ -478,11 +518,22 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     
   }
   
-  levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
-  levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
+  if(method_space[1]=="mle"){
+    
+    #pred_spat_mle_eigen: extract raster images from object
+    spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+    spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+    
+    #levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+    #levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+    
+    levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
+    levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
+    levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+    levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+    
+  }
   
-  levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
-  levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
   
   #spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
   #spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
