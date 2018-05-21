@@ -4,10 +4,10 @@
 #Data used in the script are related to hurricane or other event  of any nature.
 #The script uses spatial neighbours to predict values in the reference region. 
 #Temporal predictions use OLS with the image of the previous time or the ARIMA method.
-# Event type: Rita from 09/18 to 09/26
+# Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/17/2018
+#DATE MODIFIED: 05/21/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -54,8 +54,8 @@ library(sf)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05172018.R"
-
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05212018.R"
+function_space_and_time_assessment <- "space_and_time_assessment_functions_02262018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
@@ -65,6 +65,7 @@ source(file.path(script_path,function_space_and_time_predictions))
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_data_figures_reporting)) #source all functions used in this script 1.
+source(file.path(script_path,function_space_and_time_assessment))
 
 #Aggregation code
 function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
@@ -277,6 +278,7 @@ s_raster <- stack(l_rast)
 #script_path <- "/home/parmentier/Data/Space_beats_time/sbt_scripts"
 #source(file.path(script_path,function_space_and_time_predictions))
 
+#debug(run_space_and_time_models)
 run_space_and_time_models(s_raster,
                           n_time_event,
                           time_window_selected,
@@ -290,5 +292,33 @@ run_space_and_time_models(s_raster,
                           out_dir=out_dir, 
                           out_suffix=out_suffix)
 
+
+#### maybe run assessment here?
+###########################
+#### PART III: run space and time model
+
+#debug(accuracy_space_time_calc)
+accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
+  r_temp_pred=r_temp_pred,
+  #r_spat_pred=r_spat_pred,
+  r_spat_pred=r_spat_res_with_previous,
+  #s_raster = data_fname,
+  s_raster= s_raster,#observed stack
+  proj_str = proj_str,
+  time_window_selected =time_window_selected,
+  n_time_event = n_time_event_obs,
+  r_zonal = zonal_colnames,
+  method_space = method_space,
+  method_time = method_time,
+  #r_ref = r_ref,
+  r_ref = rast_ref,
+  #out_suffix = out_suffix_test,
+  out_suffix = out_suffix,
+  var_names = var_names,
+  NA_flag_val = NA_flag_val,
+  file_format =file_format,
+  date_range = date_range,
+  out_dir = out_dir,
+  create_out_dir_param =create_out_dir_param)
 
 ###########################  END OF SCRIPT #########################################
