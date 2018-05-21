@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/20/2018
+#DATE MODIFIED: 05/21/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -293,10 +293,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                                                       "_","with_previous_",out_suffix,".RData",sep="")))
   
   #pred_spat_mle_eigen: extract raster images from object
-  spat_pred_rast_mle_eigen_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-  spat_res_rast_mle_eigen_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
-  levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-  levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+  r_spat_pred_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+  r_spat_res_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+  #levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
+  #levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
   
   #############################################
   ### STEP 2:
@@ -322,6 +322,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
                                                                     "_","no_previous_",out_suffix,".RData",sep="")))
+  r_spat_pred_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+  r_spat_res_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+  
   
   ##############################################################################################
   ############## PART III TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
@@ -457,6 +460,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         #undebug(predict_temp_reg_fun)
         pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
         l_pred_temp_arima[[i]] <- pred_temp_arima  #only one date predicted...one step ahead
+        
+        r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
+        r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
+        
       }
     }else{
       time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
@@ -478,13 +485,19 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
       #debug(predict_temp_reg_fun)
       pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
       
+      
+      r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
+      r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
+      
     }
     
     
   }
   
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
-  #browser()
+  browser()
+  
+  
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
   #using 11 cores
