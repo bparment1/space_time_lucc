@@ -152,10 +152,10 @@ format_mae_zones_tb <- function(df_zone){
   #
   val_zone_mae <- t(df_zone)[-1,]
   head(val_zone_mae)
+  n_times_step <- nrow(val_zone_mae)
+  n_zones <- ncol(val_zone_mae)
   val_mae <- as.vector(val_zone_mae)
   df_zone_mae <- data.frame(mae=val_mae)
-  n_times_step <- nrow(df_zone_mae)/2
-  n_zones <- ncol(val_zone_mae)
   df_zone_mae$zone <- unlist(lapply(1:n_zones,function(x)(rep(x,n_times_step))))
   #mae_zones_tb <- mae_zones_tb[-1,]
   #names(df_zone_mae_tb) <- paste0("zone_",1:ncol(mae_zones_tb))
@@ -220,6 +220,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   var_names <- as.integer(unlist(strsplit(var_names,";")))
   var_names <- seq(var_names[1],var_names[2])
   n_time_event <- as.integer(n_time_event)
+  browser()
   time_window_selected <-  as.integer(unlist(strsplit(time_window_selected,";")))
   time_window_selected <- seq(time_window_selected[1],time_window_selected[2])
   
@@ -267,7 +268,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   write.table(freq_tb_zonal,
               file=filename_freq_tb_zonal,
               row.names=F,sep=",",col.names=T)
-  
+  browser()
   
   filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
@@ -336,11 +337,16 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
   
-
+  browser()
+  
   df_zone <- ac_spat_obj$mae_zones_tb
+  
+  #debug(format_mae_zones_tb)
   mae_zones_tb_spat <- format_mae_zones_tb(df_zone)
+  #View(mae_zones_tb_spat)
   df_zone <- ac_temp_obj$mae_zones_tb
   mae_zones_tb_temp <- format_mae_zones_tb(df_zone)
+  #View(mae_zones_tb_temp)
   
   #View(mae_zones_tb_spat)
   mae_zones_tb_spat$method <- name_method_space
@@ -369,6 +375,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   y_range <- range(mae_zones_tb$mae)
   legend_val <- c("tempor model","spatial model")
+  n_zones <- length(unique(mae_zones_tb$zone))
   
   i <- 1
   list_figures_mae_profiles_png <- vector("list",length=n_zones)
@@ -492,7 +499,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
                          "out_dir","out_suffix","region_name","variable_name","zlim_val","stat_opt")
   
   #debug(plot_raster_mosaic)
-  test <- plot_raster_mosaic(i,list_param)
+  #test <- plot_raster_mosaic(i,list_param)
 
   #list_figures <- lapply(1:length(l_dates),
   #       FUN=plot_raster_mosaic,
