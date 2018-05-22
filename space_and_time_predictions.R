@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/21/2018
+#DATE MODIFIED: 05/22/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -54,7 +54,7 @@ library(sf)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05212018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05222018.R"
 function_space_and_time_assessment <- "space_and_time_assessment_functions_02262018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
@@ -79,7 +79,7 @@ args<-commandArgs(TRUE)
 args_table <- args[1]
 
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_05102018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_05222018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
