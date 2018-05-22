@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/21/2018
+#DATE MODIFIED: 05/22/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -164,7 +164,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 05/21/2018
+  #MODIFIED: 05/22/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
@@ -293,8 +293,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                                                       "_","with_previous_",out_suffix,".RData",sep="")))
   
   #pred_spat_mle_eigen: extract raster images from object
-  r_spat_pred_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-  r_spat_res_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+  #r_spat_pred_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+  #r_spat_res_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
   #levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
   #levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
   
@@ -322,8 +322,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
                                                                     "_","no_previous_",out_suffix,".RData",sep="")))
-  r_spat_pred_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-  r_spat_res_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+  ## Generate image raster stack in PART IV
+  #r_spat_pred_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+  #r_spat_res_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
   
   
   ##############################################################################################
@@ -461,8 +462,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
         l_pred_temp_arima[[i]] <- pred_temp_arima  #only one date predicted...one step ahead
         
-        r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
-        r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
+        #r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
+        #r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
         
       }
     }else{
@@ -486,8 +487,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
       pred_temp_arima <- predict_temp_reg_fun(1,list_param_temp_reg) #only one date predicted...four step ahead
       
       
-      r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
-      r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
+      #r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
+      #r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
       
     }
     
@@ -512,94 +513,67 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   if(method_time[1]=="arima"){
     r_temp_pred_rast_arima <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
     r_temp_res_rast_arima <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
-    levelplot(r_temp_pred_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-    levelplot(r_temp_res_rast_arima,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-    projection(r_temp_pred_rast_arima) <- proj_str
-    projection(r_temp_res_rast_arima) <- proj_str
-    temp_pred_rast <- subset(r_temp_pred_rast_arima,1:length(time_window_predicted))
-    
+    #note we need to subset!!
+    r_temp_pred <- subset(r_temp_pred_rast_arima,1:length(time_window_predicted))
   }
   
   if(method_time[1]=="lm"){
     r_temp_pred_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_pred}))
     r_temp_res_rast_lm <- stack(lapply(pred_temp_lm,FUN=function(x){x$raster_res}))
-    levelplot(r_temp_pred_rast_lm,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-    levelplot(r_temp_res_rast_lm,col.regions=rev(terrain.colors(255)),main="Var residuals after hurricane")
-    projection(r_temp_res_rast_lm) <- proj_str
-    projection(r_temp_pred_rast_lm) <- proj_str
-    temp_pred_rast <- subset(r_temp_pred_rast_lm,1:length(time_window_predicted))
+    r_temp_pred <- subset(r_temp_pred_rast_lm,1:length(time_window_predicted))
     
   }
   
   if(method_space[1]=="mle"){
+   # note that estimator may vary for maximum likelihood method
     
     #pred_spat_mle_eigen: extract raster images from object
-    spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-    spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+    #spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+    #spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
     
-    #levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-    #levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
-    
-    levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
-    levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=rev(matlab.like(255))) #view the four predictions using mle spatial reg.
-    levelplot(spat_pred_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
-    levelplot(spat_res_rast_mle_eigen_with_previous,col.regions=matlab.like(255)) #view the four predictions using mle spatial reg.
+    r_spat_pred_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+    r_spat_res_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
+   
+    r_spat_pred_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
+    r_spat_res_with_previous <- stack(lapply(pred_spat_mle_eigen_with_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
     
   }
   
-  
-  #spat_pred_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
-  #spat_res_rast_mle_eigen_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
-  #levelplot(spat_pred_rast_mle_eigen_no_previous,col.regions=rev(terrain.colors(255))) #view the four predictions using mle spatial reg.
-  #levelplot(spat_res_rast_mle_eigen_no_previous,col.regions=matlab.like(25)) #view the four predictions using mle spatial reg.
+  #### Now subset observed data:
+  r_obs <- subset(s_raster,time_window_predicted) #remove 99 because not considred in the prediction!!
   
   # Problem with rast_zonal: when aggregated categorical value become continuous
-  #
-  #
+
+  projection(r_spat_pred_with_previous) <- proj_str
+  projection(r_spat_pred_no_previous) <- proj_str
+  projection(r_temp_pred) <- proj_str
+  projection(r_obs) <- proj_str
   
-  projection(spat_pred_rast_mle_eigen_no_previous) <- proj_str
-  projection(spat_res_rast_mle_eigen_no_previous) <- proj_str
-  projection(spat_pred_rast_mle_eigen_with_previous) <- proj_str
-  projection(spat_res_rast_mle_eigen_with_previous) <- proj_str
-  
-  #r_huric_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
-  r_huric_obs <- subset(s_raster,time_window_predicted) #remove 99 because not considred in the prediction!!
-  
-  #plot(r_huric_obs)
-  #r_huric_w <- crop(r_huric_w,rast_ref)
-  levelplot(r_huric_obs,col.regions=matlab.like(25))
-  #levelplot(r_temp_pred_rast_arima,col.regions=matlab.like(25))
-  
-  #r_winds_m <- crop(winds_wgs84,res_temp_s) #small test window
-  #res_temp_s_lm <- temp_pred_rast_lm - r_huric_obs
-  #res_temp_s_arima <- temp_pred_rast_arima - r_huric_obs
-  
-  res_temp_s <- temp_pred_rast - r_huric_obs
-  res_spat_s <- spat_pred_rast_mle_eigen_no_previous - r_huric_obs
-  #res_spat_s <- spat_pred_rast_mle_eigen_no_previous - r_huric_obs
-  
-  #names(res_temp_s_lm) <- sub("pred","res",names(res_temp_s_lm))
-  #names(res_temp_s_arima) <- sub("pred","res",names(res_temp_s_arima))
-  names(res_temp_s) <- sub("pred","res",names(res_temp_s))
-  
-  #names(res_spat_mle_s) <- sub("pred","res",names(res_spat_mle_s))
-  names(res_spat_s) <- sub("pred","res",names(res_spat_s))
-  #names(res_temp_s) <- paste("r_res_s_",1:nlayers(res_temp_s),"_",out_suffix,sep="")
-  
-  #r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-  #                   spat_pred_rast_mle_eigen,spat_pred_rast_mle_Chebyshev,res_temp_s_arima,res_temp_s_lm,res_spat_s)
-  
+  #### Make quick pannel plots?
+  #levelplot(r_obs,col.regions=matlab.like(25))
+
+  #### Step 2: compute residuals
   #browser()
-  rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
+  #this is better: use this to not store temporary files
+  #res_temp_s <- overlay(r_temp_pred,r_obs,fun=function(x,y){x-y})
+  res_temp_s <- r_temp_pred - r_obs
+  res_spat_s_no_previous <- r_spat_pred_no_previous - r_obs
+  res_spat_s_with_previous <- r_spat_pred_with_previous - r_obs
   
-  #r_results <- stack(s_raster,rast_zonal,temp_pred_rast_arima,
-  #                   spat_pred_rast_mle_eigen_no_previous,
-  #                   spat_pred_rast_mle_eigen_with_previous,
-  #                   res_temp_s_arima,res_spat_s)
-  r_results <- stack(s_raster,rast_zonal,temp_pred_rast,
-                     spat_pred_rast_mle_eigen_no_previous,
-                     spat_pred_rast_mle_eigen_with_previous,
-                     res_temp_s,res_spat_s)
+  ### Assign names for new layers
+  names(res_temp_s) <- sub("pred","res",names(res_temp_s))
+  names(res_spat_s_no_previous) <- sub("pred","res",names(res_spat_s_no_previous))
+  names(res_spat_s_with_previous) <- sub("pred","res",names(res_spat_s_with_previous))
+  
+  ### Compute residuals by zones
+  rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
+
+  r_results <- stack(s_raster,
+                     r_temp_pred,
+                     r_spat_pred_no_previous,
+                     r_spat_pred_with_previous,
+                     res_temp_s,res_spat_s_no_previous,
+                     res_spat_s_with_previous)
   
   dat_out <- as.data.frame(r_results)
   dat_out <- na.omit(dat_out)
