@@ -565,6 +565,26 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   names(res_spat_s_no_previous) <- sub("pred","res",names(res_spat_s_no_previous))
   names(res_spat_s_with_previous) <- sub("pred","res",names(res_spat_s_with_previous))
   
+  #writeRaster(res_spat_s_with_previous,file=names(res_spat_s_with_previous),file_format)
+  
+  writeRaster(res_temp_s,
+              filename=paste0(file.path(out_dir,names(res_temp_s)),file_format),
+              bylayer=T,
+              options=c("COMPRESS=LZW"),
+              overwrite=TRUE)
+
+  writeRaster(res_spat_s_no_previous,
+              filename=paste0(file.path(out_dir,names(res_spat_s_no_previous)),file_format),
+              bylayer=T,
+              options=c("COMPRESS=LZW"),
+              overwrite=TRUE)
+  
+  writeRaster(res_spat_s_with_previous,
+              filename=paste0(file.path(out_dir,names(res_spat_s_with_previous)),file_format),
+              bylayer=T,
+              options=c("COMPRESS=LZW"),
+              overwrite=TRUE)
+  
   ### Compute residuals by zones
   rast_zonal <- subset(s_raster,match(zonal_colnames,names(s_raster)))
 
@@ -581,137 +601,23 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
+  browser()
+  names(r_results)
   
-  ### Now accuracy assessment using MAE
+  #### getfilenames for all outputs
+  ## Also write out list of files with path for each!
+  s_raster_filenames <- file.path(out_dir,paste0(names(s_raster),file_format))
+  r_temp_pred_filenames <- file.path(out_dir,paste0(names(r_temp_pred),file_format))
+  r_spat_pred_no_previous_filenames <- file.path(out_dir,paste0(names(r_spat_pred_no_previous),file_format))
+  r_spat_pred_with_previous_filenames <- file.path(out_dir,paste0(names(r_spat_pred_with_previous),file_format))
+
+  ## Now residuals:
+  names(res_spat_s_no_previous) <- sub("pred","res",names(res_spat_s_no_previous))
+  names(res_spat_s_with_previous) <- sub("pred","res",names(res_spat_s_with_previous))
+  names(res_temp_s) <- sub("pred","res",names(res_temp_s))
   
-  method_time
-  out_suffix_s <- paste("temp_",method_time[1],"_",out_suffix,sep="")
   
 
-  #undebug(calc_ac_stat_fun)
-  #ac_temp_arima_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast_arima,
-  #                                      r_var_s=r_huric_obs,
-  #                                      r_zones=rast_zonal,
-  #                                      file_format=file_format,
-  #                                      out_suffix=out_suffix_s)
-  #browser()
-  ac_temp_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast,
-                                        r_var_s=r_huric_obs,
-                                        r_zones=rast_zonal,
-                                        file_format=file_format,
-                                        out_suffix=out_suffix_s)  
-  
-  #out_suffix_s <- paste("temp_lm_",out_suffix,sep="_")
-  
-  #ac_temp_lm_obj <- calc_ac_stat_fun(r_pred_s=temp_pred_rast_lm,r_var_s=r_huric_obs,r_zones=rast_zonal,
-  #                                file_format=file_format,out_suffix=out_suffix_s)
-  
-  out_suffix_s <- paste("spat_mle_eigen_with_previous",out_suffix,sep="_")  
-  ac_spat_mle_eigen_with_previous_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_mle_eigen_with_previous,
-                                                          r_var_s=r_huric_obs,
-                                                          r_zones=rast_zonal,
-                                                          file_format=file_format,
-                                                          out_suffix=out_suffix_s)
-  
-  out_suffix_s <- paste("spat_mle_eigen_no_previous",out_suffix,sep="_")  
-  ac_spat_mle_eigen_no_previous_obj <- calc_ac_stat_fun(r_pred_s=spat_pred_rast_mle_eigen_no_previous,
-                                                        r_var_s=r_huric_obs,
-                                                        r_zones=rast_zonal,
-                                                        file_format=file_format,
-                                                        out_suffix=out_suffix_s)
-  
-  #mae_tot_tb <- t(rbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
-  #mae_tot_tb <- (cbind(ac_spat_obj$mae_tb,ac_temp_obj$mae_tb))
-  #mae_tot_tb <- (cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
-  #ac_spat_mle_eigen_with_previous_obj$mae_tb,
-  #ac_temp_arima_obj$mae_tb
-  #,ac_temp_lm_obj$mae_tb))
-  
-  mae_tot_tb <- cbind(ac_spat_mle_eigen_no_previous_obj$mae_tb,
-                       ac_spat_mle_eigen_with_previous_obj$mae_tb,
-                       ac_temp_obj$mae_tb)
-  
-  name_method_time <- paste0("temp_",method_time[1])
-  
-  mae_tot_tb <- as.data.frame(mae_tot_tb)
-  row.names(mae_tot_tb) <- NULL
-  names(mae_tot_tb)<- c("spat_reg_no_previous","spat_reg_with_previous",name_method_time)#,"temp_lm")
-  #mae_tot_tb$time <- 2:nrow(mae_tot_tb)
-  #mae_tot_tb$time <- 2:n_pred
-  mae_tot_tb$time <- 1:nlayers(r_huric_obs)
-  y_range<- range(cbind(mae_tot_tb$spat_reg_no_previous,mae_tot_tb$spat_reg_with_previous,mae_tot_tb[[name_method_time]]))
-  
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure_temporal_profiles_time_1_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  temp_formula_str <- paste0(paste0("temp_",method_time[1])," ~ ","time")
-  plot(spat_reg_no_previous ~ time, type="b",col="cyan",data=mae_tot_tb,ylim=y_range)
-  lines(as.formula(temp_formula_str), type="b",col="magenta",data=mae_tot_tb)
-  lines(spat_reg_with_previous ~ time, type="b",col="blue",data=mae_tot_tb)
-  legend("topleft",
-         legend=c("spat_no",name_method_time,"spat_with"),
-         col=c("cyan","magenta","blue"),
-         lty=1,
-         cex=0.8)
-  title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
-  
-  dev.off()
-  
-  write.table(mae_tot_tb,file=paste("mae_tot_tb","_",out_suffix,".txt",sep=""))
-  
-  #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
-  
-  #mae_zones_tb <- rbind(ac_spat_mle_obj$mae_zones_tb[1:3,],
-  #                      ac_temp_obj$mae_zones_tb[1:3,])
-  mae_zones_tb <- rbind(ac_spat_mle_eigen_no_previous_obj$mae_zones_tb,
-                        ac_spat_mle_eigen_with_previous_obj$mae_zones_tb,
-                        ac_temp_obj$mae_zones_tb)
-  
-  mae_zones_tb <- as.data.frame(mae_zones_tb)
-  
-  n_zones <- length(unique(mae_zones_tb$zone))
-  
-  mae_zones_tb$method <- c(rep("spat_reg_no",n_zones),rep("temp_with_reg",n_zones),rep("temp_arima_reg",n_zones))
-  
-  n_time <- ncol(mae_zones_tb) -1
-  pred_names <- c("zone",paste("t",2:n_time,sep="_"),"method")
-  #names(mae_zones_tb) <- c("zones","pred1","pred2","pred3","pred4","method")
-  names(mae_zones_tb) <- pred_names
-  
-  write.table(mae_zones_tb,file=paste("mae_zones_tb","_",out_suffix,".txt",sep=""))
-  
-  mydata<- mae_zones_tb
-  dd <- do.call(make.groups, mydata[,-ncol(mydata)]) 
-  #dd$lag <- mydata$lag 
-  #drop first few rows that contain no data but zones...
-  n_start <-n_zones*3 +1 #3 because we have 3 methods...
-  #n_start <-n_zones*2 +1
-  dd <- dd[n_start:nrow(dd),]
-  
-  dd$zones <- mydata$zones
-  dd$method <- mydata$method
-  
-  dd$zones <- mydata$zone #use recycle rule
-  
-  #Note that to get the title correct, one needs to add
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure1_ref_layer_time_1_",out_suffix,".png",sep=""),
-      width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-  
-  p <- xyplot(data~which | as.factor(zones) ,group=method,data=dd,type="b",xlab="time",ylab="VAR",
-              strip = strip.custom(factor.levels=unique(as.character(dd$zones))), #fix this!!!
-              auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
-                              border = FALSE, lines = TRUE,cex=1.2))
-  try(print(p))
-  
-  dev.off()
-  #histogram(r_zonal)
-  
   ############## Prepare return object #############
   
   space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
