@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/22/2018
+#DATE MODIFIED: 05/23/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -164,7 +164,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 05/22/2018
+  #MODIFIED: 05/23/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
@@ -206,33 +206,18 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   projection(s_raster) <- proj_str
   
   ###########################################################################
-  ############## PART III PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
+  ############## PART I PREDICT MODELS  SPAT REGRESSION OVER MULTIPLE time steps ####
   
-  ##This times will we use an automated function to generate predictions over multiple dates
-  
-  ##########################
-  #### RUN FOR SELECTED DATES and the three methods..
-  
-  ###########SPATIAL METHODS
-  ## Now predict for four dates using "mle": this does not work for such large area such as EDGY!!
-  
-  ### Predict using spatial regression: this should be a master function...
-  #r_spat_var <- subset(r_stack,139:161) #predict before (step 152) and three dates after (step 153)
   ### Important:
   #As input!!
   #r_spat_var should contain one image before the on being predicted, i.e. to predict step 100, you need at least 
   #a stack of raster 99 and raster 100.
   #num_cores <- 4
-  #num_cores_tmp <- 11
   time_step_start <- time_window_selected[1]
   time_step_end <- time_window_selected[length(time_window_selected)]
   
-  #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-  #time_step_end <- n_time_event + 8
   # this is because we miss the first date of pred!!
   time_step_subset <- time_step_start + 1 
-  #time_window_selected <- time_step_subset:time_step_end
-  
   time_window_predicted <- time_step_subset:time_step_end #100 to 116
   #### Subset raster stack for spatial model:
   r_spat_var <- subset(s_raster,
@@ -248,20 +233,13 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   ### CLEAN OUT AND SCREEN NA and list of neighbours
   #Let's use our function we created to clean out neighbours
-  #Prepare dataset 1 for function: date t-2 (mt2) and t-1 (mt1) before hurricane
-  #this is for prediction t -1 
-  #r_var <- subset(r_stack,n_time_event) #this is the date we want to use to run the spatial regression
   r_clip <- rast_ref #this is the image defining the study area
   
   #############################################
   ### MLE EIGEN Using previous step first
   
   list_models <- NULL
-  #proj_str <- NULL #if null the raster images are not reprojected
-  
-  #Use 100 to 116
-  #out_suffix_s <- paste("t_",100:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
-  
+
   estimator <- method_space[1] #spatial method used for space model
   estimation_method <- method_space[2] # algorithm used for the space model
   
@@ -328,7 +306,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   
   ##############################################################################################
-  ############## PART III TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
+  ############## PART II TEMPORAL METHODS: PREDICT MODELS  FOR USING TEMP REGRESSION OVER MULTIPLE time steps ####
   
   estimator <- method_time[1] #temporal method used
   estimation_method <- method_time[2] #algorithm used for the temporal method
@@ -498,7 +476,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
   browser()
   
-  
   #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
   #using 11 cores
@@ -601,27 +578,99 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
-  browser()
-  names(r_results)
   
+  browser()
+
   #### getfilenames for all outputs
   ## Also write out list of files with path for each!
   s_raster_filenames <- file.path(out_dir,paste0(names(s_raster),file_format))
   r_temp_pred_filenames <- file.path(out_dir,paste0(names(r_temp_pred),file_format))
   r_spat_pred_no_previous_filenames <- file.path(out_dir,paste0(names(r_spat_pred_no_previous),file_format))
   r_spat_pred_with_previous_filenames <- file.path(out_dir,paste0(names(r_spat_pred_with_previous),file_format))
-
-  ## Now residuals:
-  names(res_spat_s_no_previous) <- sub("pred","res",names(res_spat_s_no_previous))
-  names(res_spat_s_with_previous) <- sub("pred","res",names(res_spat_s_with_previous))
-  names(res_temp_s) <- sub("pred","res",names(res_temp_s))
+  res_spat_s_no_previous_filenames <- file.path(out_dir,paste0(names(res_spat_s_no_previous),file_format))
+  res_spat_s_with_previous_filenames <- file.path(out_dir,paste0(names(res_spat_s_with_previous),file_format))
   
+  ## Write out separe and common files of outputs
+  write.table(s_raster_filenames,
+              file= paste0("list_s_raster_files_",out_suffix,".txt"))
+  write.table(r_temp_pred_filenames,
+              file= paste0("list_r_temp_pred_files_",out_suffix,".txt"))
+  write.table(r_spat_pred_no_previous_filenames,
+              file= paste0("list_r_spat_pred_no_previous_files_",out_suffix,".txt"))
+  write.table(r_spat_pred_with_previous_filenames,
+              file= paste0("list_r_spat_pred_with_previous_files_",out_suffix,".txt"))
+  write.table(res_spat_s_no_previous_filenames,
+              file= paste0("list_res_spat_s_no_previous_files_",out_suffix,".txt"))
+  write.table(res_spat_s_with_previous_filenames,
+              file= paste0("list_res_spat_s_with_previous_files_",out_suffix,".txt"))
   
+  #### now all lists combined
+  #list_files_df <- data.frame(
+  #s_raster=s_raster_filenames, 
+  #r_temp_pred=r_temp_pred_filenames,
+  #r_spat_pred_no_previous=r_spat_pred_no_previous_filenames,
+  #r_spat_pred_with_previous=r_spat_pred_with_previous_filenames,
+  #res_spat_s_no_previous=res_spat_s_no_previous_filenames,
+  #res_spat_s_with_previous=res_spat_s_with_previous_filenames)
 
+  list_files_df <- data.frame(
+  s_raster=paste0("list_s_raster_files_",out_suffix,".txt"), 
+  r_temp_pred=paste0("list_r_temp_pred_files_",out_suffix,".txt"),
+  r_spat_pred_no_previous=paste0("list_r_spat_pred_no_previous_files_",out_suffix,".txt"),
+  r_spat_pred_with_previous=paste0("list_r_spat_pred_with_previous_files_",out_suffix,".txt"),
+  res_spat_s_no_previous=paste0("list_res_spat_s_no_previous_files_",out_suffix,".txt"),
+  res_spat_s_with_previous=paste0("list_res_spat_s_with_previous_files_",out_suffix,".txt"))
+
+  list_output_files_df <- data.frame(
+    name=c("s_raster","r_temp_pred","r_spat_pred_no_previous",
+      "r_spat_pred_with_previous","res_spat_s_no_previous",
+      "res_spat_s_with_previous"),
+    file=c(file.path(out_dir,paste0("list_s_raster_files_",out_suffix,".txt")), 
+    file.path(out_dir,paste0("list_r_temp_pred_files_",out_suffix,".txt")),
+    file.path(out_dir,paste0("list_r_spat_pred_no_previous_files_",out_suffix,".txt")),
+    file.path(out_dir,paste0("list_r_spat_pred_with_previous_files_",out_suffix,".txt")),
+    file.path(out_dir,paste0("list_res_spat_s_no_previous_files_",out_suffix,".txt")),
+    file.path(out_dir,paste0("list_res_spat_s_with_previous_files_",out_suffix,".txt")))
+  )
+  
+  #write.table()
+  head(list_output_files_df)
+  #View(list_files_df)
+  #paste(method_space,collpase="_")
+  ### Need to add column with type and method used
+
+  list_output_filename <- file.path(out_dir,paste0("list_output_files_df_",out_suffix,".txt"))
+  write.table(list_output_files_df,
+              file= list_output_filename)
+  
   ############## Prepare return object #############
+
+  #space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
+  #names(space_and_time_prediction_obj) <- c("filename_dat_out","s_raster","mae_tot_tb","mae_zones_tb")
   
-  space_and_time_prediction_obj <-  list(filename_dat_out,s_raster,mae_tot_tb,mae_zones_tb)
-  names(space_and_time_prediction_obj) <- c("filename_dat_out","s_raster","mae_tot_tb","mae_zones_tb")
+  space_and_time_prediction_obj <-  list(filename_dat_out,
+                                         list_output_filename,
+                                         s_raster_filenames,
+                                         r_temp_pred_filenames,
+                                         r_spat_pred_no_previous_filenames,
+                                         r_spat_pred_with_previous_filenames,
+                                         res_spat_s_no_previous_filenames,
+                                         res_spat_s_with_previous_filenames)
+                                         
+  names(space_and_time_prediction_obj) <- c("filename_dat_out",
+                                             "list_output_filename",
+                                             "s_raster",
+                                             "r_temp_pred",
+                                             "r_spat_pred_no_previous",
+                                             "r_spat_pred_with_previous",
+                                             "res_spat_s_no_previous",
+                                             "res_spat_s_with_previous")
+  
+  #names(space_and_time_prediction_obj) <- c("filename_dat_out","s_raster","mae_tot_tb","mae_zones_tb")
+  
+  save(space_and_time_prediction_obj,
+       file=paste("space_and_time_prediction_obj_",out_suffix,".RData",sep=""))             
+  
   return(space_and_time_prediction_obj)
   
 }
