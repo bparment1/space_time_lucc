@@ -295,10 +295,13 @@ space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
 ###################################
 #### PART IV: Assessment space and time model
 
-r_temp_pred <- space_and_time_prediction_obj$r_temp_pred
-r_spat_pred_with_previous <- space_and_time_prediction_obj$r_spat_pred_with_previous
+r_temp_pred <- stack(space_and_time_prediction_obj$r_temp_pred)
+r_spat_pred_with_previous <- stack(space_and_time_prediction_obj$r_spat_pred_with_previous)
 #s_raster
   
+var_names_tmp <- paste(var_names[1],var_names[length(var_names)],sep=";")
+time_window_selected_tmp <- paste(time_window_selected[1],time_window_selected[length(time_window_selected)],sep=";")
+out_suffix_tmp <- paste("test_",out_suffix,sep="")
 #debug(accuracy_space_time_calc)
 accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   r_temp_pred=r_temp_pred,
@@ -307,7 +310,7 @@ accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   #s_raster = data_fname,
   s_raster= s_raster,#observed stack
   proj_str = proj_str,
-  time_window_selected =time_window_selected,
+  time_window_selected =time_window_selected_tmp,
   n_time_event = n_time_event,
   r_zonal = zonal_colnames,
   method_space = method_space,
@@ -315,8 +318,8 @@ accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   #r_ref = r_ref,
   r_ref = rast_ref,
   #out_suffix = out_suffix_test,
-  out_suffix = out_suffix,
-  var_names = var_names,
+  out_suffix = out_suffix_tmp,
+  var_names = var_names_tmp,
   NA_flag_val = NA_flag_val,
   file_format =file_format,
   date_range = date_range,
