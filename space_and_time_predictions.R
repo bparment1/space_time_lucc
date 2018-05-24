@@ -113,7 +113,8 @@ args_table <- args[1]
 
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
+#args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dakar_NDVI_mod13_05242018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -199,7 +200,11 @@ if(agg_fact=="NULL"){
 if(out_dir=="NULL"){
   out_dir <- NULL
 }
-  
+ 
+if(zonal_colnames=="NULL"){
+  zonal_colnames <- NULL
+}
+
 #set up the working directory
 #Create output directory
 
