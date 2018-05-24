@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 08/24/2017
+#DATE MODIFIED: 08/04/2017
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -113,6 +113,15 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   projection(s_raster) <- proj_str
   #names(s_raster) <- names(data_tb)                
   r_FID <- subset(s_raster,1) #Assumes ID or reference image is the first image of the stack
+  
+  #### set zonal stat if NULL
+  if(is.null(zonal_colnames)){
+    #this does not load everything in memory:
+    set1f <- function(x){rep(1, x)}
+    zonal_colnames <- "r_zonal"
+    r_zonal <- init(r_FID, fun=set1f, filename='r_zonal.tif', overwrite=TRUE)
+    s_raster <- addLayer(s_raster,r_zonal)
+  }
   
   list_fig_filename <- vector("list",length=8)
   
@@ -339,6 +348,106 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   dev.off()
   
   list_fig_filename[[8]] <- out_fig_filename 
+  
+  ####### Generate animation 
+  if(animation==TRUE){
+    
+    ####### Generate animation:
+    
+    #browser()
+    
+    #x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+    
+    i<-1
+    l_dates <- dates_val
+    r_mosaiced_scaled <- r_stack
+    NA_flag_val
+    region_name <- out_suffix
+    variable_name <- "NDVI" #need to change title to observed instead of predicted!!!
+    zlim_val <- NULL
+    stat_opt <- T
+    out_dir_s <- "./fig_animation"
+    
+    if(!file.exists(out_dir_s)){
+      dir.create(out_dir_s)
+    }
+    
+    list_param <- list(i,l_dates,r_mosaiced_scaled,NA_flag_val, 
+                       out_dir_s,out_suffix,region_name,variable_name,zlim_val,stat_opt)
+    
+    names(list_param) <- c("i","l_dates","r_mosaiced_scaled","NA_flag_val", 
+                           "out_dir","out_suffix","region_name","variable_name","zlim_val","stat_opt")
+    
+    #debug(plot_raster_mosaic)
+    #test <- plot_raster_mosaic(i,list_param)
+    
+    #list_figures <- lapply(1:length(l_dates),
+    #       FUN=plot_raster_mosaic,
+    #       list_param=list_param)
+    
+    list_plot_fig_obj <- mclapply(1:length(l_dates),
+                                  FUN = plot_raster_mosaic,
+                                  list_param = list_param,
+                                  mc.preschedule = FALSE,
+                                  mc.cores = num_cores)
+    #list_plot_fig_obj[[1]]$min_max_df
+    #list_plot_fig_obj[[1]]$stat_df
+    #list_plot_fig_obj[[1]]$png_filename
+    
+    lf_plot_fig <- lapply(list_plot_fig_obj,function(x){x$png_filename})
+    lf_raster <- filename(r_obs)
+    
+    out_suffix_str <- out_suffix #need to change this
+    if(stat_opt==TRUE){
+      l_stat_df <- lapply(list_plot_fig_obj,function(x){x$stat_df})
+      stat_df <- do.call(rbind,l_stat_df)
+      stat_df$date <- l_dates
+      stat_df$files <- lf_raster
+      
+      ### Write out information
+      stat_df_fname <- file.path(out_dir, paste0("stat_df_", out_suffix_str, ".txt"))
+      write.table(stat_df,stat_df_fname,sep=",",row.names = F)
+      
+    }else{
+      stat_df <- NULL
+    }
+    l_min_max_df <- lapply(list_plot_fig_obj,function(x){x$stat_df})
+    min_max_df <- do.call(rbind,l_min_max_df)
+    min_max_df$date <- l_dates
+    min_max_df$files <- lf_raster
+    ### Write out information
+    min_max_df_fname <- file.path(out_dir, paste0("min_max_df_", out_suffix_str, ".txt"))
+    write.table(min_max_df,file = min_max_df_fname,sep = ",",row.names = F)
+    
+    if(is.null(zlim_val)){
+      out_suffix_movie <- paste("min_max_", out_suffix_str, sep = "")
+    } else{
+      zlim_val_str <- paste(zlim_val, sep = "_", collapse = "_")
+      out_suffix_movie <- paste(zlim_val_str, "_", out_suffix, sep = "")
+    }
+    filenames_figures_mosaic <- paste0("list_figures_animation_", out_suffix_movie, ".txt")
+    
+    write.table(unlist(lf_plot_fig),
+                filenames_figures_mosaic,row.names = F,col.names = F,quote = F)
+    #browser()
+    #frame_speed <- 25
+    frame_speed <- 50
+    animation_format <- ".mp4"
+    
+    #debug(generate_animation_from_figures_fun)
+    out_dir <- "." #problem with file path that includes Google Drive (space), resolves this issue later
+    out_filename_figure_animation <- generate_animation_from_figures_fun(filenames_figures = filenames_figures_mosaic,
+                                                                         frame_speed = frame_speed,
+                                                                         format_file = animation_format,
+                                                                         in_dir = "./fig_animation",
+                                                                         out_suffix = out_suffix_movie,
+                                                                         out_dir = out_dir,
+                                                                         out_filename_figure_animation = NULL)
+    
+    
+    ####### NOW DO AVERAGE PROFILES ########
+    
+  }
   
   ##### Prepare object to  return
   
