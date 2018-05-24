@@ -80,7 +80,7 @@ library(bitops)
 
 ### Make a function to uniformize NA accros given dates!!!
 
-explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event,proj_str,pixel_index=800,out_dir=NULL,out_suffix=NULL){
+explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_event,proj_str,pixel_index=800,animation=TRUE,out_dir=NULL,out_suffix=NULL){
   ## Function that generates a set of figures and summary of basics information on data provided for SBT.
   # This include time profile, raster time steps and before after event figures.
   #
@@ -91,6 +91,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   #4) n_time_event: time step matching the event studied
   #5) proj_str: projection string in PROJ4 format
   #6) pixel_index: pixel index corresponding to time series to be plotted
+  #7) animation: if TRUE then generate a mp4 of time series
   #7) out_dir: if null use the current directory
   #8) out_suffix: if null use "" (maybe process id later on)
   #OUTPUTS
@@ -349,6 +350,8 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   list_fig_filename[[8]] <- out_fig_filename 
   
+  browser()
+  
   ####### Generate animation 
   if(animation==TRUE){
     
@@ -395,7 +398,9 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     #list_plot_fig_obj[[1]]$png_filename
     
     lf_plot_fig <- lapply(list_plot_fig_obj,function(x){x$png_filename})
-    lf_raster <- filename(r_obs)
+    #lf_raster <- filename(r_stack)
+    lf_raster <- reg_var_list
+    browser()
     
     out_suffix_str <- out_suffix #need to change this
     if(stat_opt==TRUE){
@@ -446,7 +451,10 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     
     
     ####### NOW DO AVERAGE PROFILES ########
-    
+    min_max_df$perc_NA
+    plot(min_max_df$perc_NA,type="h",main="Percentage of NA pixels in Lagos")
+    quantile(min_max_df$perc_NA)
+    mean(min_max_df$perc_NA)
   }
   
   ##### Prepare object to  return
