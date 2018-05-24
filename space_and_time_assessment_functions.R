@@ -5,13 +5,13 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 02/25/2018
+#DATE MODIFIED: 05/24/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
 #TO DO: Add movie generation: one for raster images and one for sbt sequence + time profile
 #
-#COMMIT: splitting function and main script for the assessment
+#COMMIT: clean up of code, now tested with main script for space and time predictions
 #
 
 #################################################################################################
@@ -220,7 +220,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   var_names <- as.integer(unlist(strsplit(var_names,";")))
   var_names <- seq(var_names[1],var_names[2])
   n_time_event <- as.integer(n_time_event)
-  browser()
+  #browser()
   time_window_selected <-  as.integer(unlist(strsplit(time_window_selected,";")))
   time_window_selected <- seq(time_window_selected[1],time_window_selected[2])
   
@@ -268,9 +268,9 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   write.table(freq_tb_zonal,
               file=filename_freq_tb_zonal,
               row.names=F,sep=",",col.names=T)
-  browser()
+  #browser()
   
-  filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
+  filename_dat_out <- file.path(out_dir,paste("dat_out_assessment_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
   
@@ -282,7 +282,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #Find where that function is!!!
   
   #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
-
+  #compute accuracy for temporal model based prediction
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
                                   r_var_s=r_obs,
                                   r_zones=rast_zonal,
@@ -290,6 +290,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
                                   out_suffix=out_suffix_s)  
   
   out_suffix_s <- paste("spat_",method_space[1],"_",method_space[2],"_",out_suffix,sep="")
+  #compute accuracy for the spatial model based prediction
   ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
                               r_var_s=r_obs,
                               r_zones=rast_zonal,
@@ -337,7 +338,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   #### BY ZONES ASSESSMENT: Ok now it is general so it should be part of the function...
   
-  browser()
+  #browser()
   
   df_zone <- ac_spat_obj$mae_zones_tb
   
@@ -369,11 +370,10 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   ##### Let's set up the figure production now
   #View(mae_zones_tb)
 
-
   ### Now generate plot
   #y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
   
-  y_range <- range(mae_zones_tb$mae)
+  y_range <- range(mae_zones_tb$mae,na.rm = T)
   legend_val <- c("tempor model","spatial model")
   n_zones <- length(unique(mae_zones_tb$zone))
   
@@ -474,7 +474,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   ####### Generate animation:
   
-  browser()
+  #browser()
   
   x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
   
