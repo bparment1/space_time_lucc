@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/23/2018
+#DATE MODIFIED: 05/24/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -189,11 +189,13 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ##OUTPUTS
   # Output is a list with the following items":
   #1) filename_dat_out:
-  #2) s_raster: 
-  #3) mae_tot_tb:
-  #4) mae_zones_tb:
-  #  
-  #
+  #2) list_output_filename:
+  #3) s_raster:
+  #4) r_temp_pred
+  #5) r_spat_pred_no_previous
+  #6) r_spat_pred_with_previous
+  #7) res_spat_s_no_previous
+  #8) res_spat_s_with_previous
   
   ####################################################
   
@@ -474,19 +476,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   }
   
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
-  browser()
-  
-  #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-  
+  #browser()
   #using 11 cores
   #pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
   
-  #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_153_EDGY_predictions_03182015.RData")
-  #pred_temp_arima <- load_obj("temp_reg_obj_arima_arima_t_100_NDVI_Katrina_04102015.RData")
-  
-  #extract_files <- function(i,x){obj<-x[[i]];obj$raster_pred}
-  #debug(extract_files)
-  #extract_files(1,l_pred_temp_arima)
   if(method_time[1]=="arima"){
     r_temp_pred_rast_arima <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
     r_temp_res_rast_arima <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
@@ -579,7 +572,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
   
-  browser()
+  #browser()
 
   #### getfilenames for all outputs
   ## Also write out list of files with path for each!
@@ -605,13 +598,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
               file= paste0("list_res_spat_s_with_previous_files_",out_suffix,".txt"))
   
   #### now all lists combined
-  #list_files_df <- data.frame(
-  #s_raster=s_raster_filenames, 
-  #r_temp_pred=r_temp_pred_filenames,
-  #r_spat_pred_no_previous=r_spat_pred_no_previous_filenames,
-  #r_spat_pred_with_previous=r_spat_pred_with_previous_filenames,
-  #res_spat_s_no_previous=res_spat_s_no_previous_filenames,
-  #res_spat_s_with_previous=res_spat_s_with_previous_filenames)
 
   list_files_df <- data.frame(
   s_raster=paste0("list_s_raster_files_",out_suffix,".txt"), 
