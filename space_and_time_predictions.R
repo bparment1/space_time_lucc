@@ -23,7 +23,7 @@
 # - automation to call from the terminal/shell
 #
 #
-#COMMIT: fixing error in zonal_cat name file after aggregation
+#COMMIT: setting up inputs for Lagos
 #
 
 #### RUNNNG script
@@ -87,11 +87,11 @@ library(sf)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05242018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05242018b.R"
 function_space_and_time_assessment <- "space_and_time_assessment_functions_05242018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_08042017.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05242018b.R" #PARAM 1
 script_path <- "/media/dan/Space_beats_time/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_space_and_time_predictions))
@@ -111,8 +111,9 @@ args<-commandArgs(TRUE)
 
 args_table <- args[1]
 
+###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_05222018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -214,16 +215,39 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-## Add check to see if raster tif or list of files!!
-
-data_tb <- try(read.table(data_fname,sep=",",header=T,stringsAsFactors = F))
-#if(inherits(data_tb)=="try-error"){
-  #<- stack(data_fname)
-#}
-
-#dates1 <- generate_dates_by_step(date_range1[1],date_range1[2],16)$dates
-#dates2 <- unique(year(generate_dates_by_step(date_range2[1],date_range2[2],1)$dates)) #extract year
 dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_range[3]))$dates #NDVI Katrina
+
+## Add check to see if raster tif or list of files!!
+## Assumes that it is text file of csv type
+data_tb <- try(read.table(file.path(in_dir,
+                                    data_fname,sep=",",header=T,stringsAsFactors = F)))
+## if this is not a text file: check for stack or 
+if(inherits(data_tb,"try-error")){
+  ###  Load data if needed:
+  data_tb <-brick(file.path(in_dir,data_fname))
+  #dim(data_tb)
+  #generate list of files and write out separate files to run predictions
+  raster_name_tmp <- basename(filename(data_tb))
+  bylayer_val=TRUE
+  suffix_str <- paste0(1:length(dates_val),"_",gsub("-","_",dates_val))
+  writeRaster(data_tb,
+              filename=file.path(out_dir,raster_name_tmp),
+              bylayer=bylayer_val,
+              #suffix=paste(names(r),"_",out_suffix,sep=""),
+              #format=format_raster,
+              suffix=suffix_str,
+              overwrite=TRUE,
+              NAflag=NA_flag_val,
+              #datatype=data_type_str,
+              options=c("COMPRESS=LZW"))
+  pattern_str <- gsub(extension(raster_name_tmp),"",raster_name_tmp)
+  pattern_raster_str <- paste0(pattern_str,".*",file_format) 
+  lf <- mixedsort(list.files(pattern=pattern_raster_str,path=out_dir))
+  write.table(lf,file=paste0("list_raster_files_",pattern_str,".txt"))
+  data_tb <- read.table(paste0("list_raster_files_",pattern_str,".txt"),
+                        stringsAsFactors = F)
+}
+
 
 #Transform table text file into a raster image
 
@@ -234,8 +258,8 @@ dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_
 
 ### Read in dataset
 ### If ncol is greater than 1 then, it is a textfile with data rather 
-#than a list of raster
-if(ncol(data_tb)>1){
+#than a list of raster files (e.g. tif) or brick
+if(ncol(data_tb)>1 && class(data_tb)!="raster"){
   l_rast <- rasterize_df_fun(data_tb,
                              coord_names,
                              proj_str,
@@ -245,7 +269,6 @@ if(ncol(data_tb)>1){
                              NA_flag_val,
                              tolerance_val=0.000120005)
   zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
-  
 }else{
   l_rast <- data_tb[,1]
 }
@@ -254,6 +277,21 @@ if(ncol(data_tb)>1){
 
 if(!is.null(agg_fact)){
   #undebug(aggregate_raster_fun)
+  
+  r_FID <- raster(l_rast[1]) #Assumes ID or reference image is the first image of the stack
+  
+  #### set zonal stat if NULL
+  if(is.null(zonal_colnames)){
+    #this does not load everything in memory:
+    set1f <- function(x){rep(1, x)}
+    zonal_colnames <- "r_zonal"
+    raster_name <- file.path(out_dir,"r_zonal.tif")
+    r_zonal <- init(r_FID, fun=set1f, filename=raster_name, overwrite=TRUE)
+    #s_raster <- addLayer(s_raster,r_zonal)
+    l_rast <- c(l_rast,raster_name)
+  }
+  
+  
   obj <- aggregate_raster_fun(l_rast,
                               zonal_colnames,
                               use_majority,
@@ -289,6 +327,7 @@ explore_obj <- explore_and_summarize_data(l_rast,
                                    n_time_event,
                                    proj_str =proj_str,
                                    pixel_index = pixel_index,
+                                   animation = TRUE, #will geneate animation for the TS
                                    out_dir = out_dir,
                                    out_suffix=out_suffix)
 
