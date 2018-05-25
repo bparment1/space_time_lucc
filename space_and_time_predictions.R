@@ -83,11 +83,12 @@ library(colorRamps) #contains matlab.like color palette
 library(rgeos) #spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
 library(sphet) #spatial analyis, regression eg.contains spreg for gmm estimation
 library(sf)
+library(snow)
 
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05242018b.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05252018.R"
 function_space_and_time_assessment <- "space_and_time_assessment_functions_05242018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
@@ -114,7 +115,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dakar_NDVI_mod13_05242018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dakar_NDVI_mod13_05252018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -254,6 +255,9 @@ if(inherits(data_tb,"try-error")){
 }
 
 
+#r_FID <- raster(l_rast[1]) #Assumes ID or reference image is the first image of the stack
+
+
 #Transform table text file into a raster image
 
 ###################################
@@ -273,29 +277,39 @@ if(ncol(data_tb)>1 && class(data_tb)!="raster"){
                              file_format=file_format,
                              NA_flag_val,
                              tolerance_val=0.000120005)
-  zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
+  #zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
 }else{
   l_rast <- data_tb[,1]
+}
+
+#### set zonal stat if NULL
+if(is.null(zonal_colnames)){
+  #this does not load everything in memory:
+  r_stack <- stack(l_rast[var_names])
+
+  beginCluster(num_cores)
+  r_mean <- clusterR(r_stack, calc, args=list(mean, na.rm=T))
+  endCluster()
+  raster_name <- file.path(out_dir,"r_mean.tif")
+  writeRaster(r_mean,file=raster_name,overwrite=T)
+  
+  r_zonal <- !is.na(r_mean)
+  plot(r_zonal)
+  
+  #set1f <- function(x){rep(1, x)}
+  zonal_colnames <- "r_zonal"
+  raster_name <- file.path(out_dir,"r_zonal.tif")
+  #r_zonal <- init(r_FID, fun=set1f, filename=raster_name, overwrite=TRUE)
+  #s_raster <- addLayer(s_raster,r_zonal)
+  writeRaster(r_zonal,file=raster_name,overwrite=T)
+  
+  l_rast <- c(l_rast,raster_name)
 }
 
 ##### Aggregate data if not NULL
 
 if(!is.null(agg_fact)){
   #undebug(aggregate_raster_fun)
-  
-  r_FID <- raster(l_rast[1]) #Assumes ID or reference image is the first image of the stack
-  
-  #### set zonal stat if NULL
-  if(is.null(zonal_colnames)){
-    #this does not load everything in memory:
-    set1f <- function(x){rep(1, x)}
-    zonal_colnames <- "r_zonal"
-    raster_name <- file.path(out_dir,"r_zonal.tif")
-    r_zonal <- init(r_FID, fun=set1f, filename=raster_name, overwrite=TRUE)
-    #s_raster <- addLayer(s_raster,r_zonal)
-    l_rast <- c(l_rast,raster_name)
-  }
-  
   
   obj <- aggregate_raster_fun(l_rast,
                               zonal_colnames,
