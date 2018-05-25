@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 08/04/2017
+#DATE MODIFIED: 05/25/2018
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -307,7 +307,11 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   tmp_time <-unlist(lapply(1:n_time,FUN=function(i){rep(i,n_zones)}))
   dd$time  <- tmp_time
   dd$zones <- mydata$zone #use recycle rule
-  
+  #Labels are used in the xyplot as conditional
+  dd$zones <- factor(dd$zones,
+                      levels = unique(dd$zones),
+                      labels = paste("zone",unique(dd$zones),sep=" "))
+
   out_fig_filename <- file.path(out_dir,paste("Figure7a_average_by_zonal_areas_time_series_time_",out_suffix,".png",sep=""))
   
   res_pix<-960
@@ -350,7 +354,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   list_fig_filename[[8]] <- out_fig_filename 
   
-  browser()
+  #browser()
   
   ####### Generate animation 
   if(animation==TRUE){
@@ -369,7 +373,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     variable_name <- "NDVI" #need to change title to observed instead of predicted!!!
     zlim_val <- NULL
     stat_opt <- T
-    out_dir_s <- "./fig_animation"
+    out_dir_s <- "./summary_fig_animation"
     
     if(!file.exists(out_dir_s)){
       dir.create(out_dir_s)
@@ -400,7 +404,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     lf_plot_fig <- lapply(list_plot_fig_obj,function(x){x$png_filename})
     #lf_raster <- filename(r_stack)
     lf_raster <- reg_var_list
-    browser()
+    #browser()
     
     out_suffix_str <- out_suffix #need to change this
     if(stat_opt==TRUE){
@@ -444,7 +448,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     out_filename_figure_animation <- generate_animation_from_figures_fun(filenames_figures = filenames_figures_mosaic,
                                                                          frame_speed = frame_speed,
                                                                          format_file = animation_format,
-                                                                         in_dir = "./fig_animation",
+                                                                         in_dir = out_dir_s,
                                                                          out_suffix = out_suffix_movie,
                                                                          out_dir = out_dir,
                                                                          out_filename_figure_animation = NULL)
