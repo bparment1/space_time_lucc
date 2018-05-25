@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/24/2018
+#DATE MODIFIED: 05/25/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -88,11 +88,11 @@ library(snow)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05252018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05252018b.R"
 function_space_and_time_assessment <- "space_and_time_assessment_functions_05242018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05242018b.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05252018.R" #PARAM 1
 script_path <- "/media/dan/Space_beats_time/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_space_and_time_predictions))
@@ -115,7 +115,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dakar_NDVI_mod13_05252018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dakar_NDVI_mod13_05252018b.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
