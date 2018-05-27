@@ -270,7 +270,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
               row.names=F,sep=",",col.names=T)
   #browser()
   
-  filename_dat_out <- file.path(out_dir,paste("dat_out_assessment_",out_suffix,".txt",sep=""))
+  filename_dat_out <- file.path(out_dir,paste("dat_out_",out_suffix,".txt",sep=""))
   write.table(dat_out,file=filename_dat_out,
               row.names=F,sep=",",col.names=T)
   
@@ -282,7 +282,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   #Find where that function is!!!
   
   #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
-  #compute accuracy for temporal model based prediction
+
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
                                   r_var_s=r_obs,
                                   r_zones=rast_zonal,
@@ -290,7 +290,6 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
                                   out_suffix=out_suffix_s)  
   
   out_suffix_s <- paste("spat_",method_space[1],"_",method_space[2],"_",out_suffix,sep="")
-  #compute accuracy for the spatial model based prediction
   ac_spat_obj <- calc_ac_stat_fun(r_pred_s=r_spat_pred,
                               r_var_s=r_obs,
                               r_zones=rast_zonal,
@@ -370,10 +369,11 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   ##### Let's set up the figure production now
   #View(mae_zones_tb)
 
+
   ### Now generate plot
   #y_range <- range(cbind(mae_zones_tb[[name_method_space]],mae_zones_tb[[name_method_time]]))
   
-  y_range <- range(mae_zones_tb$mae,na.rm = T)
+  y_range <- range(mae_zones_tb$mae,na.rm = TRUE)
   legend_val <- c("tempor model","spatial model")
   n_zones <- length(unique(mae_zones_tb$zone))
   
@@ -567,7 +567,20 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   ####### NOW DO AVERAGE PROFILES ########
   
-  plot(stat_df$mean,type="l")
+  #res_pix <- 960
+  #col_mfrow<- 1
+  #row_mfrow<- 0.7
+  
+  #png_filename <- paste("Figure_temporal_profiles_MAE_zones_",zone_val,"_",out_suffix,".png",sep="")
+  #png(filename=png_filename,
+  #    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+  
+  
+  #plot(stat_df$mean,type="l")
+  #min_max_df$mean
+  #plot(min_max_df$mean,type="l")
+  
+  #dev.off()
   
   #debug(compute_avg_by_zones)
   #test <- compute_avg_by_zones(r_stack,r_zonal,out_suffix_str="",out_dir=".")
