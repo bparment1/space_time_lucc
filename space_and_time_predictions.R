@@ -115,7 +115,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dar_es_salaam_NDVI_mod13_05272018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dar_es_salaam_NDVI_mod13_05282018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -147,6 +147,7 @@ method_space <- df_args[20,index_val]
 re_initialize_arima <- df_args[21,index_val] 
 method_time <- df_args[22,index_val]
 pixel_index <- df_args[23,index_val] 
+rast_ref <- df_args[24,index_val] 
 
 #### input values for Katrina NDVI data
 # in_dir <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Rita_NDVI/" #PARAM 1
@@ -204,6 +205,10 @@ if(out_dir=="NULL"){
  
 if(zonal_colnames=="NULL"){
   zonal_colnames <- NULL
+}
+### reference image
+if(rast_ref=="NULL"){
+  rast_ref <- NULL
 }
 
 #set up the working directory
@@ -290,9 +295,10 @@ if(is.null(zonal_colnames)){
   beginCluster(num_cores)
   r_mean <- clusterR(r_stack, calc, args=list(mean, na.rm=T))
   endCluster()
+  
   raster_name <- file.path(out_dir,"r_mean.tif")
   writeRaster(r_mean,file=raster_name,overwrite=T)
-  
+
   r_zonal <- !is.na(r_mean)
   plot(r_zonal)
   
@@ -303,6 +309,26 @@ if(is.null(zonal_colnames)){
   #s_raster <- addLayer(s_raster,r_zonal)
   writeRaster(r_zonal,file=raster_name,overwrite=T)
   
+  l_rast <- c(l_rast,raster_name)
+}
+
+if(is.null(rast_ref)){
+  ## if null then use mean as reference image
+  if(is.null(r_mean){
+    #this does not load everything in memory:
+    r_stack <- stack(l_rast[var_names])
+    
+    beginCluster(num_cores)
+    r_mean <- clusterR(r_stack, calc, args=list(mean, na.rm=T))
+    endCluster()
+    
+    raster_name <- file.path(out_dir,"r_mean.tif")
+    writeRaster(r_mean,file=raster_name,overwrite=T)
+    rast_ref <- r_mean
+  }else{
+    rast_ref <- r_mean
+    raster_name <- file.path(out_dir,"r_mean.tif")
+  }
   l_rast <- c(l_rast,raster_name)
 }
 
@@ -325,8 +351,8 @@ if(!is.null(agg_fact)){
   l_rast <- obj$l_rast  
   zonal_colnames <- obj$zonal_colnames
   l_rast_original <- obj$l_rast_original
+  rast_ref <- raster("agg_2_r_mean.tif")
 }
-
 
 ###########################
 #### PART II: data reporting: description
@@ -358,7 +384,7 @@ s_raster <- stack(l_rast)
 #### PART III: run space and time model
 
 #function_space_and_time_predictions <- "space_and_time_predictions_functions_10302017.R"
-
+names(s_raster)
 #debug(run_space_and_time_models)
 space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
                                  n_time_event,
@@ -367,35 +393,42 @@ space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
                                  method_time=method_time, 
                                  NA_flag_val=NA_flag_val,
                                  file_format=file_format,
-                                 rast_ref=NULL,
+                                 rast_ref=rast_ref,
                                  zonal_colnames,
                                  num_cores=num_cores,
                                  out_dir=out_dir, 
                                  out_suffix=out_suffix)
 
-debug(plot_map_predictions)
-
-r_test <- plot_map_predictions(n_time_event=n_time_event,
-                     r_var=s_raster,
-                     r_spat_pred=r_spat_pred_no_previous,
-                     r_temp_pred=r_temp_pred,
-                     zonal_colnames)
   
 ###################################
 #### PART IV: Assessment space and time model
 
+
+#### 
+out_suffix_tmp <- paste("assessment_no_previous_",out_suffix,sep="")
+r_spat_pred_no_previous <- stack(space_and_time_prediction_obj$r_spat_pred_no_previous)
 r_temp_pred <- stack(space_and_time_prediction_obj$r_temp_pred)
-r_spat_pred_with_previous <- stack(space_and_time_prediction_obj$r_spat_pred_with_previous)
-#s_raster
-  
-var_names_tmp <- paste(var_names[1],var_names[length(var_names)],sep=";")
-time_window_selected_tmp <- paste(time_window_selected[1],time_window_selected[length(time_window_selected)],sep=";")
-out_suffix_tmp <- paste("assessment_with_previous_",out_suffix,sep="")
+
+#debug(plot_map_predictions)
+
+r_test <- plot_map_predictions(n_time_event=n_time_event,
+                               r_var=s_raster,
+                               r_spat_pred=r_spat_pred_no_previous,
+                               r_temp_pred=r_temp_pred,
+                               zonal_colnames)
+var_names_tmp <- "1;368"
+time_window_selected_tmp <- "323;339"
+
+#var_names <- df_args[11,index_val] 
+#num_cores <- df_args[12,index_val] 
+#n_time_event <- df_args[13,index_val]
+#time_window_selected <- df_args[14,index_val] 
+
 #debug(accuracy_space_time_calc)
-accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
+accuracy_space_and_time_obj_no_previous <- accuracy_space_time_calc(
   r_temp_pred=r_temp_pred,
   #r_spat_pred=r_spat_pred,
-  r_spat_pred=r_spat_pred_with_previous,
+  r_spat_pred=r_spat_pred_no_previous,
   #s_raster = data_fname,
   s_raster= s_raster,#observed stack
   proj_str = proj_str,
@@ -415,15 +448,19 @@ accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   out_dir = out_dir,
   create_out_dir_param =create_out_dir_param)
 
-#### 
-out_suffix_tmp <- paste("assessment_no_previous_",out_suffix,sep="")
-r_spat_pred_no_previous <- stack(space_and_time_prediction_obj$r_spat_pred_no_previous)
 
+r_temp_pred <- stack(space_and_time_prediction_obj$r_temp_pred)
+r_spat_pred_with_previous <- stack(space_and_time_prediction_obj$r_spat_pred_with_previous)
+#s_raster
+
+var_names_tmp <- paste(var_names[1],var_names[length(var_names)],sep=";")
+time_window_selected_tmp <- paste(time_window_selected[1],time_window_selected[length(time_window_selected)],sep=";")
+out_suffix_tmp <- paste("assessment_with_previous_",out_suffix,sep="")
 #debug(accuracy_space_time_calc)
-accuracy_space_and_time_obj_no_previous <- accuracy_space_time_calc(
+accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   r_temp_pred=r_temp_pred,
   #r_spat_pred=r_spat_pred,
-  r_spat_pred=r_spat_pred_no_previous,
+  r_spat_pred=r_spat_pred_with_previous,
   #s_raster = data_fname,
   s_raster= s_raster,#observed stack
   proj_str = proj_str,
