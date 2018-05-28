@@ -838,6 +838,204 @@ plot_raster_mosaic <- function(i,list_param){
   #return(png_filename)
   return(fig_obj)
 }
+
+
+plot_map_predictions <- function(i,list_param){
+  #Function to plot raster image
+  #
+  #INPUTS
+  #1) l_dates
+  #2) r_stack
+  #3) NA_flag_val
+  #4) out_dir,
+  #5) out_suffix_str
+  #6) region_name
+  #7) variable_name
+  #8) zlim_val
+  #
   
+  ############# Start script #########
+  
+  l_dates <- list_param$l_dates
+  r_mosaiced_scaled <- list_param$r_mosaiced_scaled
+  NA_flag_val <- list_param$NA_flag_val
+  out_dir <- list_param$out_dir
+  out_suffix <- list_param$out_suffix
+  region_name <- list_param$region_name
+  variable_name <- list_param$variable_name
+  zlim_val <- list_param$zlim_val
+  stat_opt <- list_param$stat_opt #if TRUE computer stats for the image
+  
+  n_time_event
+  r_var
+  #for (i in 1:length(nlayers(r_mosaic_scaled))){
+  
+  n_time_event <- as.numeric(unlist(strsplit(n_time_event,";")))
+  
+  n_time_event_obs <- n_time_event[1]
+  n_time_event_spat <- n_time_event[2]
+  n_time_event_temp <- n_time_event[3]
+  n_time_subset <- c(n_time_event_obs -1 ,n_time_event_obs + 2)
+  steps_subset <- n_time_subset[1]:n_time_subset[2] 
+  r_obs <- subset(r_var,steps_subset)
+  #r_spat <- subset(r_spat_pred,5:8)
+  #r_temp <- subset(r_temp_pred,5:8)
+  
+  n_time_subset <- c(n_time_event_spat - 1 ,n_time_event_spat + 2)
+  steps_subset <- n_time_subset[1]:n_time_subset[2] 
+  
+  #### Will change here using input info
+  r_spat <- subset(r_spat_pred,5:8)
+  r_temp <- subset(r_temp_pred,5:8)
+  
+  r_res_spat <- r_spat - r_obs
+  r_res_temp <- r_temp - r_obs
+  r_zonal <- subset(r_var,zonal_colnames)
+  
+
+  ############## PANEL MAPS
+  names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
+  names_layers_pred_spat <- c("Spatial predicted T-1","Spatial predicted T+1","Spatial predicted T+2","Spatial predicted T+3")
+  names_layers_pred_temp <- c("Temporal predicted T-1","Temporal predicted T+1","Temporal predicted T+2","Temporal predicted  T+3")
+  names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_temp)
+  
+  ##### First spatial pattern
+  layout_m <- c(4,1)
+  no_brks <- 255
+  palette_colors <- rev(terrain.colors(no_brks))
+  pix_res_height <- 500
+  pix_res_width <- 480
+  
+  p <- levelplot(r_obs, margin=FALSE,
+                 ylab=NULL,xlab=NULL,
+                 scales=list(draw=FALSE), #don't draw geographic coordinates
+                 par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                     par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                 par.strip.text=list(font=2,cex=2),
+                 layout= layout_m,
+                 names.attr= names_layers_obs,
+                 #main=paste(names_layers[i],"NDVI",sep=" "),
+                 col.regions=palette_colors,at=seq(-3000,10000,by=1000))
+  
+  png_filename <- paste("Figure","_2_observed_",out_suffix,".png", sep="")
+  png(png_filename,
+      height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
+  print(p) #to plot in a loop!!  
+  dev.off()
+  
+  ##spatial plot
+  
+  layout_m <- c(4,1) #
+  no_brks <- 255
+  palette_colors <- rev(terrain.colors(no_brks))
+  pix_res_height <- 500
+  pix_res_width <- 480
+  
+  p_spat <- levelplot(r_spat, margin=FALSE,
+                      ylab=NULL,xlab=NULL,
+                      scales=list(draw=FALSE), #don't draw geographic coordinates
+                      par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                          par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                      par.strip.text=list(font=2,cex=2),
+                      layout= layout_m,
+                      zlim=c(-3000,8000),
+                      names.attr= names_layers_pred_spat,
+                      #main=paste(names_layers[i],"NDVI",sep=" "),
+                      col.regions=palette_colors,at=seq(-3000,10000,by=1000))
+  
+  png_filename <- paste("Figure","_spatial_prediction_",out_suffix,".png", sep="")
+  
+  png(png_filename,
+      height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
+  print(p_spat) #to plot in a loop!!  
+  
+  dev.off()
+  
+  ##temp plot
+  layout_m <- c(4,1)
+  no_brks <- 255
+  palette_colors <- rev(terrain.colors(no_brks))
+  
+  p_temp <- levelplot(r_temp, margin=FALSE,
+                      ylab=NULL,xlab=NULL,
+                      scales=list(draw=FALSE), #don't draw geographic coordinates
+                      par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                          par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                      par.strip.text=list(font=2,cex=2),
+                      layout= layout_m,
+                      names.attr= names_layers_pred_temp,
+                      #main=paste(names_layers[i],"NDVI",sep=" "),
+                      col.regions=palette_colors,
+                      at=seq(-3000,10000,by=1000))
+  
+  png_filename <- paste("Figure","_time_prediction_",out_suffix,".png", sep="")
+  
+  png(png_filename,
+      height=480*layout_m[2],width=480*layout_m[1])
+  
+  print(p_temp) #to plot in a loop!!  
+  
+  dev.off()
+  
+  ##combined plots obs,spat,temp
+  layout_m <- c(4,3)
+  no_brks <- 255
+  palette_colors <- rev(terrain.colors(no_brks))
+  
+  r_all_var <- stack(r_obs,r_spat,r_temp)
+  
+  
+  p_all_var <- levelplot(r_all_var, margin=FALSE,
+                         ylab=NULL,xlab=NULL,
+                         scales=list(draw=FALSE), #don't draw geographic coordinates
+                         par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                             par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                         par.strip.text=list(font=2,cex=2),
+                         layout= layout_m,
+                         names.attr= names_layers_all,
+                         col.regions=palette_colors,
+                         at=seq(-3000,10000,by=1000))
+  
+  png_filename <- paste("Figure","_2_","combined_all_obs_time_space_pred_",out_suffix,".png", sep="")
+  png(png_filename,
+      height=480*layout_m[2],width=480*layout_m[1])
+  print(p_all_var) #to plot in a loop!!  
+  dev.off()
+  
+  #### Now plot residuals for NDVI
+  
+  layout_m <- c(4,2)
+  no_brks <- 255
+  #palette_colors <- (matlab.like(no_brks))
+  palette_colors <- matlab.like(no_brks)
+  
+  r_all_res <- stack(r_res_spat,r_res_temp)
+  names_layers_res_spat <- c("Spatial residuals T-1","Spatial residuals T+1","Spatial residuals T+2","Spatial residuals T+3")
+  names_layers_res_temp <- c("Temporal residuals T-1","Temporal residuals T+1","Temporal residuals T+2","Temporal residuals T+3")
+  names_layers_all_res <- c(names_layers_res_spat,names_layers_res_temp)
+  
+  p_all_res <- levelplot(r_all_res, margin=FALSE,
+                         ylab=NULL,xlab=NULL,
+                         scales=list(draw=FALSE), #don't draw geographic coordinates
+                         par.settings = list(axis.text = list(font = 2, cex = 1.5),
+                                             par.main.text=list(font=2,cex=2.5),strip.background=list(col="white")),
+                         par.strip.text=list(font=2,cex=2),
+                         layout= layout_m,
+                         names.attr=names_layers_all_res,
+                         col.regions=matlab.like(255),
+                         at=seq(-3000,5000,by=200))
+  #col.regions=palette_colors)
+  
+  png(paste("Figure","_2_","combined_all_residuals_models_time_and_space_",out_suffix,".png", sep=""),
+      height=480*layout_m[2],width=480*layout_m[1])
+  print(p_all_res) #to plot in a loop!!  
+  
+  dev.off()
+  
+  
+  return()
+}
+
+
 ###################### END OF SCRIPT ##########################  
   
