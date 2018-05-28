@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/27/2018
+#DATE MODIFIED: 05/28/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -89,7 +89,7 @@ library(snow)
 
 ## space beats time predictions run on specific dataset
 function_space_and_time_predictions <- "space_and_time_predictions_functions_05272018.R"
-function_space_and_time_assessment <- "space_and_time_assessment_functions_05272018.R"
+function_space_and_time_assessment <- "space_and_time_assessment_functions_05282018b.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05252018.R" #PARAM 1
@@ -373,6 +373,14 @@ space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
                                  out_dir=out_dir, 
                                  out_suffix=out_suffix)
 
+debug(plot_map_predictions)
+
+r_test <- plot_map_predictions(n_time_event=n_time_event,
+                     r_var=s_raster,
+                     r_spat_pred=r_spat_pred_no_previous,
+                     r_temp_pred=r_temp_pred,
+                     zonal_colnames)
+  
 ###################################
 #### PART IV: Assessment space and time model
 
