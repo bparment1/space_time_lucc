@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 05/28/2018
+#DATE MODIFIED: 05/30/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -88,8 +88,8 @@ library(snow)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_05272018.R"
-function_space_and_time_assessment <- "space_and_time_assessment_functions_05282018b.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_05302018.R"
+function_space_and_time_assessment <- "space_and_time_assessment_functions_05302018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05252018.R" #PARAM 1
@@ -115,7 +115,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Dar_es_salaam_NDVI_mod13_05282018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_05302018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -230,8 +230,10 @@ dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_
 
 ## Add check to see if raster tif or list of files!!
 ## Assumes that it is text file of csv type
-data_tb <- try(read.table(file.path(in_dir,
-                                    data_fname,sep=",",header=T,stringsAsFactors = F)))
+input_data_fname <- file.path(in_dir,
+                              data_fname)
+#sep=",",header=T,stringsAsFactors = F)
+data_tb <- try(read.table(input_data_fname,sep=",",header=T,stringsAsFactors = F))
 ## if this is not a text file: check for stack or 
 if(inherits(data_tb,"try-error")){
   ###  Load data if needed:
@@ -282,7 +284,7 @@ if(ncol(data_tb)>1 && class(data_tb)!="raster"){
                              file_format=file_format,
                              NA_flag_val,
                              tolerance_val=0.000120005)
-  #zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
+  zonal_colnames <- paste0("r_",zonal_colnames,"_",out_suffix)
 }else{
   l_rast <- data_tb[,1]
 }
@@ -314,7 +316,8 @@ if(is.null(zonal_colnames)){
 
 if(is.null(rast_ref)){
   ## if null then use mean as reference image
-  if(is.null(r_mean){
+  raster_name_ref <- file.path(out_dir,"r_mean.tif")
+  if(!file.exists(raster_name_ref)){
     #this does not load everything in memory:
     r_stack <- stack(l_rast[var_names])
     
@@ -322,14 +325,11 @@ if(is.null(rast_ref)){
     r_mean <- clusterR(r_stack, calc, args=list(mean, na.rm=T))
     endCluster()
     
-    raster_name <- file.path(out_dir,"r_mean.tif")
-    writeRaster(r_mean,file=raster_name,overwrite=T)
-    rast_ref <- r_mean
-  }else{
-    rast_ref <- r_mean
-    raster_name <- file.path(out_dir,"r_mean.tif")
+    #raster_name <- file.path(out_dir,"r_mean.tif")
+    writeRaster(r_mean,file=raster_name_ref,overwrite=T)
+    rast_ref <- raster_name_ref
   }
-  l_rast <- c(l_rast,raster_name)
+  l_rast <- c(l_rast,raster_name_ref)
 }
 
 ##### Aggregate data if not NULL
@@ -337,6 +337,7 @@ if(is.null(rast_ref)){
 if(!is.null(agg_fact)){
   #undebug(aggregate_raster_fun)
   
+  #undebug(aggregate_raster_fun)
   obj <- aggregate_raster_fun(l_rast,
                               zonal_colnames,
                               use_majority,
@@ -351,7 +352,18 @@ if(!is.null(agg_fact)){
   l_rast <- obj$l_rast  
   zonal_colnames <- obj$zonal_colnames
   l_rast_original <- obj$l_rast_original
-  rast_ref <- raster("agg_2_r_mean.tif")
+
+  rast_ref_tmp <- sub(extension(rast_ref),"",
+                      basename(rast_ref))
+  
+  no_cat <- which(rast_ref_tmp==sub(extension(l_rast_original),"",
+                                      basename(l_rast_original)))
+  
+  rast_ref <- l_rast[no_cat]
+  
+  #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
+  #test <- paste0("agg_",agg_fact,rast_ref_tmp,file_format)
+  #rast_ref <- raster("agg_2_r_mean.tif")
 }
 
 ###########################
@@ -416,8 +428,8 @@ r_test <- plot_map_predictions(n_time_event=n_time_event,
                                r_spat_pred=r_spat_pred_no_previous,
                                r_temp_pred=r_temp_pred,
                                zonal_colnames)
-var_names_tmp <- "1;368"
-time_window_selected_tmp <- "323;339"
+var_names_tmp <- df_args[11,index_val]
+time_window_selected_tmp <- df_args[14,index_val]
 
 #var_names <- df_args[11,index_val] 
 #num_cores <- df_args[12,index_val] 
