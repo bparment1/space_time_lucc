@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/24/2018
+#DATE MODIFIED: 05/30/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -87,7 +87,7 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
     out_suffix_str <- paste0("agg_",agg_fact,"_zonal_",out_suffix)
     out_suffix_str <- NULL
-    #debug(generate_soft_cat_aggregated_raster_fun)
+    #undebug(generate_soft_cat_aggregated_raster_fun)
     lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
                                                            reg_ref_rast=NULL,
                                                            agg_fact,
@@ -228,6 +228,8 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ##### Use a raster reference image to define the study area:
   if(is.null(rast_ref)){
     rast_ref <- subset(s_raster,1) #use default first image
+  }else{
+    rast_ref <- raster(rast_ref)
   }
   
   ########
@@ -378,17 +380,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   if(estimator=="arima"){
 
-    #time_step_start <- time_window_selected[1]
-    #time_step_end <- time_window_selected[length(time_window_selected)]
-    
-    #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    #time_step_end <- n_time_event + 8
-    #time_step_subset <- time_step_start +1 # this is because we miss the first date of pred!!
-    
-    #time_window_selected <- time_step_subset:time_step_end
-    #Use 100 to 116
-    #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    #out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
     out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
     
     #ARIMA specific
