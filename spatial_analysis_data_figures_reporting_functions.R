@@ -439,6 +439,29 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     write.table(unlist(lf_plot_fig),
                 filenames_figures_mosaic,row.names = F,col.names = F,quote = F)
     #browser()
+    
+    ###
+    #if(_tmp_files==TRUE)
+    out_dir_s <- "./summary_fig_animation"
+    out_dir_s_tmp <- "./summary_fig_animation_tmp"
+    
+    if(!dir.exists(out_dir_s_tmp)){
+      dir.create(out_dir_s_tmp)
+    }
+    #dir.create("summary_fig_animation_tmp")
+    list_files <- mixedsort(list.files(path=out_dir_s,pattern="*.png",
+                                       full.names=T))
+    file.copy(list_files,out_dir_s_tmp)
+    
+    list_files <- mixedsort(list.files(path=out_dir_s_tmp,pattern="*.png",
+                                       full.names=T))
+    n_files <- length(list_files)
+    file.rename(list_files,
+                file.path(out_dir_s_tmp,paste0("img_",1:n_files,".png")))
+    
+    #file.rename(list.files(pattern="water_*.img"), paste0("water_", 1:700))
+    #debug(explore_and_summarize_data)
+    
     #frame_speed <- 25
     frame_speed <- 50
     animation_format <- ".mp4"
@@ -448,7 +471,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
     out_filename_figure_animation <- generate_animation_from_figures_fun(filenames_figures = filenames_figures_mosaic,
                                                                          frame_speed = frame_speed,
                                                                          format_file = animation_format,
-                                                                         in_dir = out_dir_s,
+                                                                         in_dir = out_dir_s_tmp,
                                                                          out_suffix = out_suffix_movie,
                                                                          out_dir = out_dir,
                                                                          out_filename_figure_animation = NULL)
