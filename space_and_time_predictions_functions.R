@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 05/30/2018
+#DATE MODIFIED: 06/03/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -46,102 +46,6 @@ library(sf)
 
 ###### Functions used in this script
 
-aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir){
-  #
-  #Function to aggregate input raster stack
-  #if use majority then the zonal layer is aggregated and then reclassfied based by the majority rule
-  
-  lf_agg <- mclapply(l_rast,
-                     FUN=aggregate_raster,
-                     #r_in=raster(lf_layerized_bool[1]),
-                     agg_fact=agg_fact,
-                     reg_ref_rast=NULL,
-                     #agg_fun="mean",
-                     agg_fun=agg_fun,
-                     out_suffix=NULL,
-                     file_format=file_format,
-                     out_dir=out_dir,
-                     out_rast_name = NULL,
-                     mc.preschedule=FALSE,
-                     mc.cores = num_cores) 
-  
-  l_rast_original <- l_rast
-  l_rast <- unlist(lf_agg) 
-  
-  
-  no_cat <- which(zonal_colnames==sub(extension(l_rast_original),"",
-                                      basename(l_rast_original)))
-  
-  #which(zonal_colnames)==basename(l_rast_original))
-  ###Break out and get mean per class and do majority rule!
-  #browser()
-  
-  if(use_majority==TRUE){
-    
-    #l_rast_original
-    #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
-    #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    #raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    raster_name <- l_rast_original[no_cat]
-    
-    #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
-    out_suffix_str <- paste0("agg_",agg_fact,"_zonal_",out_suffix)
-    out_suffix_str <- NULL
-    #undebug(generate_soft_cat_aggregated_raster_fun)
-    lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
-                                                           reg_ref_rast=NULL,
-                                                           agg_fact,
-                                                           agg_fun,
-                                                           num_cores,
-                                                           NA_flag_val=NA_flag_val,
-                                                           file_format,
-                                                           out_dir,
-                                                           out_suffix_str)
-    
-    reclass_val <- unique(raster(raster_name)) #unique zonal values to reassign
-    #reclass_val <- c(0,1,2) # value for the elevation reclassified
-    
-    #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_04072017b.R" #PARAM 1
-    #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
-    #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-    #debug(reclass_in_majority)
-    
-    r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),
-                                         threshold_val=NULL,
-                                         max_aggregation = TRUE,
-                                         reclass_val = reclass_val)
-    
-    plot(r_reclass_obj$r_rec)
-    rast_zonal <- r_reclass_obj$r_rec
-    #zonal_colnames
-    #out_raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,"_",out_suffix,file_format)
-    out_raster_name <- paste0("agg_",agg_fact,"_",zonal_colnames,file_format)
-    
-    writeRaster(rast_zonal,
-                filename=file.path(out_dir,out_raster_name),
-                overwrite=TRUE)  
-    
-  }
-  
-  if(use_majority==FALSE){
-    #sure SRTM and reclass based on threshold values?
-    
-  }
-  
-  ### Return categorical var:
-  zonal_colnames <- gsub(extension(out_raster_name),"",out_raster_name)
-  ##
-  
-  ##########################
-  #### prepare return object
-  
-  obj <- list(zonal_colnames,l_rast,l_rast_original)
-  names(obj) <- c("zonal_colnames","l_rast","l_rast_original")
-  
-  return(obj)
-}
-
-
 run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected,
                                       method_space=c("mle","eigen"),
                                       method_time=c("arima","arima",T),
@@ -164,7 +68,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 05/23/2018
+  #MODIFIED: 06/03/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
