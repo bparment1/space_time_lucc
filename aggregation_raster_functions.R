@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 06/01/2018
+#DATE MODIFIED: 06/03/2018
 #Version: 1
 #PROJECT: General utility functions for raster aggregation.            
 
@@ -59,7 +59,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   #
   # Authors: Benoit Parmentier
   # Created: 03/02/2017
-  # Modified: 06/01/2018
+  # Modified: 06/03/2018
   # To Do: 
   # - Add option to disaggregate
   # - add additional options to do aggregation
@@ -122,7 +122,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   if(sum(selected_cat_layers)>0){
     
     ## Use loop because we already have a num_cores
-    l_rast_cat <- vector("list",length=length(selected_cat_layers))
+    #l_rast_cat <- vector("list",length=length(selected_cat_layers))
     l_rast_cat <- l_rast[selected_cat_layers]
     for(j in 1:length(l_rast_cat)){
       
@@ -170,6 +170,8 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
         agg_fact_val <- unique(round(res_ref/res_in)) #find the factor needed..
         
         #fix this to add other otpions e.g. aggregating down
+      }else{
+        agg_fact_val <- agg_fact
       }
       
       #output aggregated categorical layer:
@@ -192,12 +194,20 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   ###
   #zonal_colnames <- gsub(extension(raster_name),"",raster_name)
   ##
+  l_rast_orginal <- l_rast
+  
+  l_rast[which(selected_continuous_layers)] <- l_rast_continuous
+  l_rast[which(selected_cat_layers)] <- l_rast_cat
+  
+  #browser()
+  ### this is a list use "as.character
+  names(l_rast) <- sub(extension(as.character(l_rast)),"",basename(as.character(l_rast)))
   
   ##########################
   #### prepare return object
   
-  obj_agg <- list(cat_names,l_rast_cat,l_rast_continuous)
-  names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
+  obj_agg <- list(cat_names,l_rast_cat,l_rast_continuous,l_rast,l_rast_orginal)
+  names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous","l_rast","l_rast_original")
   
   return(obj_agg)
 }
