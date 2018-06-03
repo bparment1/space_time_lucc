@@ -137,7 +137,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   png(filename= out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  plot(r_FID,main=l_rast[1])
+  plot(r_FID,main=names(r_FID))
   dev.off()
   
   list_fig_filename[[1]] <- out_fig_filename
@@ -147,7 +147,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   ###############
   ##Figure 2: zonal layer
-  
+  #browser()
   out_fig_filename <- file.path(out_dir,paste("Figure2_layer_zonal_areas_",out_suffix,".png",sep=""))
   
   res_pix<-960
@@ -476,10 +476,11 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
                                                                          out_dir = out_dir,
                                                                          out_filename_figure_animation = NULL)
     
+    #browser()
     
     ####### NOW DO AVERAGE PROFILES ########
     min_max_df$perc_NA
-    plot(min_max_df$perc_NA,type="h",main="Percentage of NA pixels in Lagos")
+    plot(min_max_df$perc_NA,type="h",main="Percentage of NA pixels")
     quantile(min_max_df$perc_NA)
     mean(min_max_df$perc_NA)
   }
