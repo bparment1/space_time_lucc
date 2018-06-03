@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 06/01/2018
+#DATE MODIFIED: 06/03/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -88,11 +88,14 @@ library(snow)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_06012018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_06032018.R"
 function_space_and_time_assessment <- "space_and_time_assessment_functions_05312018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_05312018.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06032018.R" #PARAM 1
+#Aggregation code
+function_aggregation_raster <- "aggregation_raster_functions_06032018.R" #PARAM 1
+
 script_path <- "/media/dan/Space_beats_time/Space_beats_time/sbt_scripts" #path to script #PARAM 2
 #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
 source(file.path(script_path,function_space_and_time_predictions))
@@ -100,9 +103,6 @@ source(file.path(script_path,function_space_and_time_assessment))
 source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_paper_figures_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_data_figures_reporting)) #source all functions used in this script 1.
-
-#Aggregation code
-function_aggregation_raster <- "aggregation_raster_functions_06012018.R" #PARAM 1
 source(file.path(script_path,function_aggregation_raster)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
@@ -346,7 +346,7 @@ if(!is.null(agg_fact)){
 
   obj <- aggregate_raster_fun(l_rast=l_rast,
                               cat_names=zonal_colnames,
-                              agg_method_cat=use_majority,
+                              agg_method_cat=agg_method_cat,
                               agg_fact=agg_fact,
                               agg_fun=agg_fun,
                               file_format=file_format,
@@ -356,9 +356,13 @@ if(!is.null(agg_fact)){
                               out_dir=out_dir)
 
   l_rast <- obj$l_rast  
-  zonal_colnames <- obj$zonal_colnames
+  zonal_colnames <- obj$l_rast_cat
+  zonal_colnames<- sub(extension(zonal_colnames),"",
+      basename(zonal_colnames))
   l_rast_original <- obj$l_rast_original
 
+  #rast_ref_tmp <- sub(extension(rast_ref[[1]]),"",
+  #                    basename(rast_ref[[1]]))
   rast_ref_tmp <- sub(extension(rast_ref),"",
                       basename(rast_ref))
   
@@ -367,9 +371,6 @@ if(!is.null(agg_fact)){
   
   rast_ref <- l_rast[no_cat]
   
-  #out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
-  #test <- paste0("agg_",agg_fact,rast_ref_tmp,file_format)
-  #rast_ref <- raster("agg_2_r_mean.tif")
 }
 
 ###########################
@@ -384,7 +385,7 @@ if(!is.null(agg_fact)){
 #}
 
 
-explore_obj <- explore_and_summarize_data(l_rast,
+explore_obj <- explore_and_summarize_data(as.character(l_rast), #list o
                                    zonal_colnames, 
                                    var_names,
                                    n_time_event,
@@ -403,7 +404,7 @@ s_raster <- stack(l_rast)
 
 #function_space_and_time_predictions <- "space_and_time_predictions_functions_10302017.R"
 names(s_raster)
-#debug(run_space_and_time_models)
+#undebug(run_space_and_time_models)
 space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
                                  n_time_event,
                                  time_window_selected,
@@ -411,7 +412,7 @@ space_and_time_prediction_obj <- run_space_and_time_models(s_raster,
                                  method_time=method_time, 
                                  NA_flag_val=NA_flag_val,
                                  file_format=file_format,
-                                 rast_ref=rast_ref,
+                                 rast_ref=as.character(rast_ref), # was a lit before
                                  zonal_colnames,
                                  num_cores=num_cores,
                                  out_dir=out_dir, 
