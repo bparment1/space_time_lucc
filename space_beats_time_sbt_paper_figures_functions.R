@@ -4,7 +4,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 04/20/2015 
-#DATE MODIFIED: 02/25/2018
+#DATE MODIFIED: 06/04/2018
 #Version: 1
 #PROJECT: SBT RITA book chapter
 #
@@ -48,33 +48,48 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
   #library(zoo)
   #library(lubridate)
   
+  ### Thsi function generates dates using day sequence or annual sequence
+  # for use in multiple projects.
+  
+  ### Start script ##
+  
   st <- as.Date(start_date,format="%Y.%m.%d")
   en <- as.Date(end_date,format="%Y.%m.%d")
   #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
   year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
   
-  ll_list <- vector("list",length=length(year_list))
-  for (i in 1:length(year_list)){
-    if(i==1){
-      first_date <-st
-    }else{
-      first_date<-paste(year_list[[i]],"-01","-01",sep="")
+  if(step_date=="annual"){
+    #dates_modis <- year_list
+    dates_modis <- seq(as.Date(st), as.Date(en), by="years")
+    dates_DOY_modis <- NULL
+  }
+
+  if(step_date!="annual"){
+    step_date <- as.integer(step_date)
+    ll_list <- vector("list",length=length(year_list))
+    for (i in 1:length(year_list)){
+      if(i==1){
+        first_date <-st
+      }else{
+        first_date<-paste(year_list[[i]],"-01","-01",sep="")
+      }
+      if(i==length(year_list)){
+        last_date <-en
+      }else{
+        last_date<-paste(year_list[[i]],"-12","-31",sep="")
+      }
+      #ll <- seq.Date(st, en, by=step)
+      ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
+      ll_list[[i]]<-as.character(ll)
+      #paste(yday(ll,)
     }
-    if(i==length(year_list)){
-      last_date <-en
-    }else{
-      last_date<-paste(year_list[[i]],"-12","-31",sep="")
-    }
-    #ll <- seq.Date(st, en, by=step)
-    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
-    ll_list[[i]]<-as.character(ll)
-    #paste(yday(ll,)
+    
+    #
+    dates_modis <-as.Date(unlist((ll_list))) 
+    #wiht 001
+    dates_DOY_modis <- paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep="")
   }
   
-  #
-  dates_modis <-as.Date(unlist((ll_list))) 
-  #wiht 001
-  dates_DOY_modis <- paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep="")
   dates_obj <- list(dates_modis,dates_DOY_modis)
   names(dates_obj) <- c("dates","doy")  
   return(dates_obj)
