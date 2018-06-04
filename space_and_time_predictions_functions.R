@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 06/03/2018
+#DATE MODIFIED: 06/04/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -68,7 +68,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 06/03/2018
+  #MODIFIED: 06/04/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
@@ -232,23 +232,15 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ###############################
   ### Predict using OLS 
   if(estimator=="lm"){
+    #estimator <- "lm"
+    #estimation_method <-"ols" #add other options later
     
-    #Use 100 to 116
-    #time_step_start <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    #100 for NDVI
-    #out_suffix_s <- paste("t_",time_step_start:length(time_window_selected),"_",out_suffix,sep="")#this should really be automated!!!
     #Note the first date is dropped!!!
     out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
-    
-    #estimator <- "lm"
-    #estimation_method <-"ols"
     
     #ARIMA specific
     #time_step <- time_step_start - 1
     time_step <- time_step_start + 1 # We are
-    
-    #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
-    #n_pred_ahead <- 16
     arima_order <- NULL
     r_clip_tmp <- rast_ref
     
@@ -275,7 +267,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
     
     pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
-    
+
   }
   
   ###############################
