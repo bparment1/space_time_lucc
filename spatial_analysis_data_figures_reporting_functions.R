@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2014 
-#DATE MODIFIED: 05/25/2018
+#DATE MODIFIED: 06/04/2018
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -209,10 +209,6 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   
   ## Figure 4: visualization of event in time series
   
-  #n_time_event #108
-  #dates3[108]
-  #[1] "2005-08-29"
-  
   ## plottting after and before event
   n_before <- n_time_event - 2
   n_after <- n_time_event + 2
@@ -225,7 +221,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   png(filename=out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  p<- levelplot(r_stack,
+  p <- levelplot(r_stack,
                 layers=n_before:n_after,
                 col.regions=matlab.like(125))
 
@@ -342,7 +338,7 @@ explore_and_summarize_data <- function(l_rast,zonal_colnames,var_names,n_time_ev
   png(filename= out_fig_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  p<- xyplot(data~time,group=zones,
+  p <- xyplot(data~time,group=zones,
          data=dd,type="b",xlab="time",ylab="VAR",
          #strip = strip.custom(factor.levels=c("z3","z4","z5")), #fix this!!!
          auto.key = list("topright", corner = c(0,1),# col=c("black","red"),
