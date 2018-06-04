@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 05/28/2018
+#DATE MODIFIED: 06/04/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -482,7 +482,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   l_dates <- x_labels
   r_mosaiced_scaled <- r_obs
   NA_flag_val
-  region_name <- "RITA"
+  region_name <- ""
   variable_name <- "NDVI" #need to change title to observed instead of predicted!!!
   zlim_val <- NULL
   stat_opt <- T
@@ -662,6 +662,25 @@ generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50
     #crf: used for compression count rate factor is between 18 to 24, the lowest is the highest quality
     #ffmpeg -f image2 -r 1 -vcodec libx264 -crf 24 -pattern_type glob -i '*.png' out.mp4
     
+    
+    #From http://www.ffmpeg.org/faq.html: If you have large number of pictures to rename, you can use the following command to ease the burden. The command, using the bourne shell syntax, symbolically links all files in the current directory that match *jpg to the ‘/tmp’ directory in the sequence of ‘img001.jpg’, ‘img002.jpg’ and so on.
+    
+    #system("ls -ltr ./summary_fig_animation/*.png")
+    
+
+    
+  #  system(x=1; for i in *jpg; 
+    #do counter=$(printf %03d $x); 
+    #ln -s "$i" /tmp/img"$counter".jpg; 
+    #x=$(($x+1)); 
+    #done
+    
+    #x=1; for i in *jpg; 
+    #do counter=$(printf %03d $x); 
+    #ln -s "$i" /tmp/img"$counter".jpg; 
+    #x=$(($x+1)); 
+    #done
+    
     #out_fig <- read.table(filenames_figures)
     #out_fig
     if(is.null(in_dir)){
@@ -673,7 +692,8 @@ generate_animation_from_figures_fun <- function(filenames_figures,frame_speed=50
     cmd_str <- paste("ffmpeg",
                      paste("-f","image2",sep=" "),
                      paste("-r",frame_rate,sep=" "),
-                     #paste("-pattern_type glob -i","'*.png'",sep=" "),
+                     #paste("-i","*.png",sep=" "),
+                     #paste("-i",pattern_files,sep=" "),
                      #paste("-pattern_type glob -i","'./fig_animation/*.png'",sep=" "),
                      paste("-pattern_type glob -i",pattern_files,sep=" "),
                      #paste("-pattern_type glob -i ",filenames_figures),
@@ -840,16 +860,16 @@ plot_raster_mosaic <- function(i,list_param){
 }
 
 
-plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames){
+plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames,z_lim_range=NULL,variable_name=NULL){
   #
   # Function to plot raster images
   #
   #INPUTS
-  #1) n_time_event: 
-  #2) r_var
-  #3) r_spat_pred
-  #4) r_temp_pred
-  #5) zonal_colnames
+  #1) n_time_event: time step for event 
+  #2) r_var: observed variable in time series
+  #3) r_spat_pred: space based prediction
+  #4) r_temp_pred: time based prediction
+  #5) zonal_colnames: zonal raster layer
   #6) z_lim_range: limits used for plotting
   #7) variable_name: e.g. NDVI 
   #OUTPUTS
@@ -857,8 +877,15 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   #2)
   #
   
+  ### To do: add option for palette
+  #
+  
   ############# Start script #########
 
+  if(is.null(variable_name)){
+    variable_name <- ""
+  }
+  
   ##### set up images for figures
   
   #n_time_event <- as.numeric(unlist(strsplit(n_time_event,";")))
@@ -875,26 +902,29 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   n_time_subset <- c(n_time_event_obs -1 ,n_time_event_obs + 2)
   steps_subset <- n_time_subset[1]:n_time_subset[2] 
   r_obs <- subset(r_var,steps_subset)
-  #r_spat <- subset(r_spat_pred,5:8)
-  #r_temp <- subset(r_temp_pred,5:8)
-  
+
   n_time_subset <- c(n_time_event_spat - 1 ,n_time_event_spat + 2)
   steps_subset <- n_time_subset[1]:n_time_subset[2] 
   
   #### Will change here using input info
-  #r_spat <- subset(r_spat_pred,5:8)
-  #r_temp <- subset(r_temp_pred,5:8)
-
   r_spat <- subset(r_spat_pred,steps_subset)
   r_temp <- subset(r_temp_pred,steps_subset)
   
   r_res_spat <- r_spat - r_obs
   r_res_temp <- r_temp - r_obs
-  r_zonal <- subset(r_var,zonal_colnames)
+  
+  r_zonal <- zonal_colnames
   
   ############## PANEL MAPS
+  
   ### This can be changed for different product:
-  names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
+  
+  #names_layers_obs <- c("Observed NDVI T-1","Observed NDVI T+1","Observed NDVI T+2","Observed NDVI T+3")
+  names_layers_obs <- c(paste("Observed", variable_name, "T-1",sep=" "),
+                        paste("Observed", variable_name, "T+1",sep=" "),
+                        paste("Observed", variable_name, "T+2",sep=" "),
+                        paste("Observed", variable_name, "T+3",sep=" "))
+  
   names_layers_pred_spat <- c("Spatial predicted T-1","Spatial predicted T+1","Spatial predicted T+2","Spatial predicted T+3")
   names_layers_pred_temp <- c("Temporal predicted T-1","Temporal predicted T+1","Temporal predicted T+2","Temporal predicted  T+3")
   names_layers_all <- c(names_layers_obs,names_layers_pred_spat,names_layers_pred_temp)
@@ -902,13 +932,18 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   ##### First spatial pattern
   layout_m <- c(4,1)
   no_brks <- 255
-  palette_colors <- rev(terrain.colors(no_brks))
+  palette_colors <- rev(terrain.colors(no_brks)) #this should be an option set earlier
   pix_res_height <- 500
   pix_res_width <- 480
   
   #z_lim_range <- c(-3000,10000,1000)
-  z_lim_range <- c(-0.3,1,0.1)
+  #z_lim_range <- c(-0.3,1,0.1)
   
+  if(is.null(z_lim_range)){
+    range_val <- range(minValue(r_obs),maxValue(r_obs))
+    step_val <- (range_val[2]-range_val[1])/20
+    z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
+  }
   p <- levelplot(r_obs, margin=FALSE,
                  ylab=NULL,xlab=NULL,
                  scales=list(draw=FALSE), #don't draw geographic coordinates
@@ -919,7 +954,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                  names.attr= names_layers_obs,
                  #main=paste(names_layers[i],"NDVI",sep=" "),
                  #col.regions=palette_colors,at=seq(-3000,10000,by=1000),
-                 col.regions=palette_colors,at=seq(z_lim_range[1],z_lim_range[2],by=z_lim_range[3]))
+                 col.regions=palette_colors,at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
   png_filename <- paste("Figure","_2_observed_",out_suffix,".png", sep="")
   png(png_filename,
@@ -935,6 +970,14 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   pix_res_height <- 500
   pix_res_width <- 480
   
+  if(is.null(z_lim_range)){
+    range_val <- range(minValue(r_spat),maxValue(r_spat))
+    step_val <- (range_val[2]-range_val[1])/20
+    z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
+  }else{
+    z_lim_range_tmp <- z_lim_range
+  }
+  
   p_spat <- levelplot(r_spat, margin=FALSE,
                       ylab=NULL,xlab=NULL,
                       scales=list(draw=FALSE), #don't draw geographic coordinates
@@ -943,11 +986,11 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                       par.strip.text=list(font=2,cex=2),
                       layout= layout_m,
                       #zlim=c(-3000,8000),
-                      zlim=c(z_lim_range[1],z_lim_range[2]),
+                      zlim=c(z_lim_range_tmp[1],z_lim_range_tmp[2]),
                       names.attr= names_layers_pred_spat,
                       #main=paste(names_layers[i],"NDVI",sep=" "),
                       #col.regions=palette_colors,at=seq(-3000,10000,by=1000)
-                      col.regions=palette_colors,at=seq(z_lim_range[1],z_lim_range[2],by=z_lim_range[3]))
+                      col.regions=palette_colors,at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
   png_filename <- paste("Figure","_spatial_prediction_",out_suffix,".png", sep="")
   
@@ -961,7 +1004,14 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   layout_m <- c(4,1)
   no_brks <- 255
   palette_colors <- rev(terrain.colors(no_brks))
-  
+  if(is.null(z_lim_range)){
+    range_val <- range(minValue(r_temp),maxValue(r_temp))
+    step_val <- (range_val[2]-range_val[1])/20
+    z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
+  }else{
+    z_lim_range_tmp <- z_lim_range
+  }
+
   p_temp <- levelplot(r_temp, margin=FALSE,
                       ylab=NULL,xlab=NULL,
                       scales=list(draw=FALSE), #don't draw geographic coordinates
@@ -973,7 +1023,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                       #main=paste(names_layers[i],"NDVI",sep=" "),
                       col.regions=palette_colors,
                       #at=seq(-3000,10000,by=1000)
-                      at=seq(z_lim_range[1],z_lim_range[2],by=z_lim_range[3]))
+                      at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
   png_filename <- paste("Figure","_time_prediction_",out_suffix,".png", sep="")
   
@@ -985,12 +1035,19 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   dev.off()
   
   ##combined plots obs,spat,temp
-  layout_m <- c(4,3)
-  no_brks <- 255
-  palette_colors <- rev(terrain.colors(no_brks))
   
   r_all_var <- stack(r_obs,r_spat,r_temp)
   
+  layout_m <- c(4,3)
+  no_brks <- 255
+  palette_colors <- rev(terrain.colors(no_brks))
+  if(is.null(z_lim_range)){
+    range_val <- range(minValue(r_all_var),maxValue(r_all_var))
+    step_val <- (range_val[2]-range_val[1])/20
+    z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
+  }else{
+    z_lim_range_tmp <- z_lim_range
+  }
   
   p_all_var <- levelplot(r_all_var, margin=FALSE,
                          ylab=NULL,xlab=NULL,
@@ -1002,7 +1059,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                          names.attr= names_layers_all,
                          col.regions=palette_colors,
                          #at=seq(-3000,10000,by=1000)
-                         at=seq(z_lim_range[1],z_lim_range[2],by=z_lim_range[3]))
+                         at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
   png_filename <- paste("Figure","_2_","combined_all_obs_time_space_pred_",out_suffix,".png", sep="")
   png(png_filename,
@@ -1010,17 +1067,24 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   print(p_all_var) #to plot in a loop!!  
   dev.off()
   
-  #### Now plot residuals for NDVI
-  
-  layout_m <- c(4,2)
-  no_brks <- 255
-  #palette_colors <- (matlab.like(no_brks))
-  palette_colors <- matlab.like(no_brks)
+  #### Now plot residuals for variable
   
   r_all_res <- stack(r_res_spat,r_res_temp)
   names_layers_res_spat <- c("Spatial residuals T-1","Spatial residuals T+1","Spatial residuals T+2","Spatial residuals T+3")
   names_layers_res_temp <- c("Temporal residuals T-1","Temporal residuals T+1","Temporal residuals T+2","Temporal residuals T+3")
   names_layers_all_res <- c(names_layers_res_spat,names_layers_res_temp)
+  
+  layout_m <- c(4,2)
+  no_brks <- 255
+  #palette_colors <- (matlab.like(no_brks))
+  palette_colors <- matlab.like(no_brks)
+  if(is.null(z_lim_range)){
+    range_val <- range(minValue(r_all_var),maxValue(r_all_var))
+    step_val <- (range_val[2]-range_val[1])/20
+    z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
+  }else{
+    z_lim_range_tmp <- z_lim_range
+  }
   
   z_lim_range_res <- c(-0.3,0.5,0.02)
   p_all_res <- levelplot(r_all_res, margin=FALSE,
