@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 06/03/2018
+#DATE MODIFIED: 06/04/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -88,11 +88,11 @@ library(snow)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_06032018.R"
-function_space_and_time_assessment <- "space_and_time_assessment_functions_05312018.R"
+function_space_and_time_predictions <- "space_and_time_predictions_functions_06042018.R"
+function_space_and_time_assessment <- "space_and_time_assessment_functions_06042018.R"
 function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
-function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_01092016.R" #PARAM 1
-function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06032018.R" #PARAM 1
+function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_06042018.R" #PARAM 1
+function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06042018.R" #PARAM 1
 #Aggregation code
 function_aggregation_raster <- "aggregation_raster_functions_06032018.R" #PARAM 1
 
@@ -114,7 +114,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_06012018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_06042018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -230,7 +230,7 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-dates_val <- generate_dates_by_step(date_range[1],date_range[2],as.integer(date_range[3]))$dates #NDVI Katrina
+dates_val <- generate_dates_by_step(date_range[1],date_range[2],date_range[3])$dates #NDVI Katrina
 
 ## Add check to see if raster tif or list of files!!
 ## Assumes that it is text file of csv type
@@ -264,10 +264,6 @@ if(inherits(data_tb,"try-error")){
   data_tb <- read.table(paste0("list_raster_files_",pattern_str,".txt"),
                         stringsAsFactors = F)
 }
-
-
-#r_FID <- raster(l_rast[1]) #Assumes ID or reference image is the first image of the stack
-
 
 #Transform table text file into a raster image
 
@@ -431,10 +427,12 @@ r_temp_pred <- stack(space_and_time_prediction_obj$r_temp_pred)
 #debug(plot_map_predictions)
 
 r_test <- plot_map_predictions(n_time_event=n_time_event,
-                               r_var=s_raster,
+                               r_var=subset(s_raster,var_names),
                                r_spat_pred=r_spat_pred_no_previous,
                                r_temp_pred=r_temp_pred,
-                               zonal_colnames)
+                               subset(s_raster,zonal_colnames),
+                               z_lim_range=NULL,
+                               variable_name=NULL)
 var_names_tmp <- df_args[11,index_val]
 time_window_selected_tmp <- df_args[14,index_val]
 
