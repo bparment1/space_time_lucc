@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 06/04/2018
+#DATE MODIFIED: 06/05/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -53,6 +53,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
                                       file_format=".tif",
                                       rast_ref=NULL,
                                       zonal_colnames,
+                                      var_names,
                                       num_cores=1,
                                       out_dir=".", 
                                       out_suffix=NULL){
@@ -68,7 +69,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 06/04/2018
+  #MODIFIED: 06/05/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
@@ -86,8 +87,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #             then the first image of the time series is used
   #8) zonal_colnames: variable name for the zonal/strata variable
   #9) num_cores: number of cores used, with default value 1
-  #10) out_dir: output directory used, default is to use the current working dir "." 
-  #11) out_suffix: output suffix added to the names of all outputs
+  #10) var_names: indices for relevant columns containing spatio-temporal datasets
+  #11) out_dir: output directory used, default is to use the current working dir "." 
+  #12) out_suffix: output suffix added to the names of all outputs
   #                default value is "NULL"
   #
   ##OUTPUTS
@@ -126,12 +128,13 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   time_step_subset <- time_step_start + 1 
   time_window_predicted <- time_step_subset:time_step_end #100 to 116
   #### Subset raster stack for spatial model:
-  r_spat_var <- subset(s_raster,
+  r_stack <- subset(s_raster,var_names)
+  r_spat_var <- subset(r_stack,
                        time_window_selected) #predict before and after event
   
   ##### Use a raster reference image to define the study area:
   if(is.null(rast_ref)){
-    rast_ref <- subset(s_raster,1) #use default first image
+    rast_ref <- subset(r_stack,1) #use default first image
   }else{
     rast_ref <- raster(rast_ref)
   }
@@ -221,7 +224,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   re_initialize_arima <- method_time[3] # set to TRUE or FALSE for ARIMA method
   
   #rast_ref <- subset(s_raster,1) #first image ID
-  r_stack <- mask(s_raster,rast_ref)
+  r_stack <- mask(r_stack,rast_ref)
   
   r_temp_var <- subset(r_stack,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
   #r_temp_var <- subset(s_raster,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
@@ -249,8 +252,10 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     #r_temp_var <- subset(r_stack,c(time_step,time_window_selected)) # relies on the previous date in contrast to spat reg, this is r_var param
     r_temp_var <- subset(r_stack,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
     
-    list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,out_suffix_s,file_format,estimator,estimation_method,
-                                num_cores_tmp,time_step,n_pred,r_stack,arima_order,NA_flag_val)
+    list_param_temp_reg <- list(out_dir,r_temp_var,r_clip_tmp,proj_str,list_models,
+                                out_suffix_s,file_format,estimator,estimation_method,
+                                num_cores_tmp,time_step,n_pred,r_stack,arima_order,
+                                NA_flag_val)
     names(list_param_temp_reg) <- c("out_dir","r_var","r_clip","proj_str","list_models","out_suffix_s","file_format","estimator","estimation_method",
                                     "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
     
@@ -261,12 +266,14 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     #                            "num_cores","time_step","n_pred_ahead","r_stack","arima_order","NA_flag_val")
     #n_pred <- nlayers(r_temp_var) -1
     #undebug(predict_temp_reg_fun)
-    #test_temp <- predict_temp_reg_fun(14,list_param_temp_reg)
+    #test_temp <- predict_temp_reg_fun(1,list_param_temp_reg)
     #plot(raster(test_temp$raster_pred),main=basename(test_temp$raster_pred))
     
     #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
     
-    pred_temp_lm <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg) 
+    pred_temp_lm <- lapply(1:n_pred,
+                           FUN=predict_temp_reg_fun,
+                           list_param=list_param_temp_reg) 
 
   }
   
