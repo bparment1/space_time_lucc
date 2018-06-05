@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 06/04/2018
+#DATE MODIFIED: 06/06/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -224,14 +224,28 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   time_window_selected <-  as.integer(unlist(strsplit(time_window_selected,";")))
   time_window_selected <- seq(time_window_selected[1],time_window_selected[2])
   
+  time_window_predicted <- time_window_selected[-1]
+  n_time_event_predicted <- which(time_window_predicted==n_time_event)
+  
+  #n_time_event_obs <- n_time_event[1]
+  #n_time_event_spat <- n_time_event[2]
+  #n_time_event_temp <- n_time_event[3]
+  
+  #n_time_event_spat <- n_time_event_predicted 
+  #n_time_event_temp <- n_time_event_predicted 
+  
+  #n_time_subset <- c(n_time_event_obs -1 ,n_time_event_obs + 2)
+  #steps_subset <- n_time_subset[1]:n_time_subset[2] 
+  #r_obs <- subset(r_var,steps_subset)
+  
   method_space <- (unlist(strsplit(method_space,";")))
   method_time <- (unlist(strsplit(method_time,";")))
 
   #if same length, don't remove
   if(length(time_window_selected)==nlayers(r_temp_pred)){
-    r_obs <- subset(s_raster,time_window_selected) #remove 99 because not considred in the prediction!!
+    r_obs <- subset(subset(s_raster,var_names),time_window_selected) #remove 99 because not considred in the prediction!!
   }else{
-    r_obs <- subset(s_raster,time_window_selected[-1]) #remove 99 because not considred in the prediction!!
+    r_obs <- subset(subset(s_raster,var_names),time_window_selected[-1]) #remove 99 because not considred in the prediction!!
   }
   
   projection(r_obs) <- proj_str
@@ -388,6 +402,20 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
     data_mae_time <- subset(data_mae,method==name_method_time)
     
     #View(data_mae)
+
+    ### generate labels automatically
+    #x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+    dim(data_mae_time)
+    #step_val <- n_time_event_predicted - 1
+    step_val <- n_time_event_predicted 
+    
+    before_event_labels <- step_val:1 
+    before_event_labels <- paste("T-",before_event_labels,sep="")
+    
+    step_val <- nrow(data_mae_time) - n_time_event_predicted
+    after_event_labels <- 1:step_val 
+    after_event_labels <- paste("T+",after_event_labels,sep="")
+    x_labels <- c(before_event_labels,after_event_labels)
     
     res_pix <- 960
     col_mfrow<- 1
@@ -424,8 +452,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
           col="magenta",
           data=data_mae_space)
     
-    x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
-    axis(1, at = 1:10, labels = x_labels , cex.axis = 1.5)
+    axis(1, at = 1:length(x_labels), labels = x_labels , cex.axis = 1.5)
     #axis(2, cex.axis = 2)
     
     legend("topleft",
@@ -476,7 +503,8 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   #browser()
   
-  x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
+  #labels set earlier
+  #x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
   
   i<-1
   l_dates <- x_labels
@@ -860,7 +888,7 @@ plot_raster_mosaic <- function(i,list_param){
 }
 
 
-plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames,z_lim_range=NULL,variable_name=NULL){
+plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames,z_lim_range=NULL,z_lim_range_res=NULL,variable_name=NULL){
   #
   # Function to plot raster images
   #
@@ -870,8 +898,9 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   #3) r_spat_pred: space based prediction
   #4) r_temp_pred: time based prediction
   #5) zonal_colnames: zonal raster layer
-  #6) z_lim_range: limits used for plotting
-  #7) variable_name: e.g. NDVI 
+  #6) z_lim_range: limits used for plotting observed and predictions with step sequence
+  #7) z_lim_range_res: limits used for plotting residuals with step sequence
+  #8) variable_name: e.g. NDVI 
   #OUTPUTS
   #1)
   #2)
@@ -972,7 +1001,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   
   if(is.null(z_lim_range)){
     range_val <- range(minValue(r_spat),maxValue(r_spat))
-    step_val <- (range_val[2]-range_val[1])/20
+    step_val <- (range_val[2]-range_val[1])/25
     z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
   }else{
     z_lim_range_tmp <- z_lim_range
@@ -1006,7 +1035,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   palette_colors <- rev(terrain.colors(no_brks))
   if(is.null(z_lim_range)){
     range_val <- range(minValue(r_temp),maxValue(r_temp))
-    step_val <- (range_val[2]-range_val[1])/20
+    step_val <- (range_val[2]-range_val[1])/25
     z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
   }else{
     z_lim_range_tmp <- z_lim_range
@@ -1043,7 +1072,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   palette_colors <- rev(terrain.colors(no_brks))
   if(is.null(z_lim_range)){
     range_val <- range(minValue(r_all_var),maxValue(r_all_var))
-    step_val <- (range_val[2]-range_val[1])/20
+    step_val <- (range_val[2]-range_val[1])/25
     z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
   }else{
     z_lim_range_tmp <- z_lim_range
@@ -1078,15 +1107,15 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   no_brks <- 255
   #palette_colors <- (matlab.like(no_brks))
   palette_colors <- matlab.like(no_brks)
-  if(is.null(z_lim_range)){
-    range_val <- range(minValue(r_all_var),maxValue(r_all_var))
-    step_val <- (range_val[2]-range_val[1])/20
+  if(is.null(z_lim_range_res)){
+    range_val <- range(minValue(r_all_res),maxValue(r_all_res))
+    step_val <- (range_val[2]-range_val[1])/25
     z_lim_range_tmp <- c(range_val[1],range_val[2],step_val)
   }else{
-    z_lim_range_tmp <- z_lim_range
+    z_lim_range_tmp <- z_lim_range_res
   }
   
-  z_lim_range_res <- c(-0.3,0.5,0.02)
+  #z_lim_range_res <- c(-0.3,0.5,0.02)
   p_all_res <- levelplot(r_all_res, margin=FALSE,
                          ylab=NULL,xlab=NULL,
                          scales=list(draw=FALSE), #don't draw geographic coordinates
@@ -1097,7 +1126,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                          names.attr=names_layers_all_res,
                          col.regions=matlab.like(255),
                          #at=seq(-3000,5000,by=200)
-                         at=seq(z_lim_range_res[1],z_lim_range_res[2],z_lim_range_res[3]))
+                         at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],z_lim_range_tmp[3]))
   #col.regions=palette_colors)
   
   png(paste("Figure","_2_","combined_all_residuals_models_time_and_space_",out_suffix,".png", sep=""),
@@ -1107,7 +1136,11 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   dev.off()
   
   
-  return()
+  ###### prepare return object
+  plot_obj <- list(p,p_temp,p_spat,p_all_var,p_all_res)
+  names(plot_obj) <- c("obs","temp","p_spat","pred","res") 
+    
+  return(plot_obj)
 }
 
 
