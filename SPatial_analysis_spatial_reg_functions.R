@@ -5,7 +5,7 @@
 #Temporal predictions use OLS with the image of the previous time step rather than ARIMA.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 11/07/2017
+#DATE MODIFIED: 06/05/2018
 #Version: 2
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -416,7 +416,7 @@ predict_temp_reg_fun <-function(i,list_param){
   ##Inputs are raster stack with different options for regression estimators: OLS or ARIMA
   #####
   ## Date created: 03/09/2014
-  ## Date modified: 08/08/2017
+  ## Date modified: 06/05/2018
   # Authors: Benoit Parmentier
   #
   #INPUTS:
@@ -490,9 +490,13 @@ predict_temp_reg_fun <-function(i,list_param){
     }
     
     n_pred <- i+1 #if step 20 then prediction is step 21!
-    n_start <- c(time_step) 
-    n_end   <- c(time_step)+n_pred_ahead
+    #n_start <- c(time_step) 
+    n_start <- i
+    #n_end   <- c(time_step)+n_pred_ahead
+    n_end <- n_pred
+    #r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
     r_obs_s <- subset(r_stack,n_start:n_end) #stack of observed layers, 35
+    
     r_var2 <- subset(r_ref_s,i:n_pred)
     r_ref_s <- crop(r_var2,r_clip) #used in the prediciton with only tow time steps
     
