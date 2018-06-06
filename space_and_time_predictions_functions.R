@@ -7,7 +7,7 @@
 #A model with space and time is implemented using neighbours from the previous time step.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 06/23/2017 
-#DATE MODIFIED: 06/05/2018
+#DATE MODIFIED: 06/06/2018
 #Version: 1
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to spatial regression with R 
@@ -69,7 +69,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #
   #AUTHORS: Benoit Parmentier
   #CREATED: 06/23/2017
-  #MODIFIED: 06/05/2018
+  #MODIFIED: 06/06/2018
   #
   ##INPUTS
   #1) n_time_event: time step number of the event
@@ -119,16 +119,17 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   ### Important:
   #As input!!
   #r_spat_var should contain one image before the on being predicted, i.e. to predict step 100, you need at least 
-  #a stack of raster 99 and raster 100.
-  #num_cores <- 4
+
   time_step_start <- time_window_selected[1]
   time_step_end <- time_window_selected[length(time_window_selected)]
   
   # this is because we miss the first date of pred!!
   time_step_subset <- time_step_start + 1 
   time_window_predicted <- time_step_subset:time_step_end #100 to 116
+  
   #### Subset raster stack for spatial model:
-  r_stack <- subset(s_raster,var_names)
+  r_stack <- subset(s_raster,var_names) #contains relevant spatio-temporal data
+  
   r_spat_var <- subset(r_stack,
                        time_window_selected) #predict before and after event
   
@@ -138,12 +139,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   }else{
     rast_ref <- raster(rast_ref)
   }
-  
-  ########
-  ### TEST SPATIAL Prediction on one date....
-  
-  ### CLEAN OUT AND SCREEN NA and list of neighbours
-  #Let's use our function we created to clean out neighbours
+  ### Reference image also used to clip ("crop") data
   r_clip <- rast_ref #this is the image defining the study area
   
   #############################################
@@ -153,10 +149,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
 
   estimator <- method_space[1] #spatial method used for space model
   estimation_method <- method_space[2] # algorithm used for the space model
-  
-  ## 
-  #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_03022017_functions.R" #PARAM 1
-  #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
   
   previous_step <- T #Use t-1 neighbour and t-1 value to predict t0
   out_suffix_s <- paste("t_",time_window_predicted,"_",out_suffix,sep="")#this should really be automated!!!
@@ -170,7 +162,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #debug(predict_spat_reg_fun)
   #browser()
   #test <- predict_spat_reg_fun(1,list_param=list_param_spat_reg)
-  
   
   pred_spat_mle_eigen_with_previous  <- mclapply(1:n_pred,
                                                  FUN=predict_spat_reg_fun,
@@ -211,7 +202,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   save(pred_spat_mle_eigen_no_previous,file=file.path(out_dir,paste("pred_spat_",estimator,"_",estimation_method,"_",
                                                                     "_","no_previous_",out_suffix,".RData",sep="")))
-  ## Generate image raster stack in PART IV
+  ## Generate image raster stack 
   #r_spat_pred_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_pred})) #get stack of predicted images
   #r_spat_res_no_previous <- stack(lapply(pred_spat_mle_eigen_no_previous,FUN=function(x){x$raster_res})) #get stack of predicted images
   
@@ -223,7 +214,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   estimation_method <- method_time[2] #algorithm used for the temporal method
   re_initialize_arima <- method_time[3] # set to TRUE or FALSE for ARIMA method
   
-  #rast_ref <- subset(s_raster,1) #first image ID
   r_stack <- mask(r_stack,rast_ref)
   
   r_temp_var <- subset(r_stack,time_window_selected) # relies on the previous date in contrast to spat reg, this is r_var param
@@ -316,7 +306,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         n_pred_ahead <- n_pred
         #time_step <- n_time_event - 8 #this is the time step for which to start the arima model with, start at 99
         
-        #n_time_pred_start <- 99 + i
         n_time_pred_start <- time_window_selected[1] - 1 + i
         
         time_step <-n_time_pred_start
@@ -371,7 +360,6 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   
   ############ PART V COMPARE MODELS IN PREDICTION ACCURACY #################
   #browser()
-  #using 11 cores
   #pred_temp_arima <- lapply(1:n_pred,FUN=predict_temp_reg_fun,list_param=list_param_temp_reg)
   
   if(method_time[1]=="arima"){
