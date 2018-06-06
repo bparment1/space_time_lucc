@@ -198,7 +198,6 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   ###  Load data if needed:
   if(class(r_temp_pred)=="character"){
-    #/home/parmentier/Data/Space_beats_time/Data/data_Rita_NDVI/rev_project_output/tile_2
     r_temp_pred_df <- read.table(r_temp_pred,stringsAsFactors = F)
     lf <-r_temp_pred_df[,1] 
     r_temp_pred <- stack(lf)
@@ -226,17 +225,6 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   
   time_window_predicted <- time_window_selected[-1]
   n_time_event_predicted <- which(time_window_predicted==n_time_event)
-  
-  #n_time_event_obs <- n_time_event[1]
-  #n_time_event_spat <- n_time_event[2]
-  #n_time_event_temp <- n_time_event[3]
-  
-  #n_time_event_spat <- n_time_event_predicted 
-  #n_time_event_temp <- n_time_event_predicted 
-  
-  #n_time_subset <- c(n_time_event_obs -1 ,n_time_event_obs + 2)
-  #steps_subset <- n_time_subset[1]:n_time_subset[2] 
-  #r_obs <- subset(r_var,steps_subset)
   
   method_space <- (unlist(strsplit(method_space,";")))
   method_time <- (unlist(strsplit(method_time,";")))
@@ -293,9 +281,6 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   out_suffix_s <- paste("temp_",method_time[1],"_",method_time[2],"_",out_suffix,sep="")
 
   #undebug(calc_ac_stat_fun)
-  #Find where that function is!!!
-  
-  #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_11072017.R" #PARAM 1
 
   ac_temp_obj <- calc_ac_stat_fun(r_pred_s=r_temp_pred,
                                   r_var_s=r_obs,
@@ -322,28 +307,92 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   mae_tot_tb$time <- 1:nlayers(r_obs)
   y_range<- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
   
-  res_pix<-960
-  col_mfrow<-1
-  row_mfrow<-1
-  png(filename=paste("Figure_temporal_profiles_MAE_overall_",out_suffix,".png",sep=""),
+  step_val <- n_time_event_predicted 
+  
+  before_event_labels <- step_val:1 
+  before_event_labels <- paste("T-",before_event_labels,sep="")
+  
+  step_val <- nrow(mae_tot_tb) - n_time_event_predicted
+  after_event_labels <- 1:step_val 
+  after_event_labels <- paste("T+",after_event_labels,sep="")
+  x_labels <- c(before_event_labels,after_event_labels)
+  
+  data_mae_space <- subset(mae_tot_tb,select = c(name_method_space,"time")
+  data_mae_time <- subset(mae_tot_tb,select = name_method_time,"time")
+  
+  res_pix <- 960
+  col_mfrow<- 1
+  row_mfrow<- 0.7
+  
+  png_filename <- paste("Figure_temporal_profiles_MAE_overall_",out_suffix,".png",sep="")
+  
+  png(filename=png_filename,
       width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
-  spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+  #res_pix<-960
+  #col_mfrow<-1
+  #row_mfrow<-1
+  #png(filename=paste("Figure_temporal_profiles_MAE_overall_",out_suffix,".png",sep=""),
+  #    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
   
-  plot(temp_formula_str,type="b",
+  formula_str <- as.formula(paste0(paste0("mae"," ~ ","time")))
+  #spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+  
+  #par(mgp=c(0,1,0))
+  ## margin for side 2 is 7 lines in size
+  #op <- par(mar=c(5,7,4,2) +0.1) ## default is c(5,4,4,2) + 0.1
+  op <- par(mar=c(5,7,6,2) +0.1) ## default is c(5,4,4,2) + 0.1, 4 is 4+32 for top
+  
+  plot(formula_str,type="b",
        col="cyan",
-       data=mae_tot_tb,
+       pch=16, #filled in circles...
+       lwd=3,
+       data= data_mae_time,
        ylim=y_range,
-       ylab="MAE")
-  lines(spat_formula_str, type="b",col="magenta",data=mae_tot_tb)
+       ylab="Mean Absolute Error (MAE)",
+       xaxt="n",
+       xlab="Time",
+       cex.lab=2,
+       cex.axis=1.5,
+       cex=1.5)
+  lines(formula_str, 
+        type="b",
+        lwd=3,
+        pch=16, #filled in circles
+        col="magenta",
+        data=data_mae_space)
+  
+  axis(1, at = 1:length(x_labels), labels = x_labels , cex.axis = 1.5)
+  #axis(2, cex.axis = 2)
   
   legend("topleft",
-         legend=c(name_method_time,name_method_space),
+         legend=legend_val,
          col=c("cyan","magenta"),
          lty=1,
-         cex=0.8)
-  title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
+         lwd=3,
+         cex=1.5,
+         bty="n")
+  title_str <- paste0("Zone ",zone_val," MAE for spatial and temporal models ")
+  title(title_str,cex.main=2.3,font=2)
+  #title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
+  par(op)
+  
+  #temp_formula_str <- as.formula(paste0(paste0(name_method_time," ~ ","time")))
+  #spat_formula_str <- as.formula(paste0(paste0(name_method_space," ~ ","time")))
+  
+  #plot(temp_formula_str,type="b",
+  #     col="cyan",
+  #     data=mae_tot_tb,
+  #     ylim=y_range,
+  #     ylab="MAE")
+  #lines(spat_formula_str, type="b",col="magenta",data=mae_tot_tb)
+  
+  #legend("topleft",
+  #       legend=c(name_method_time,name_method_space),
+  #       col=c("cyan","magenta"),
+  #       lty=1,
+  #       cex=0.8)
+  #title("Overall MAE for spatial and temporal models") #Note that the results are different than for ARIMA!!!
   
   dev.off()
   
@@ -407,15 +456,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
     #x_labels <- c("T-5","T-4","T-3","T-2","T-1","T+1","T+2","T+3","T+4","T+5")
     dim(data_mae_time)
     #step_val <- n_time_event_predicted - 1
-    step_val <- n_time_event_predicted 
-    
-    before_event_labels <- step_val:1 
-    before_event_labels <- paste("T-",before_event_labels,sep="")
-    
-    step_val <- nrow(data_mae_time) - n_time_event_predicted
-    after_event_labels <- 1:step_val 
-    after_event_labels <- paste("T+",after_event_labels,sep="")
-    x_labels <- c(before_event_labels,after_event_labels)
+
     
     res_pix <- 960
     col_mfrow<- 1
