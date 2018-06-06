@@ -837,8 +837,11 @@ predict_spat_reg_fun <- function(i,list_param){
     if(is.null(estimation_method)){
       estimation_method <- "eigen"
     }
-    spat_mod <- try(errorsarlm(v1~ 1, listw=reg_listw_w, 
-                               data=data_reg,method=estimation_method,na.action=na.omit,zero.policy=TRUE,
+    spat_mod <- try(errorsarlm(v1~ 1, 
+                               listw=reg_listw_w, 
+                               data=data_reg,method=estimation_method,
+                               na.action=na.omit,
+                               zero.policy=TRUE,
                                tol.solve=1e-36))
     #if use previous
   }
