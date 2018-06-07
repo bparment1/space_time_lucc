@@ -181,6 +181,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
   #############################################
   ### STEP 2:
   ### MLE EIGEN not using previous step first
+  #browser()
   
   previous_step <- F
   
@@ -293,14 +294,16 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
     n_pred <- n_pred_ahead
     #debug(predict_temp_reg_fun)
     ## problem to resolve the arima model from re_initialization are overwritten
+    #browser()
     
     if(re_initialize_arima==T){
       #l_pred_temp_arima <- vector("list",length=length(time_window_selected))
-      l_pred_temp_arima <- vector("list",length=length(time_window_selected))
+      #l_pred_temp_arima <- vector("list",length=length(time_window_selected))
+      l_pred_temp_arima <- vector("list",length=length(time_window_predicted))
       
       #To predict the last date, we need the previous date
-      for(i in 1:length(time_window_selected)){
-      #for(i in 1:length(time_window_predicted)){
+      #for(i in 1:length(time_window_selected)){
+      for(i in 1:length(time_window_predicted)){
           
         n_pred <- 1
         n_pred_ahead <- n_pred
@@ -309,7 +312,9 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         n_time_pred_start <- time_window_selected[1] - 1 + i
         
         time_step <-n_time_pred_start
-        n_time_pred_end <- n_time_pred_start + length(time_window_selected)
+        #n_time_pred_end <- n_time_pred_start + length(time_window_selected)
+        n_time_pred_end <- n_time_pred_start + length(time_window_predicted)
+        
         
         #out_suffix_s <- paste("t_",n_time_pred_start:n_time_pred_end,"_",out_suffix,sep="")#this should really be automated!!!
         
@@ -324,7 +329,7 @@ run_space_and_time_models <- function(s_raster,n_time_event,time_window_selected
         #undebug(predict_temp_reg_fun)
         pred_temp_arima <- predict_temp_reg_fun(i,list_param_temp_reg) #only one date predicted...four step ahead
         l_pred_temp_arima[[i]] <- pred_temp_arima  #only one date predicted...one step ahead
-        
+        #browser()
         #r_temp_pred <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_pred},x=l_pred_temp_arima)))
         #r_temp_res <- stack(unlist(lapply(1:length(l_pred_temp_arima),FUN=function(i,x){obj<-x[[i]];obj$raster_res},x=l_pred_temp_arima)))
         
