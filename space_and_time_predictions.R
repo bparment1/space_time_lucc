@@ -7,7 +7,7 @@
 # Event type: Hurricanes, Urbanization etc.
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2014 
-#DATE MODIFIED: 06/06/2018
+#DATE MODIFIED: 06/07/2018
 #Version: 3
 #PROJECT: GLP Conference Berlin,YUCATAN CASE STUDY with Marco Millones            
 #PROJECT: Workshop for William and Mary: an intro to geoprocessing with R 
@@ -88,9 +88,9 @@ library(snow)
 ###### Functions used in this script
 
 ## space beats time predictions run on specific dataset
-function_space_and_time_predictions <- "space_and_time_predictions_functions_06062018.R"
-function_space_and_time_assessment <- "space_and_time_assessment_functions_06062018.R"
-function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_06062018.R" #PARAM 1
+function_space_and_time_predictions <- "space_and_time_predictions_functions_06072018.R"
+function_space_and_time_assessment <- "space_and_time_assessment_functions_06082018.R"
+function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_06072018.R" #PARAM 1
 function_paper_figures_analyses <- "space_beats_time_sbt_paper_figures_functions_06042018.R" #PARAM 1
 function_data_figures_reporting <- "spatial_analysis_data_figures_reporting_functions_06042018.R" #PARAM 1
 #Aggregation code
@@ -114,7 +114,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Yucatan_Dean_06062018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Yucatan_Dean_06082018.csv"
 
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
@@ -425,7 +425,7 @@ out_suffix_tmp <- paste("assessment_no_previous_",out_suffix,sep="")
 r_spat_pred_no_previous <- stack(space_and_time_prediction_obj$r_spat_pred_no_previous)
 r_temp_pred <- stack(space_and_time_prediction_obj$r_temp_pred)
 
-#debug(plot_map_predictions)
+#undebug(plot_map_predictions)
 
 r_plot_no_previous <- plot_map_predictions(n_time_event=n_time_event,
                                r_var=subset(s_raster,var_names),
@@ -433,7 +433,10 @@ r_plot_no_previous <- plot_map_predictions(n_time_event=n_time_event,
                                r_temp_pred=r_temp_pred,
                                subset(s_raster,zonal_colnames),
                                z_lim_range=NULL,
-                               variable_name=NULL)
+                               variable_name=NULL,
+                               out_suffix=out_suffix_tmp,
+                               out_dir=out_dir)
+
 var_names_tmp <- df_args[11,index_val]
 time_window_selected_tmp <- df_args[14,index_val]
 
@@ -497,6 +500,16 @@ accuracy_space_and_time_obj_with_previous <- accuracy_space_time_calc(
   date_range = date_range,
   out_dir = out_dir,
   create_out_dir_param =create_out_dir_param)
+
+r_plot_with_previous <- plot_map_predictions(n_time_event=n_time_event,
+                                           r_var=subset(s_raster,var_names),
+                                           r_spat_pred=r_spat_pred_with_previous,
+                                           r_temp_pred=r_temp_pred,
+                                           subset(s_raster,zonal_colnames),
+                                           z_lim_range=NULL,
+                                           variable_name=NULL,
+                                           out_suffix=out_suffix_tmp,
+                                           out_dir=out_dir)
 
 accuracy_space_and_time_obj_no_previous$mae_zones_tb
 accuracy_space_and_time_obj_with_previous$mae_zones_tb
