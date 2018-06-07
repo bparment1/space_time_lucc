@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 06/06/2018
+#DATE MODIFIED: 06/07/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -305,7 +305,9 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   names(mae_tot_tb)<- c(name_method_space,name_method_time)
   
   mae_tot_tb$time <- 1:nlayers(r_obs)
-  y_range<- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]))
+  y_range<- range(cbind(mae_tot_tb[[name_method_space]],mae_tot_tb[[name_method_time]]),
+                  na.rm = TRUE)
+  legend_val <- c("tempor model","spatial model")
   
   step_val <- n_time_event_predicted 
   
@@ -317,8 +319,11 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
   after_event_labels <- paste("T+",after_event_labels,sep="")
   x_labels <- c(before_event_labels,after_event_labels)
   
-  data_mae_space <- subset(mae_tot_tb,select = c(name_method_space,"time")
-  data_mae_time <- subset(mae_tot_tb,select = name_method_time,"time")
+  data_mae_space <- subset(mae_tot_tb,select = c(name_method_space,"time"))
+  data_mae_time <- subset(mae_tot_tb,select = c(name_method_time,"time"))
+  
+  names(data_mae_space) <- c("mae","time")
+  names(data_mae_time) <- c("mae","time")
   
   res_pix <- 960
   col_mfrow<- 1
@@ -372,7 +377,7 @@ accuracy_space_time_calc <- function(r_temp_pred,r_spat_pred,s_raster,proj_str,n
          lwd=3,
          cex=1.5,
          bty="n")
-  title_str <- paste0("Zone ",zone_val," MAE for spatial and temporal models ")
+  title_str <- paste0(" MAE for spatial and temporal models ")
   title(title_str,cex.main=2.3,font=2)
   #title("Overall MAE for spatial and temporal models",cex.main=2.3,font=2) #Note that the results are different than for ARIMA!!!
   par(op)
