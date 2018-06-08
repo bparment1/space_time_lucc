@@ -5,7 +5,7 @@
 #Spatial predictions use spatial regression (lag error model) with different estimation methods (e.g. eigen, chebyshev etc.).
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 11/07/2017 
-#DATE MODIFIED: 06/07/2018
+#DATE MODIFIED: 06/08/2018
 #Version: 1
 
 #PROJECT: Space beats time Framework
@@ -934,7 +934,7 @@ plot_raster_mosaic <- function(i,list_param){
 }
 
 
-plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames,z_lim_range=NULL,z_lim_range_res=NULL,variable_name=NULL){
+plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zonal_colnames,z_lim_range=NULL,z_lim_range_res=NULL,variable_name=NULL,out_suffix=NULL,out_dir=NULL){
   #
   # Function to plot raster images
   #
@@ -947,6 +947,8 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
   #6) z_lim_range: limits used for plotting observed and predictions with step sequence
   #7) z_lim_range_res: limits used for plotting residuals with step sequence
   #8) variable_name: e.g. NDVI 
+  #9) out_suffix: output suffix added to all filenames
+  #10) out_dir: output dir
   #OUTPUTS
   #1)
   #2)
@@ -959,6 +961,14 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
 
   if(is.null(variable_name)){
     variable_name <- ""
+  }
+  
+  if(is.null(out_suffix)){
+    out_suffix <- ""
+  }
+  
+  if(is.null(out_dir)){
+    out_dir <- "."
   }
   
   ##### set up images for figures
@@ -1031,7 +1041,7 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                  #col.regions=palette_colors,at=seq(-3000,10000,by=1000),
                  col.regions=palette_colors,at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
-  png_filename <- paste("Figure","_2_observed_",out_suffix,".png", sep="")
+  png_filename <- file.path(out_dir,paste("Figure","_2_observed_",out_suffix,".png", sep=""))
   png(png_filename,
       height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
   print(p) #to plot in a loop!!  
@@ -1067,7 +1077,8 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                       #col.regions=palette_colors,at=seq(-3000,10000,by=1000)
                       col.regions=palette_colors,at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
-  png_filename <- paste("Figure","_spatial_prediction_",out_suffix,".png", sep="")
+  png_filename <- file.path(out_dir,
+                            paste("Figure","_spatial_prediction_",out_suffix,".png", sep=""))
   
   png(png_filename,
       height=pix_res_height*layout_m[2],width=pix_res_width*layout_m[1])
@@ -1100,7 +1111,8 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                       #at=seq(-3000,10000,by=1000)
                       at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
-  png_filename <- paste("Figure","_time_prediction_",out_suffix,".png", sep="")
+  png_filename <- file.path(out_dir,
+                            paste("Figure","_time_prediction_",out_suffix,".png", sep=""))
   
   png(png_filename,
       height=480*layout_m[2],width=480*layout_m[1])
@@ -1136,7 +1148,8 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                          #at=seq(-3000,10000,by=1000)
                          at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],by=z_lim_range_tmp[3]))
   
-  png_filename <- paste("Figure","_2_","combined_all_obs_time_space_pred_",out_suffix,".png", sep="")
+  png_filename <- file.path(out_dir,
+                            paste("Figure","_2_","combined_all_obs_time_space_pred_",out_suffix,".png", sep=""))
   png(png_filename,
       height=480*layout_m[2],width=480*layout_m[1])
   print(p_all_var) #to plot in a loop!!  
@@ -1174,8 +1187,9 @@ plot_map_predictions <- function(n_time_event,r_var,r_spat_pred,r_temp_pred,zona
                          #at=seq(-3000,5000,by=200)
                          at=seq(z_lim_range_tmp[1],z_lim_range_tmp[2],z_lim_range_tmp[3]))
   #col.regions=palette_colors)
-  
-  png(paste("Figure","_2_","combined_all_residuals_models_time_and_space_",out_suffix,".png", sep=""),
+  png_filename <- paste("Figure","_2_","combined_all_residuals_models_time_and_space_",out_suffix,".png", sep="")
+  png_filename <- file.path(out_dir,png_filename)
+  png(png_filename,
       height=480*layout_m[2],width=480*layout_m[1])
   print(p_all_res) #to plot in a loop!!  
   
