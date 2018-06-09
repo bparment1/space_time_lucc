@@ -114,7 +114,7 @@ args_table <- args[1]
 ###Comment this out if run from shell script
 #args_table <- "/home/bparmentier/Google Drive/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Rita_10292017.csv"
 #args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_REACT_Lagos_NDVI_mod13_05242018.csv"
-args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_NDVI_Katrina_06092018.csv"
+args_table <- "/media/dan/Space_beats_time/Space_beats_time/Data/input_arguments_sbt_script_agg5_NDVI_Katrina_06092018.csv"
 df_args <- read.table(args_table,sep=",",stringsAsFactors = FALSE)
 
 ### use column 2,3,4 etc.
