@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 03/05/2018
+#MODIFIED ON : 07/10/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -117,7 +117,7 @@ processing_modis_data <- function(in_dir,
 
   #AUTHOR: Benoit Parmentier                                                                       
   #CREATED ON : 02/08/2018  
-  #MODIFIED ON : 03/05/2018
+  #MODIFIED ON : 07/10/2018
   
   
   ##################################
@@ -142,7 +142,7 @@ processing_modis_data <- function(in_dir,
   ### If tiles to download, determine using region outline
   if(is.null(list_tiles_modis)){
     # generate figures of selected tiles later on?
-    obj <- get_modis_tiles_list(modis_grid,
+    obj <- get_modis_tiles_list(infile_modis_grid,
                                 reg_outline=infile_reg_outline,
                                 CRS_reg)
     list_tiles_modis <- obj$tiles_modis
@@ -474,7 +474,8 @@ processing_modis_data <- function(in_dir,
   
   ## Get QC information for lST/NDVI and mask values: imporove and automate this later
   if(product_type=="NDVI"){
-    QC_obj <- create_MODIS_QC_table(LST=FALSE, NDVI=TRUE) #Get table corresponding to QC for LST
+    #debug(create_MODIS_QC_table)
+    QC_obj <- create_MODIS_QC_table(product_type) #Get table corresponding to QC for LST
     names(QC_obj)
     QC_data_ndvi <- QC_obj$NDVI
     #For NDVI: use this section to process. This is the default processing quality, this should go top in the parameters!!!
@@ -510,6 +511,7 @@ processing_modis_data <- function(in_dir,
     #### This is where you set up the desired qc flags:
     desired_qc_rows <- c(1,2,5,14,23,32,41,50,59,69,71)
     
+    ### Note this is using a different function than for LST and NDVI
     #debug(generate_qc_MODIS_reflectance_MOD09_table)
     qc_table_modis <- generate_qc_MODIS_reflectance_MOD09_table()
     
@@ -576,8 +578,9 @@ processing_modis_data <- function(in_dir,
       #out_dir_s <- file.path(out_dir,list_tiles_modis[j])
       out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
       
-      if(product_type%in%c("NDVI",LST)){
-        list_param_screen_qc <- list(qc_valid,
+      if(product_type%in%c("NDVI","LST)")){
+        list_param_screen_qc <- list(#qc_valid,
+                                     qc_lst_valid,
                                      list_r_qc[[j]], 
                                      list_r_var[[j]],
                                      rast_mask=TRUE,
@@ -648,6 +651,11 @@ processing_modis_data <- function(in_dir,
   #################################
   ##### STEP 4: MOSAIC TILES  ###
   
+  ##No mosaicing if only one tile!
+  if(length(list_tiles_modis)==1){
+    steps_to_run$mosaic <- FALSE
+  }
+  
   #debug(create_raster_list_from_file_pat)
   if(steps_to_run$mosaic==TRUE){
     
@@ -665,7 +673,7 @@ processing_modis_data <- function(in_dir,
     list_m_var <- vector("list",length(list_tiles_modis))  
     l_df_raster_name <- vector("list",length(list_tiles_modis))  
     
-    names(list_m_var)<- list_tiles_modis
+     names(list_m_var)<- list_tiles_modis
     list_m_qc <- vector("list",length(list_tiles_modis))  
     names(list_m_qc)<- list_tiles_modis
     
@@ -792,6 +800,25 @@ processing_modis_data <- function(in_dir,
       
     }
     
+    if(length(list_tiles_modis)==1){
+      #dlook into import
+      #out_dir_s
+      #file_pattern <- paste0(".*.",product_type,".*.",
+      #                       out_suffix,file_format,"$")
+      
+      ### Assume that the data is in the mask_qc folder
+      
+      in_dir_tmp <- paste0("mask_qc_",list_tiles_modis[j])
+      
+      in_dir_s <- file.path(out_dir,in_dir_tmp) #input dir is import out dir
+      out_dir_s <- in_dir_s
+      #list_r_var_s <-list.files(pattern=file_pattern,
+      #                          path=in_dir_s,
+      #                          full.names=TRUE) #inputs for moasics
+      #list_m_var[[j]] <- list_r_var_s
+      #list_m_var[[j]] <-create_raster_list_from_file_pat(out_suffix_s,file_pat="",in_dir=out_dir_s,out_prefix="",file_format=file_format_s)
+      
+    }
     #out_dir_s <- out_dir_mosaic
     #list_var_mosaiced <-    
     #list_m_var[[j]]<-list.files(pattern=paste(out_suffix_s,"$",sep=""),path=out_dir_s,full.names=TRUE) #inputs for moasics
