@@ -22,7 +22,7 @@
 #
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON : 09/16/2013  
-#MODIFIED ON : 07/10/2018
+#MODIFIED ON : 07/18/2018
 #PROJECT: General MODIS processing of all projects
 #COMMIT: dealing with multibands outputs in import
 #
@@ -117,7 +117,7 @@ processing_modis_data <- function(in_dir,
 
   #AUTHOR: Benoit Parmentier                                                                       
   #CREATED ON : 02/08/2018  
-  #MODIFIED ON : 07/10/2018
+  #MODIFIED ON : 07/18/2018
   
   
   ##################################
@@ -915,7 +915,8 @@ processing_modis_data <- function(in_dir,
       
     ##Create output names for region
     list_var_mosaiced_tmp <- remove_from_list_fun(list_var_mosaiced,condition_class ="try-error")$list
-      
+    # should add a NA image here if there are missing images
+    
     out_suffix_var <-paste(out_suffix,file_format,sep="")          
     var_list_outnames <- change_names_file_list(list_var_mosaiced_tmp,
                                                   out_suffix_var,

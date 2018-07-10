@@ -4,7 +4,7 @@
 #This script will form the basis of a library of functions for raster processing of for GIS and Remote Sensing applications.
 #AUTHOR: Benoit Parmentier                                                                       
 #CREATED ON: 09/16/2013
-#MODIFIED ON: 03/01/2018
+#MODIFIED ON: 07/10/2018
 #PROJECT: None, general utility functions for raster (GIS) processing. 
 #COMMIT: multiband option changes for mosaic of MOD09A1
 #
@@ -1077,11 +1077,11 @@ import_list_modis_layers_fun <-function(i,list_param){
   return(file.path(out_dir_s,raster_name_tmp)) 
 }
 
-create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
+create_MODIS_QC_table <-function(product_type){
   #Function to generate MODIS QC  flag table
   #Author: Benoit Parmentier (with some lines from S.Mosher)
   #Date CREATED: 09/16/2013
-  #Date MODIFIED: 02/15/2018
+  #Date MODIFIED: 07/10/2018
   #
   #Some of the inspiration and code originates from Steve Mosher' s blog:
   #http://stevemosher.wordpress.com/2012/12/05/modis-qc-bits/
@@ -1094,7 +1094,7 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   #LST MOD11A2 has 4 levels/indicators of QA:
   
   ## Generate product table
-  if (LST==TRUE){
+  if (product_type=="LST"){
     QC_Data <- data.frame(Integer_Value = 0:255,
                           Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
                           QA_word1 = NA,QA_word2 = NA,QA_word3 = NA,QA_word4 = NA)
@@ -1133,7 +1133,7 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   ## PRODUCT 2: NDVI
   #This can be seen from table defined at LPDAAC: https://lpdaac.usgs.gov/products/modis_products_table/mod11a2
   
-  if(NDVI==TRUE){
+  if(product_type=="NDVI"){
     QC_Data <- data.frame(Integer_Value = 0:65535,
                           Bit15 = NA,Bit14 = NA,Bit13 = NA,Bit12 = NA,Bit11 = NA,Bit10 = NA,Bit9 = NA,Bit8 = NA,
                           Bit7 = NA,Bit6 = NA,Bit5 = NA,Bit4 = NA,Bit3 = NA,Bit2 = NA,Bit1 = NA,Bit0 = NA,
@@ -1212,23 +1212,23 @@ create_MODIS_QC_table <-function(LST=TRUE, NDVI=TRUE,reflectance=TRUE){
   ## PRODUCT 3: Reflectance
   # This is for MOD09
   #
-  if(reflectance==TRUE){
+  if(product_type=="reflectance"){
     #https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09a1
     #This is 32 bits
     #r_qc_s1 <- raster("/home/bparmentier/Google Drive/Space_beats_time/Data/data_RITA_reflectance/import_h09v06/MOD09A1_A2005001_h09v06_006_sur_refl_qc_500m.tif")
     #dataType(r_qc_s1) is FLT8S, 64 bits real numbers
     #The flags are 32 bits int
     #library(binaryLogic)
-    test <- unique(r_qc_s1)
-    intToBits(65)    
-    length(intToBits(65))
-    rawToBits()
-    line1<-c(readBin(to.read,"int",5), 
-             readBin(to.read,"double",1,size=4),
-             readBin(to.read,"int",2))
-    as.integer(test[1]) #no need to do this
+    #test <- unique(r_qc_s1)
+    #intToBits(65)    
+    #length(intToBits(65))
+    #rawToBits()
+    #line1<-c(readBin(to.read,"int",5), 
+    #         readBin(to.read,"double",1,size=4),
+    #         readBin(to.read,"int",2))
+    #as.integer(test[1]) #no need to do this
     #length(intToBits(test[1])) 
-    length(intToBits(test[1])) #that is 32
+    #length(intToBits(test[1])) #that is 32
     #intToBits()
     #https://stackoverflow.com/questions/43274706/apply-function-bitwise-and-on-each-cell-of-a-raster-in-r/43274922
     #as.binary(test)
