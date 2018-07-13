@@ -266,11 +266,16 @@ create__m_raster_region <-function(j,list_param){
   ## Create raster object if not already present
   if(class(raster_name)!="RasterLayer"){
     #layer_rast<-raster(raster_name)
-    layer_rast<- brick(raster_name) #
+    layer_rast <- brick(raster_name) #
   }else{
     layer_rast <- raster_name
     raster_name <- filename(layer_rast)
   }
+  
+  if(is.null(method_proj_val)){
+    method_proj_val <- "ngb" #nearest neighbour
+  }
+  
   n_layer <- nlayers(layer_rast)
   
   ## Create output raster name if out_rast_name is null
@@ -320,7 +325,7 @@ create__m_raster_region <-function(j,list_param){
     
     if(multiband==TRUE){
       #raster_name_tmp <- basename(rast_name_var)
-      #raster_name <- basename(sub(file_format,"",raster_name))
+      raster_name <- basename(sub(file_format,"",out_rast_name))
       if(out_suffix!=""){
         raster_name_tmp <- paste(raster_name,"_",out_suffix,file_format,sep="")
       }else{
@@ -330,14 +335,21 @@ create__m_raster_region <-function(j,list_param){
       rast_list <- file.path(out_dir,raster_name_tmp) #as return from function
     }
     if(multiband==FALSE){
-      raster_name_tmp <- paste(raster_name,file_format,sep="") #don't add output suffix because in suffix_str
+      raster_name_tmp <- paste(out_raster_name,file_format,sep="") #don't add output suffix because in suffix_str
       bylayer_val <- TRUE #write out separate layer files for each "band"
-      rast_list <- file.path(out_dir,(paste(raster_name,"_",suffix_str,file_format,sep=""))) 
+      rast_list <- file.path(out_dir,(paste(raster_name_tmp,"_",suffix_str,file_format,sep=""))) 
     }
+  }
+  
+  if(n_layer==1){
+    #raster_name_tmp <- paste(raster_name,file_format,sep="") #don't add output suffix because in suffix_str
+    raster_name_tmp <- out_rast_name 
+    out_suffix_str <- ""
   }
   
   #Should check if different projection!!!
   data_type_str <- dataType(layer_rast)
+  
   layer_projected_rast <- projectRaster(from=layer_crop_rast,
                                         to=reg_ref_rast,
                                         method=method_proj_val, #This is "ngb" or "bilinear"
@@ -346,7 +358,8 @@ create__m_raster_region <-function(j,list_param){
                                         NAflag=NA_flag_val,
                                         datatype=data_type_str,
                                         options=c("COMPRESS=LZW"), #this is ignored if not .tif format
-                                        filename=out_rast_name,
+                                        #filename=out_rast_name,
+                                        filename=raster_name_tmp,
                                         overwrite=TRUE)
   
   tempfiles <- list.files(tempdir(),full.names=T) #GDAL transient files are not removed
@@ -358,6 +371,12 @@ create__m_raster_region <-function(j,list_param){
   #NAvalue() #set above
   #Need cleanup of tmp files here!!! building up to 19gb!
   removeTmpFiles(h=0)
+  
+  if((multiband==FALSE) && (n_layer >1)){
+    out_rast_name <- rast_list
+  }else{
+    out_rast_name <- raster_name_tmp #only one file!
+  }
   
   return(out_rast_name)
 }
