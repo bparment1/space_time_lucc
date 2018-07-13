@@ -487,6 +487,9 @@ processing_modis_data <- function(in_dir,
     #Select level 3:
     #...Not implemented at this stage
     
+    ##Now select the valid integer values:
+    qc_valid <- qc_lst_valid$Integer_Value #valid integer values
+    ## change the method above using similar to reflectance qc screening later on
   }
   
   ## Get QC information for lST/NDVI and mask values: imporove and automate this later
@@ -502,6 +505,9 @@ processing_modis_data <- function(in_dir,
     qc_lst_valid <- subset(x=qc_lst_valid,QA_word2 == "Good Data" | QA_word2 =="Other Quality")
     #Select level 3:
     #...
+    
+    ## Now select valid integer values
+    qc_valid <- qc_lst_valid$Integer_Value #valid integer values
     
   }
   #QC_obj <- create_MODIS_QC_table(LST=TRUE, NDVI=TRUE) #Get table corresponding to QC for LST
@@ -579,8 +585,7 @@ processing_modis_data <- function(in_dir,
       out_dir_s <- file.path(out_dir,out_dir_tmp) #input dir is import out dir
       
       if(product_type%in%c("NDVI","LST)")){
-        list_param_screen_qc <- list(#qc_valid,
-                                     qc_lst_valid,
+        list_param_screen_qc <- list(qc_valid,
                                      list_r_qc[[j]], 
                                      list_r_var[[j]],
                                      rast_mask=TRUE,
@@ -590,7 +595,7 @@ processing_modis_data <- function(in_dir,
                                          "rast_var","rast_mask",
                                          "NA_flag_val","out_dir","out_suffix") 
         #undebug(screen_for_qc_valid_fun)
-        #test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+        test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
         #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
         #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
         
