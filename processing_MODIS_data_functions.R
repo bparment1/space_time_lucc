@@ -486,11 +486,18 @@ processing_modis_data <- function(in_dir,
     
     #Select level 3:
     #...Not implemented at this stage
+    ## Now select valid integer values
+    if(selected_flags=="None"){
+      #qc_lst_valid
+      qc_valid <- QC_data_ndvi$Integer_Value
+    }else{
+      ##Now select the valid integer values:
+      qc_valid <- qc_lst_valid$Integer_Value #valid integer values
+      ## change the method above using similar to reflectance qc screening later on
+    }
     
-    ##Now select the valid integer values:
-    qc_valid <- qc_lst_valid$Integer_Value #valid integer values
-    ## change the method above using similar to reflectance qc screening later on
   }
+    
   
   ## Get QC information for lST/NDVI and mask values: imporove and automate this later
   if(product_type=="LST"){
@@ -506,7 +513,6 @@ processing_modis_data <- function(in_dir,
     #Select level 3:
     #...
     
-    ## Now select valid integer values
     qc_valid <- qc_lst_valid$Integer_Value #valid integer values
     
   }
@@ -595,7 +601,7 @@ processing_modis_data <- function(in_dir,
                                          "rast_var","rast_mask",
                                          "NA_flag_val","out_dir","out_suffix") 
         #undebug(screen_for_qc_valid_fun)
-        test <- screen_for_qc_valid_fun(1,list_param=list_param_screen_qc)
+        test <- screen_for_qc_valid_fun(5,list_param=list_param_screen_qc)
         #r_stack[[j]] <- lapply(1:length(list_r_qc[[j]]),FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc)
         #r_test <-mclapply(1:11,FUN=screen_for_qc_valid_fun,list_param=list_param_screen_qc,mc.preschedule=FALSE,mc.cores = 11) #This is the end bracket from mclapply(...) statement
         
@@ -604,6 +610,8 @@ processing_modis_data <- function(in_dir,
                                      list_param=list_param_screen_qc,
                                      mc.preschedule=FALSE,
                                      mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
+        #r_stack <- stack(unlist(lapply(list_r_stack[[j]],function(x){x$var})))
+        #plot(r_stack,y=5)
       }
       
       if(product_type=="reflectance"){
@@ -933,15 +941,18 @@ processing_modis_data <- function(in_dir,
                                        NA_flag_val,
                                        input_proj_str=NULL,
                                        multiband,
+                                       method_proj_val,
                                        out_suffix="",
                                        out_dir_s)
     names(list_param_create_region) <- c("raster_name",
                                            "reg_ref_rast", 
-                                           "out_rast_name","agg_param",
+                                           "out_rast_name",
+                                           "agg_param",
                                            "file_format",
                                            "NA_flag_val",
                                            "input_proj_str",
                                            "multiband",
+                                           "method_proj_val",
                                            "out_suffix",
                                            "out_dir")
     #undebug(create__m_raster_region)
