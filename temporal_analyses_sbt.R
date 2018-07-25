@@ -54,6 +54,8 @@ library(reshape)
 library(sf)
 library(dplyr)
 library(lubridate)
+library(zoo)
+library(xts)
 
 #################################
 ### Functions used in the script:
@@ -212,10 +214,136 @@ hayek <- xts(x = data, order.by = dates, born = bday)
 range_dates <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
 
 r_ts <- subset(r_stack,1:230)
-setZ(r_ts,range_dates)
+setZ(r_ts,range_dates,"16-day")
 length(range_dates)
+nlayers(r_ts)
+nlayers(r_ts)
+names(r_ts)
+r_monthly_mean <- zApply(r_ts, by=as.yearmon,fun=mean)
 
-r_monthly_mean <- zApply(r_ts, by=month,fun=mean)
+class(r_ts)
 
+library(MODIS)
+interpolation/global_product_assessment_part0_functions.R
+
+time_period <- "month"
+
+lf_var <- lf[1:230]
+get_time_interval <- function(date_vals,time_period){
+  ##takes time series objects and returns locations of observation in the last observations (function from xts)
+  #endpoints(range_dates, on="months")
+  #endpoints(range_dates, on="weeks",k=2)
+  
+  index_periods <- endpoints(range_dates,on=time_period,lf_var)
+  
+  ## generate tables of date with columns: dates year, quarter,month,week, doy
+  date_vals <- range_dates
+  list_date_vals <- as.Date(strptime(date_vals, "%Y%m%d"))
+  month_str <- format(list_date_vals, "%b") ## Month, char, abbreviated
+  year_str <- format(list_date_vals, "%Y") ## Year with century
+  day_str <- as.numeric(format(list_date_vals, "%d")) ## numeric month
+  
+  df_files <- data.frame(lf = lf_var,
+                         date = list_date_vals,
+                         month_str = month_str,
+                         year = year_str,
+                         day = day_str,
+                         dir = dirname(lf_var))
+  
+  list_period_vals <- vector("list",length=length(index_periods)/2)
+  
+  for(i in 2:length(lf_var)){
+    index_selected_t1 <- index_periods[i-1] + 1
+    index_selected_t2 <- index_periods[i]
+    
+    list_period_vals[[i-1]] <- period_val <- c(lf_var[index_selected_t1],lf_var[index_selected_t2])
+  }
+  
+  ### now aggregate
+  
+  generate_aggregate_raster(list_periods_vals,fun_val,out_rastname, out_dir,out_suffix){
+    r_s <- stack(lf_in)
+    
+    calc(r_s,fun=sum,filename="test.tif")
+    
+  }
+  
+  selected_periods <- 
+  time_window_selected
+  return(df)
+}
+
+}else{ #generate empty data.frame
+  #declare data.frame with specific type, with zero row initialization
+  df_files <- data.frame(lf = character(),
+                         date = as.Date(character()), 
+                         month_str = character(), 
+                         year = character(),
+                         day = character(),
+                         dir = character()) 
+  list_dates_produced_date_val <- as.Date(character()) #declare date of raster predictions, empty
+}
+.
+temporal_aggregation <- function(r_stack){
+
+}
+
+ep
+
+r_test <- temporalComposite(r_ts,range_dates,interval="month",fun=mean)
+
+
+function (x, y, timeInfo = extractDate(x, asDate = TRUE)$inputLayerDates, 
+          interval = c("month", "year", "fortnight"), fun = max, na.rm = TRUE, 
+          cores = 1L, filename = "", ...) 
+{
+  if (inherits(x, "character")) {
+    names(x) <- NULL
+    x <- raster::stack(x)
+  }
+  if (inherits(y, "character")) {
+    names(y) <- NULL
+    y <- raster::stack(y)
+  }
+  y <- reformatDOY(y, cores = cores)
+  dates_seq <- aggInterval(timeInfo, interval[1])
+  cl <- parallel::makePSOCKcluster(cores)
+  on.exit(parallel::stopCluster(cl))
+  parallel::clusterExport(cl, c("x", "y", "fun", "na.rm", "timeInfo", 
+                                "dates_seq"), envir = environment())
+  lst_seq <- parallel::parLapply(cl, 1:length(dates_seq$begin), 
+                                 function(i) {
+                                   dff <- timeInfo - dates_seq$begin[i]
+                                   ids <- which(dff <= 16 & dff >= (-16))
+                                   if (length(ids) == 0) 
+                                     return(NULL)
+                                   lst <- lapply(ids, function(j) {
+                                     doy <- raster::getValues(raster::subset(y, j))
+                                     out <- which(doy < dates_seq$beginDOY[i] | doy > 
+                                                    dates_seq$endDOY[i])
+                                     val <- raster::getValues(raster::subset(x, j))
+                                     val[out] <- NA
+                                     raster::setValues(raster::subset(x, j), val)
+                                   })
+                                   rst <- if (length(lst) == 1) {
+                                     lst[[1]]
+                                   }
+                                   else {
+                                     rst <- raster::stack(lst)
+                                     suppressWarnings(rst <- raster::calc(rst, fun = fun, 
+                                                                          na.rm = na.rm))
+                                   }
+                                   names(rst) <- paste0("A", dates_seq$beginDOY[i])
+                                   return(rst)
+                                 })
+  ids <- !sapply(lst_seq, is.null)
+  rst_seq <- raster::stack(lst_seq[ids])
+  if (nchar(filename) > 0) 
+    rst_seq <- raster::writeRaster(rst_seq, filename, ...)
+  return(rst_seq)
+}
+
+
+#: separate in month and day range_dates 
 ################################ END OF SCRIPT ##############################
 
