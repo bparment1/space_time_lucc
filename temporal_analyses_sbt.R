@@ -229,6 +229,21 @@ interpolation/global_product_assessment_part0_functions.R
 time_period <- "month"
 
 lf_var <- lf[1:230]
+
+generate_aggregate_raster <- function(i,list_periods_vals,fun_val= "mean",out_rastname=NULL, out_dir="NULL",out_suffix=NULL){
+  
+  lf_in <- list_date_vals[[i]]
+  r_s <- stack(lf_in)
+  
+  out_rastname <- "test.tif"
+  
+  r_sum <- calc(r_s,
+                fun=fun_val,
+                filename=out_rastname)
+  
+  return(out_rastname)
+}
+
 get_time_interval <- function(date_vals,time_period){
   ##takes time series objects and returns locations of observation in the last observations (function from xts)
   #endpoints(range_dates, on="months")
@@ -261,29 +276,33 @@ get_time_interval <- function(date_vals,time_period){
   
   ### now aggregate
   
-  generate_aggregate_raster(list_periods_vals,fun_val,out_rastname, out_dir,out_suffix){
-    r_s <- stack(lf_in)
-    
-    calc(r_s,fun=sum,filename="test.tif")
-    
-  }
+  mclapply(1:lenght(list_period_vals),
+           Fun)
+  i <- 1
   
+  generate_aggregate_raster(i,list_periods_vals,
+                            fun_val= "mean",
+                            out_rastname=NULL, 
+                            out_dir="NULL",
+                            out_suffix=NULL)
+    
   selected_periods <- 
   time_window_selected
+  
   return(df)
 }
 
-}else{ #generate empty data.frame
-  #declare data.frame with specific type, with zero row initialization
-  df_files <- data.frame(lf = character(),
-                         date = as.Date(character()), 
-                         month_str = character(), 
-                         year = character(),
-                         day = character(),
-                         dir = character()) 
-  list_dates_produced_date_val <- as.Date(character()) #declare date of raster predictions, empty
-}
-.
+#}else{ #generate empty data.frame
+#  #declare data.frame with specific type, with zero row initialization
+#  df_files <- data.frame(lf = character(),
+#                         date = as.Date(character()), 
+#                         month_str = character(), 
+#                         year = character(),
+#                         day = character(),
+#                         dir = character()) 
+#  list_dates_produced_date_val <- as.Date(character()) #declare date of raster predictions, empty
+#}
+
 temporal_aggregation <- function(r_stack){
 
 }
