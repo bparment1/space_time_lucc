@@ -230,18 +230,33 @@ time_period <- "month"
 
 lf_var <- lf[1:230]
 
-generate_aggregate_raster <- function(i,list_periods_vals,fun_val= "mean",out_rastname=NULL, out_dir="NULL",out_suffix=NULL){
+generate_aggregate_raster <- function(i,lf_periods_vals,fun_val= "mean",file_format=".itf",out_rastname=NULL, out_dir="NULL",out_suffix=NULL){
   
-  lf_in <- list_date_vals[[i]]
+  lf_in <- lf_periods_vals[[i]]
   r_s <- stack(lf_in)
   
-  out_rastname <- "test.tif"
+  #out_rastname <- "test.tif"
+  if(!is.null(out_rastname)){
+    rast_name <- out_rastname[i]
+  }else{
+    rast_name <- paste0("agg_",i,"_",out_suffix,file_format)
+  }
   
-  r_sum <- calc(r_s,
+  if(is.null(out_dir)){
+    out_dir <- "."
+  }
+  
+  rast_name <- file.path(out_dir,rast_name)
+  if(is.character(fun_Val)){
+    fun_val <- get(fun_val)
+  }
+  
+  r_temp_agg <- raster::calc(r_s,
                 fun=fun_val,
-                filename=out_rastname)
+                filename=rast_name,
+                overwrite=T)
   
-  return(out_rastname)
+  return(rast_name)
 }
 
 get_time_interval <- function(date_vals,time_period){
@@ -265,13 +280,13 @@ get_time_interval <- function(date_vals,time_period){
                          day = day_str,
                          dir = dirname(lf_var))
   
-  list_period_vals <- vector("list",length=length(index_periods)/2)
+  lf_period_vals <- vector("list",length=length(index_periods)/2)
   
   for(i in 2:length(lf_var)){
     index_selected_t1 <- index_periods[i-1] + 1
     index_selected_t2 <- index_periods[i]
     
-    list_period_vals[[i-1]] <- period_val <- c(lf_var[index_selected_t1],lf_var[index_selected_t2])
+    lf_period_vals[[i-1]] <- c(lf_var[index_selected_t1],lf_var[index_selected_t2])
   }
   
   ### now aggregate
@@ -279,8 +294,10 @@ get_time_interval <- function(date_vals,time_period){
   mclapply(1:lenght(list_period_vals),
            Fun)
   i <- 1
-  
-  generate_aggregate_raster(i,list_periods_vals,
+  browser()
+  debug(generate_aggregate_raster)
+  generate_aggregate_raster(i,
+                            lf_period_vals,
                             fun_val= "mean",
                             out_rastname=NULL, 
                             out_dir="NULL",
